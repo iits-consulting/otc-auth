@@ -8,23 +8,23 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - name: Lint the source code
-        uses: golangci/golangci-lint-action@v2
+        uses: actions/checkout@v2.5.0
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3.3.1
         with:
-          version: v1.29
+          version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     name: Build the otc-cli
     runs-on: ubuntu-18.04
     steps:
-      - name: Setup Go
-        uses: actions/setup-go@v2
+      - name: Setup Go environment
+        uses: actions/setup-go@v3.3.1
         with:
-          go-version: ^1.13
+          go-version: ^1.19
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.5.0
       - name: Get dependencies
         run: |
           go get -v -t -d ./...
