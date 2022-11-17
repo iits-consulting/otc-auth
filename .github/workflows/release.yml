@@ -38,7 +38,9 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          build-args: VERSION=${{ env.RELEASE_VERSION }},GITHUB_REPOSITORY=${{ github.repository }}
+          build-args: |
+            VERSION=${{ env.RELEASE_VERSION }}
+            GITHUB_REPOSITORY=${{ github.repository }}
           tags: |
             ghrc.io/iits-consulting/otc-cli:latest
             ghcr.io/iits-consulting/otc-cli:${{ env.RELEASE_VERSION }}
