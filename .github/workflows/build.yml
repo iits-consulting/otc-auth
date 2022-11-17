@@ -1,0 +1,41 @@
+name: Build
+on:
+  - pull_request
+  - push
+jobs:
+  lint:
+    name: Lint the otc-cli source code
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Lint the source code
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.29
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build the otc-cli
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
+          if [ -f Gopkg.toml ]; then
+              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+              dep ensure
+          fi
+      - name: Build
+        run: go build -v -o otc-cli ./src/*.go
+      - name: Upload the built binary executable for testing
+        uses: actions/upload-artifact@v2
+        with:
+          name: build
+          path: otc-cli
