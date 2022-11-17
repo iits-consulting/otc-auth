@@ -5,7 +5,7 @@ on:
 jobs:
   lint:
     name: Lint the otc-cli source code
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2.5.0
@@ -17,7 +17,7 @@ jobs:
 
   build:
     name: Build the otc-cli
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup Go environment
         uses: actions/setup-go@v3.3.1
