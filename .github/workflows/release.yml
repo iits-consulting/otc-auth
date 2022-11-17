@@ -37,11 +37,8 @@ jobs:
       - name: Build and push Docker images
         uses: docker/build-push-action@v3
         with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          tag_with_ref: true
           push: true
-          build_args: VERSION=${{ env.RELEASE_VERSION }},GITHUB_REPOSITORY=${{ github.repository }}
+          build-args: VERSION=${{ env.RELEASE_VERSION }},GITHUB_REPOSITORY=${{ github.repository }}
           tags: |
             ghrc.io/iits-consulting/otc-cli:latest
             ghcr.io/iits-consulting/otc-cli:${{ env.RELEASE_VERSION }}
