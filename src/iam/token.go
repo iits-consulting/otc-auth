@@ -9,7 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"otc-cli/util"
+	util2 "otc-cli/src/util"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +18,7 @@ import (
 func getUnscopedSAMLToken(params LoginParams) (token string) {
 	idpReq, err := http.NewRequest("GET", fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers/%s/protocols/%s/auth", IamAuthUrl, params.IdentityProvider, params.Protocol), nil)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 
 	idpReq.Header.Add("Accept", SoapContentType)
@@ -28,13 +28,13 @@ func getUnscopedSAMLToken(params LoginParams) (token string) {
 	defer client.CloseIdleConnections()
 	idpResp, err := client.Do(idpReq)
 	if err != nil || idpResp.StatusCode != 200 {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 	defer idpResp.Body.Close()
 
 	serviceProviderRequest, err := http.NewRequest("POST", params.IdentityProviderUrl, idpResp.Body)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 
 	serviceProviderRequest.Header.Add("Content-type", XmlContentType)
@@ -42,30 +42,30 @@ func getUnscopedSAMLToken(params LoginParams) (token string) {
 
 	serviceProviderResponse, err := client.Do(serviceProviderRequest)
 	if err != nil || serviceProviderResponse.StatusCode != 200 {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 	defer serviceProviderResponse.Body.Close()
 
 	spRespBodyBytes, err := io.ReadAll(serviceProviderResponse.Body)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 
 	assertionResult := GetSAMLAssertionResult{}
 	err = xml.Unmarshal(spRespBodyBytes, &assertionResult)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 
 	samlReq, err := http.NewRequest("POST", assertionResult.Header.Response.ConsumerUrl, bytes.NewReader(spRespBodyBytes))
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 
 	samlReq.Header.Add("Content-type", SoapContentType)
 	samlResp, err := client.Do(samlReq)
 	if err != nil || samlResp.StatusCode != 201 {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 	defer samlResp.Body.Close()
 
@@ -73,7 +73,7 @@ func getUnscopedSAMLToken(params LoginParams) (token string) {
 	if token == "" {
 		respBytes, _ := io.ReadAll(samlResp.Body)
 		defer samlResp.Body.Close()
-		util.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: response failed with status %s.\n\nBody: %s", samlResp.Status, string(respBytes)))
+		util2.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: response failed with status %s.\n\nBody: %s", samlResp.Status, string(respBytes)))
 	}
 
 	return
@@ -93,15 +93,15 @@ func getUserToken(params LoginParams) (token string) {
 	}
 	request, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", IamAuthUrl), strings.NewReader(requestBody))
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 
-	request.Header.Add("Content-Type", util.JsonContentType)
+	request.Header.Add("Content-Type", util2.JsonContentType)
 
 	client := GetHttpClient()
 	resp, err := client.Do(request)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 	defer resp.Body.Close()
 
@@ -111,9 +111,9 @@ func getUserToken(params LoginParams) (token string) {
 		defer resp.Body.Close()
 		responseString := string(respBytes)
 		if strings.Contains(responseString, "mfa totp code verify fail") {
-			util.OutputErrorMessageToConsoleAndExit("fatal: invalid otp token.\n\nPlease try it again with a new otp token.")
+			util2.OutputErrorMessageToConsoleAndExit("fatal: invalid otp token.\n\nPlease try it again with a new otp token.")
 		} else {
-			util.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: response failed with status %s.\n\nBody: %s", resp.Status, responseString))
+			util2.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: response failed with status %s.\n\nBody: %s", resp.Status, responseString))
 		}
 
 	}
@@ -123,17 +123,17 @@ func getUserToken(params LoginParams) (token string) {
 
 func OrderNewScopedToken(projectName string) {
 	projectId := getProjectId(projectName)
-	otcInfo := util.ReadOrCreateOTCInfoFromFile()
+	otcInfo := util2.ReadOrCreateOTCInfoFromFile()
 	err := retry.Do(
 		func() error {
 			tokenBody := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\"}}, \"scope\": {\"project\": {\"id\": \"%s\"}}}}", otcInfo.UnscopedToken.Value, projectId)
 
 			req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", IamAuthUrl), strings.NewReader(tokenBody))
 			if err != nil {
-				util.OutputErrorToConsoleAndExit(err)
+				util2.OutputErrorToConsoleAndExit(err)
 			}
 
-			req.Header.Add("Content-Type", util.JsonContentType)
+			req.Header.Add("Content-Type", util2.JsonContentType)
 
 			client := GetHttpClient()
 			resp, err := client.Do(req)
@@ -152,9 +152,9 @@ func OrderNewScopedToken(projectName string) {
 			}
 
 			valid23Hours := time.Now().Add(time.Hour)
-			newProjectEntry := util.Project{Name: projectName, ID: projectId, Token: scopedToken, TokenValidTill: valid23Hours.Format(util.TimeFormat)}
-			otcInfo.Projects = util.AppendOrReplaceProject(otcInfo.Projects, newProjectEntry)
-			util.UpdateOtcInformation(otcInfo)
+			newProjectEntry := util2.Project{Name: projectName, ID: projectId, Token: scopedToken, TokenValidTill: valid23Hours.Format(util2.TimeFormat)}
+			otcInfo.Projects = util2.AppendOrReplaceProject(otcInfo.Projects, newProjectEntry)
+			util2.UpdateOtcInformation(otcInfo)
 			return nil
 		}, retry.OnRetry(func(n uint, err error) {
 			log.Printf("#%d: %s\n", n, err)
@@ -163,6 +163,6 @@ func OrderNewScopedToken(projectName string) {
 		retry.Delay(5*time.Second),
 	)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		util2.OutputErrorToConsoleAndExit(err)
 	}
 }

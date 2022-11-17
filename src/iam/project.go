@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"otc-cli/util"
+	"otc-cli/src/util"
 )
 
 func getProjects() (resp *http.Response, err error) {

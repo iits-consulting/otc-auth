@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/akamensky/argparse"
 	"os"
-	"otc-cli/cce"
-	"otc-cli/iam"
-	"otc-cli/util"
+	cce2 "otc-cli/src/cce"
+	iam2 "otc-cli/src/iam"
+	util2 "otc-cli/src/util"
 	"strings"
 )
 
@@ -58,7 +58,7 @@ func main() {
 
 	err := parser.Parse(os.Args)
 	if err != nil {
-		util.OutputErrorMessageToConsoleAndExit(parser.Usage(err))
+		util2.OutputErrorMessageToConsoleAndExit(parser.Usage(err))
 	}
 
 	if loginCommand.Happened() {
@@ -69,7 +69,7 @@ func main() {
 		domainName = getDomainNameOrThrow(authType, domainName)
 		authType, otp, userId = checkMFAFlowIAM(authType, otp, userId)
 
-		loginParams := iam.LoginParams{
+		loginParams := iam2.LoginParams{
 			AuthType:            *authType,
 			IdentityProvider:    *identityProvider,
 			IdentityProviderUrl: *identityProviderUrl,
@@ -80,38 +80,38 @@ func main() {
 			Otp:                 *otp,
 			UserId:              *userId,
 		}
-		iam.Login(loginParams)
+		iam2.Login(loginParams)
 		return
 	}
-	if util.LoginNeeded() {
-		util.OutputErrorMessageToConsoleAndExit("fatal: no unscoped token found.\n\nPlease run the \"otc login\" command first")
+	if util2.LoginNeeded() {
+		util2.OutputErrorMessageToConsoleAndExit("fatal: no unscoped token found.\n\nPlease run the \"otc login\" command first")
 	}
 	if cceCommand.Happened() {
-		iam.GetScopedToken(*projectName)
+		iam2.GetScopedToken(*projectName)
 		if getKubeConfigCommand.Happened() {
-			kubeConfigParams := cce.KubeConfigParams{
+			kubeConfigParams := cce2.KubeConfigParams{
 				ProjectName: *projectName,
 				ClusterName: *clusterName,
 				DaysValid:   *daysValid,
 			}
-			newKubeConfigData := cce.GetKubeConfig(kubeConfigParams)
-			cce.MergeKubeConfig(*projectName, *clusterName, newKubeConfigData)
+			newKubeConfigData := cce2.GetKubeConfig(kubeConfigParams)
+			cce2.MergeKubeConfig(*projectName, *clusterName, newKubeConfigData)
 			println("Successfully fetched and merge kube config for cce cluster " + kubeConfigParams.ClusterName)
 			return
 		}
 		if getClustersCommand.Happened() {
-			println("CCE Clusters inside the project " + *projectName + ": " + strings.Join(cce.GetClusterNames(*projectName), ","))
+			println("CCE Clusters inside the project " + *projectName + ": " + strings.Join(cce2.GetClusterNames(*projectName), ","))
 		}
 
 	}
 	if accessTokenCommandCreate.Happened() {
 		if *durationSeconds < 900 {
-			util.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
+			util2.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
 		}
-		AccessTokeCreateParams := iam.AccessTokenCreateParams{
+		AccessTokeCreateParams := iam2.AccessTokenCreateParams{
 			DurationSeconds: *durationSeconds,
 		}
-		iam.CreateAccessToken(AccessTokeCreateParams)
+		iam2.CreateAccessToken(AccessTokeCreateParams)
 	}
 }
 
@@ -122,7 +122,7 @@ func getAuthTypeOrThrow(authType *string) *string {
 
 	authTypeEnvVar, ok := os.LookupEnv(osAuthTypeEnv)
 	if !ok || authTypeEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-auth-type", osAuthTypeEnv))
+		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-auth-type", osAuthTypeEnv))
 	}
 	authType = &authTypeEnvVar
 	return authType
@@ -145,7 +145,7 @@ func checkIDPProviderIsSet(provider *string) *string {
 
 	idpProviderNameEnvVar, ok := os.LookupEnv(osAuthIDPNameEnv)
 	if !ok || idpProviderNameEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-auth-idp-name", osAuthIDPNameEnv))
+		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-auth-idp-name", osAuthIDPNameEnv))
 	}
 
 	provider = &idpProviderNameEnvVar
@@ -159,7 +159,7 @@ func checkIDPUrlIsSet(url *string) *string {
 
 	idpUrlEnvVar, ok := os.LookupEnv(osIDPUrlEnv)
 	if !ok || idpUrlEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-idp-url", osIDPUrlEnv))
+		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-idp-url", osIDPUrlEnv))
 	}
 
 	url = &idpUrlEnvVar
@@ -173,7 +173,7 @@ func getUsernameOrThrow(username *string) *string {
 
 	usernameEnvVar, ok := os.LookupEnv(osUsernameEnv)
 	if !ok || usernameEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--username", osUsernameEnv))
+		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--username", osUsernameEnv))
 	}
 	username = &usernameEnvVar
 	return username
@@ -186,7 +186,7 @@ func getPasswordOrThrow(password *string) *string {
 
 	passwordEnvVar, ok := os.LookupEnv(osPasswordEnv)
 	if !ok || passwordEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--password", osPasswordEnv))
+		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--password", osPasswordEnv))
 	}
 	password = &passwordEnvVar
 	return password
@@ -203,7 +203,7 @@ func getDomainNameOrThrow(authType *string, domainName *string) *string {
 
 	domainNameEnvVar, ok := os.LookupEnv(osDomainNameEnv)
 	if !ok || domainNameEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-domain-name", osDomainNameEnv))
+		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-domain-name", osDomainNameEnv))
 	}
 	domainName = &domainNameEnvVar
 	return domainName
@@ -221,7 +221,7 @@ func checkMFAFlowIAM(authType *string, otp *string, userId *string) (*string, *s
 
 		userIdEnvVar, ok := os.LookupEnv(osUserIdEnv)
 		if !ok {
-			util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-user-id", osUserIdEnv))
+			util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-user-id", osUserIdEnv))
 		}
 
 		userId = &userIdEnvVar

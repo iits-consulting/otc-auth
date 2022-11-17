@@ -2,7 +2,7 @@ package iam
 
 import (
 	"net/http"
-	"otc-cli/util"
+	"otc-cli/src/util"
 )
 
 type AddHeaderTransport struct {

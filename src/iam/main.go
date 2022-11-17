@@ -1,7 +1,7 @@
 package iam
 
 import (
-	"otc-cli/util"
+	util2 "otc-cli/src/util"
 	"time"
 )
 
@@ -11,12 +11,12 @@ const SoapContentType = "application/vnd.paos+xml"
 const SoapHeaderInfo = `ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"`
 
 func Login(loginParams LoginParams) {
-	if !util.LoginNeeded() {
+	if !util2.LoginNeeded() {
 		println("Previous token still valid. Continue.")
 		return
 	}
 	if loginParams.Protocol != "saml" {
-		util.OutputErrorMessageToConsoleAndExit("fatal: invalid protocol.\n\nOnly saml is supported at the moment.")
+		util2.OutputErrorMessageToConsoleAndExit("fatal: invalid protocol.\n\nOnly saml is supported at the moment.")
 	}
 
 	println("Retrieving unscoped token...")
@@ -28,7 +28,7 @@ func Login(loginParams LoginParams) {
 	case "iam":
 		unscopedToken = getUserToken(loginParams)
 	default:
-		util.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
+		util2.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
 	}
 
 	updateOTCInfoFile(loginParams, unscopedToken)
@@ -36,24 +36,24 @@ func Login(loginParams LoginParams) {
 }
 
 func updateOTCInfoFile(loginParams LoginParams, unscopedToken string) {
-	otcInformation := util.ReadOrCreateOTCInfoFromFile()
+	otcInformation := util2.ReadOrCreateOTCInfoFromFile()
 
 	otcInformation.UnscopedToken.Value = unscopedToken
 	valid23Hours := time.Now().Add(time.Hour)
 	otcInformation.Username = loginParams.Username
-	otcInformation.UnscopedToken.ValidTill = valid23Hours.Format(util.TimeFormat)
-	util.UpdateOtcInformation(otcInformation)
+	otcInformation.UnscopedToken.ValidTill = valid23Hours.Format(util2.TimeFormat)
+	util2.UpdateOtcInformation(otcInformation)
 }
 
 func GetScopedToken(projectName string) string {
-	scopedTokenFormOTCInfoFile := util.GetScopedTokenFromOTCInfo(projectName)
+	scopedTokenFormOTCInfoFile := util2.GetScopedTokenFromOTCInfo(projectName)
 	if scopedTokenFormOTCInfoFile == "" {
 		OrderNewScopedToken(projectName)
-		return util.GetScopedTokenFromOTCInfo(projectName)
+		return util2.GetScopedTokenFromOTCInfo(projectName)
 	}
 	return scopedTokenFormOTCInfoFile
 }
 
 func GetProjectId(projectName string) string {
-	return util.FindProjectID(projectName)
+	return util2.FindProjectID(projectName)
 }
