@@ -45,5 +45,5 @@ jobs:
             VERSION=${{ env.RELEASE_VERSION }}
             GITHUB_REPOSITORY=${{ github.repository }}
           tags: |
-            ghrc.io/iits-consulting/otc-cli:latest
+            ghcr.io/iits-consulting/otc-cli:latest
             ghcr.io/iits-consulting/otc-cli:${{ env.RELEASE_VERSION }}
