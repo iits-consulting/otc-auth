@@ -5,7 +5,7 @@ import (
 	. "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"os"
-	util2 "otc-cli/src/util"
+	"otc-cli/src/util"
 	"strings"
 )
 
@@ -16,17 +16,17 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 
 	clusterId, err := getClusterId(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster ID: %s")
+		util.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster ID: %s")
 	}
 
 	kubeConfigResponse, err := postClusterCert(kubeConfigParams.ProjectName, clusterId, kubeConfigParams.DaysValid)
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster certificate: %s")
+		util.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster certificate: %s")
 	}
 
 	newKubeConfigContextData, err := io.ReadAll(kubeConfigResponse.Body)
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 	return string(newKubeConfigContextData)
 }
@@ -35,16 +35,16 @@ func mergeKubeConfig(projectName string, clusterName string, newKubeConfigData s
 	newKubeConfigContextData := addContextInformationToKubeConfig(projectName, clusterName, newKubeConfigData)
 	currentConfig, err := NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 
 	newClientConfig, err := NewClientConfigFromBytes([]byte(newKubeConfigContextData))
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 	newKubeConfig, err := newClientConfig.RawConfig()
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 
 	newKubeConfigFileName := "newKubeContext"
@@ -52,11 +52,11 @@ func mergeKubeConfig(projectName string, clusterName string, newKubeConfigData s
 
 	err = WriteToFile(newKubeConfig, newKubeConfigFileName)
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 	err = WriteToFile(*currentConfig, currentKubeConfigFileName)
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 
 	loadingRules := ClientConfigLoadingRules{
@@ -65,11 +65,11 @@ func mergeKubeConfig(projectName string, clusterName string, newKubeConfigData s
 
 	mergedConfig, err := loadingRules.Load()
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 	err = WriteToFile(*mergedConfig, homedir.HomeDir()+"/.kube/config")
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 
 	os.RemoveAll(newKubeConfigFileName)
@@ -77,7 +77,7 @@ func mergeKubeConfig(projectName string, clusterName string, newKubeConfigData s
 }
 
 func addContextInformationToKubeConfig(projectName string, clusterName string, newKubeConfigData string) string {
-	otcInfo := util2.ReadOrCreateOTCInfoFromFile()
+	otcInfo := util.ReadOrCreateOTCInfoFromFile()
 	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "internalCluster", projectName+"/"+clusterName+"-intranet")
 	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "externalCluster", projectName+"/"+clusterName)
 	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "internal", projectName+"/"+clusterName+"-intranet")

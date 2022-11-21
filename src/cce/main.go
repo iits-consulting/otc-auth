@@ -8,8 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
-	iam2 "otc-cli/src/iam"
-	util2 "otc-cli/src/util"
+	"otc-cli/src/iam"
+	"otc-cli/src/util"
 	"strconv"
 	"strings"
 	"time"
@@ -36,16 +36,16 @@ func getClusters(projectName string) GetClustersResult {
 	clustersResult := GetClustersResult{}
 	err := retry.Do(
 		func() error {
-			client := iam2.GetHttpClient()
+			client := iam.GetHttpClient()
 
-			projectId := iam2.GetProjectId(projectName)
+			projectId := iam.GetProjectId(projectName)
 			req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v3/projects/%s/clusters", CceUrl, projectId), nil)
 			if err != nil {
 				return err
 			}
 
-			req.Header.Add("Content-Type", util2.JsonContentType)
-			scopedToken := iam2.GetScopedToken(projectName)
+			req.Header.Add("Content-Type", util.JsonContentType)
+			scopedToken := iam.GetScopedToken(projectName)
 			req.Header.Add("X-Auth-Token", scopedToken)
 
 			resp, err := client.Do(req)
@@ -74,7 +74,7 @@ func getClusters(projectName string) GetClustersResult {
 	)
 
 	if err != nil {
-		util2.OutputErrorToConsoleAndExit(err)
+		util.OutputErrorToConsoleAndExit(err)
 	}
 
 	return clustersResult
@@ -84,17 +84,17 @@ func postClusterCert(projectName string, clusterId string, duration string) (res
 
 	body := fmt.Sprintf("{\"duration\": %s}", duration)
 
-	projectId := util2.FindProjectID(projectName)
+	projectId := util.FindProjectID(projectName)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v3/projects/%s/clusters/%s/clustercert", CceUrl, projectId, clusterId), strings.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Content-Type", util2.JsonContentType)
-	req.Header.Add("Accept", util2.JsonContentType)
-	req.Header.Add("X-Auth-Token", iam2.GetScopedToken(projectName))
+	req.Header.Add("Content-Type", util.JsonContentType)
+	req.Header.Add("Accept", util.JsonContentType)
+	req.Header.Add("X-Auth-Token", iam.GetScopedToken(projectName))
 
-	client := iam2.GetHttpClient()
+	client := iam.GetHttpClient()
 	resp, err = client.Do(req)
 	if err != nil {
 		return nil, err
