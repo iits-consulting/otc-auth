@@ -1,22 +1,24 @@
 package iam
 
 import (
-	"otc-cli/src/util"
+	"fmt"
+	"otc-auth/src/util"
 	"time"
 )
 
-const IamAuthUrl = "https://iam.eu-de.otc.t-systems.com:443"
-const XmlContentType = "text/xml"
-const SoapContentType = "application/vnd.paos+xml"
-const SoapHeaderInfo = `ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"`
+const (
+	AuthUrlIam             = "https://iam.eu-de.otc.t-systems.com:443"
+	XmlContentType         = "text/xml"
+	SoapContentType        = "application/vnd.paos+xml"
+	SoapHeaderInfo         = `ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"`
+	protocolSAML    string = "saml"
+	protocolOIDC    string = "oidc"
+)
 
 func Login(loginParams LoginParams) {
-	if !util.LoginNeeded() {
-		println("Previous token still valid. Continue.")
+	if !util.LoginNeeded(loginParams.OverwriteFile) {
+		println("info: will not retrieve unscoped token, because the current one is still valid.\n\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
 		return
-	}
-	if loginParams.Protocol != "saml" {
-		util.OutputErrorMessageToConsoleAndExit("fatal: invalid protocol.\n\nOnly saml is supported at the moment.")
 	}
 
 	println("Retrieving unscoped token...")
@@ -24,11 +26,10 @@ func Login(loginParams LoginParams) {
 	var unscopedToken string
 	switch loginParams.AuthType {
 	case "idp":
-		if loginParams.Protocol == "saml" {
+		if loginParams.Protocol == protocolSAML {
 			unscopedToken = getUnscopedSAMLToken(loginParams)
-		} else if loginParams.Protocol == "oidc" {
-			// login with oidc
-			util.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nCurrently the only supported protocol is \"saml\". Please provide a valid argument and try again.")
+		} else if loginParams.Protocol == protocolOIDC {
+			unscopedToken, loginParams.Username = getUnscopedOIDCToken(loginParams)
 		} else {
 			util.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". Please provide a valid argument and try again.")
 		}
@@ -38,27 +39,31 @@ func Login(loginParams LoginParams) {
 		util.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
 	}
 
+	if unscopedToken == "" {
+		util.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
+	}
 	updateOTCInfoFile(loginParams, unscopedToken)
 	println("Successfully obtained unscoped token!")
 }
 
 func updateOTCInfoFile(loginParams LoginParams, unscopedToken string) {
-	otcInformation := util.ReadOrCreateOTCInfoFromFile()
+	otcInfo := util.ReadOrCreateOTCInfoFromFile()
 
-	otcInformation.UnscopedToken.Value = unscopedToken
-	valid23Hours := time.Now().Add(time.Hour)
-	otcInformation.Username = loginParams.Username
-	otcInformation.UnscopedToken.ValidTill = valid23Hours.Format(util.TimeFormat)
-	util.UpdateOtcInformation(otcInformation)
+	otcInfo.UnscopedToken.Value = unscopedToken
+	expirationDate := time.Now().Add(time.Hour * 23)
+	otcInfo.Username = loginParams.Username
+	otcInfo.UnscopedToken.ValidTill = expirationDate.Format(util.TimeFormat)
+	println(fmt.Sprintf("Unscoped token valid until %s", expirationDate.Format(util.PrintTimeFormat)))
+	util.UpdateOtcInformation(otcInfo)
 }
 
 func GetScopedToken(projectName string) string {
-	scopedTokenFormOTCInfoFile := util.GetScopedTokenFromOTCInfo(projectName)
-	if scopedTokenFormOTCInfoFile == "" {
-		OrderNewScopedToken(projectName)
+	scopedTokenFromOTCInfoFile := util.GetScopedTokenFromOTCInfo(projectName)
+	if scopedTokenFromOTCInfoFile == "" {
+		GetNewScopedToken(projectName)
 		return util.GetScopedTokenFromOTCInfo(projectName)
 	}
-	return scopedTokenFormOTCInfoFile
+	return scopedTokenFromOTCInfoFile
 }
 
 func GetProjectId(projectName string) string {

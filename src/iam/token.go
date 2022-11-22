@@ -9,14 +9,14 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"otc-cli/src/util"
+	"otc-auth/src/util"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func getUnscopedSAMLToken(params LoginParams) (token string) {
-	client := &http.Client{}
+func getUnscopedSAMLToken(params LoginParams) (unscopedToken string) {
+	client := GetHttpClient()
 
 	samlResponse := getSAMLRequestFromServiceProvider(params, client)
 
@@ -29,15 +29,21 @@ func getUnscopedSAMLToken(params LoginParams) (token string) {
 	}
 
 	validatedSAMLResponse := validateSAMLAuthenticationWithServiceProvider(assertionResult, responseBodyBytes, client)
-
-	token = getUnscopedTokenFromResponseOrThrow(validatedSAMLResponse)
-
+	unscopedToken = getUnscopedTokenFromResponseOrThrow(validatedSAMLResponse)
+	defer validatedSAMLResponse.Body.Close()
 	return
 }
 
-func getUserToken(params LoginParams) (token string) {
+func getUnscopedOIDCToken(params LoginParams) (unscopedToken string, username string) {
+	oidcResponse := AuthenticateWithIdp(params)
+
+	unscopedToken = getUnscopedTokenWithIdpBearerToken(oidcResponse.BearerToken, params)
+	return unscopedToken, oidcResponse.Claims.PreferredUsername
+}
+
+func getUserToken(params LoginParams) (unscopedToken string) {
 	requestBody := getRequestBodyForAuthenticationMethod(params)
-	request, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", IamAuthUrl), strings.NewReader(requestBody))
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", AuthUrlIam), strings.NewReader(requestBody))
 	if err != nil {
 		util.OutputErrorToConsoleAndExit(err)
 	}
@@ -51,19 +57,19 @@ func getUserToken(params LoginParams) (token string) {
 	}
 	defer response.Body.Close()
 
-	token = getUnscopedTokenFromResponseOrThrow(response)
+	unscopedToken = getUnscopedTokenFromResponseOrThrow(response)
 
 	return
 }
 
-func OrderNewScopedToken(projectName string) {
+func GetNewScopedToken(projectName string) {
 	projectId := getProjectId(projectName)
 	otcInfo := util.ReadOrCreateOTCInfoFromFile()
 	err := retry.Do(
 		func() error {
 			tokenBody := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\"}}, \"scope\": {\"project\": {\"id\": \"%s\"}}}}", otcInfo.UnscopedToken.Value, projectId)
 
-			req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", IamAuthUrl), strings.NewReader(tokenBody))
+			req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", AuthUrlIam), strings.NewReader(tokenBody))
 			if err != nil {
 				util.OutputErrorToConsoleAndExit(err)
 			}
@@ -102,8 +108,30 @@ func OrderNewScopedToken(projectName string) {
 	}
 }
 
-func getSAMLRequestFromServiceProvider(params LoginParams, client *http.Client) *http.Response {
-	request, err := http.NewRequest("GET", fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers/%s/protocols/%s/auth", IamAuthUrl, params.IdentityProvider, params.Protocol), nil)
+func getUnscopedTokenWithIdpBearerToken(bearerToken string, params LoginParams) (unscopedToken string) {
+	requestPath := fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers/%s/protocols/oidc/auth", AuthUrlIam, params.IdentityProvider)
+
+	request, err := http.NewRequest("POST", requestPath, strings.NewReader(""))
+	if err != nil {
+		util.OutputErrorToConsoleAndExit(err)
+	}
+
+	request.Header.Add("Authorization", bearerToken)
+
+	client := GetHttpClient()
+	response, err := client.Do(request)
+	if err != nil {
+		util.OutputErrorToConsoleAndExit(err)
+	}
+	defer response.Body.Close()
+
+	unscopedToken = getUnscopedTokenFromResponseOrThrow(response)
+
+	return
+}
+
+func getSAMLRequestFromServiceProvider(params LoginParams, client http.Client) *http.Response {
+	request, err := http.NewRequest("GET", fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers/%s/protocols/%s/auth", AuthUrlIam, params.IdentityProvider, params.Protocol), nil)
 	if err != nil {
 		util.OutputErrorToConsoleAndExit(err)
 	}
@@ -116,33 +144,31 @@ func getSAMLRequestFromServiceProvider(params LoginParams, client *http.Client) 
 	if err != nil || response.StatusCode != 200 {
 		util.OutputErrorToConsoleAndExit(err)
 	}
-	defer response.Body.Close()
 	return response
 }
 
-func authenticateIdpWithSAML(params LoginParams, samlResponse *http.Response, client *http.Client) []byte {
-	serviceProviderRequest, err := http.NewRequest("POST", params.IdentityProviderUrl, samlResponse.Body)
+func authenticateIdpWithSAML(params LoginParams, samlResponse *http.Response, client http.Client) []byte {
+	request, err := http.NewRequest("POST", params.IdentityProviderUrl, samlResponse.Body)
 	if err != nil {
 		util.OutputErrorToConsoleAndExit(err)
 	}
 
-	serviceProviderRequest.Header.Add("Content-type", XmlContentType)
-	serviceProviderRequest.SetBasicAuth(params.Username, params.Password)
+	request.Header.Add("Content-type", XmlContentType)
+	request.SetBasicAuth(params.Username, params.Password)
 
-	serviceProviderResponse, err := client.Do(serviceProviderRequest)
-	if err != nil || serviceProviderResponse.StatusCode != 200 {
+	response, err := client.Do(request)
+	if err != nil || response.StatusCode != 200 {
 		util.OutputErrorToConsoleAndExit(err)
 	}
-	defer serviceProviderResponse.Body.Close()
 
-	responseBodyBytes, err := io.ReadAll(serviceProviderResponse.Body)
+	responseBodyBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		util.OutputErrorToConsoleAndExit(err)
 	}
 	return responseBodyBytes
 }
 
-func validateSAMLAuthenticationWithServiceProvider(assertionResult GetSAMLAssertionResult, responseBodyBytes []byte, client *http.Client) *http.Response {
+func validateSAMLAuthenticationWithServiceProvider(assertionResult GetSAMLAssertionResult, responseBodyBytes []byte, client http.Client) *http.Response {
 	request, err := http.NewRequest("POST", assertionResult.Header.Response.ConsumerUrl, bytes.NewReader(responseBodyBytes))
 	if err != nil {
 		util.OutputErrorToConsoleAndExit(err)
@@ -157,27 +183,26 @@ func validateSAMLAuthenticationWithServiceProvider(assertionResult GetSAMLAssert
 	return response
 }
 
-func getUnscopedTokenFromResponseOrThrow(response *http.Response) (token string) {
-	token = response.Header.Get("X-Subject-Token")
-	if token == "" {
+func getUnscopedTokenFromResponseOrThrow(response *http.Response) (unscopedToken string) {
+	unscopedToken = response.Header.Get("X-Subject-Token")
+	if unscopedToken == "" {
 		responseBytes, _ := io.ReadAll(response.Body)
-		defer response.Body.Close()
 		responseString := string(responseBytes)
 		if strings.Contains(responseString, "mfa totp code verify fail") {
-			util.OutputErrorMessageToConsoleAndExit("fatal: invalid otp token.\n\nPlease try it again with a new otp token.")
+			util.OutputErrorMessageToConsoleAndExit("fatal: invalid otp unscopedToken.\n\nPlease try it again with a new otp unscopedToken.")
 		} else {
 			util.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: response failed with status %s.\n\nBody: %s", response.Status, responseString))
 		}
 	}
-	return token
+	return unscopedToken
 }
 
 func getRequestBodyForAuthenticationMethod(params LoginParams) (requestBody string) {
-	if params.Otp != "" && params.UserId != "" {
+	if params.Otp != "" && params.UserDomainId != "" {
 		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\", \"totp\"], "+
 			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}, "+
 			"\"totp\" : {\"user\": {\"id\": \"%s\", \"passcode\": \"%s\"}}}, \"scope\": {\"domain\": {\"name\": \"%s\"}}}}",
-			params.Username, params.Password, params.DomainName, params.UserId, params.Otp, params.DomainName)
+			params.Username, params.Password, params.DomainName, params.UserDomainId, params.Otp, params.DomainName)
 	} else {
 		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\"], "+
 			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}}, "+

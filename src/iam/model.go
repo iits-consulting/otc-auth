@@ -1,6 +1,8 @@
 package iam
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+)
 
 type LoginParams struct {
 	AuthType            string
@@ -11,7 +13,10 @@ type LoginParams struct {
 	Protocol            string
 	DomainName          string
 	Otp                 string
-	UserId              string
+	UserDomainId        string
+	ClientId            string
+	ClientSecret        string
+	OverwriteFile       bool
 }
 
 type GetSAMLAssertionResult struct {
@@ -28,4 +33,10 @@ type GetProjectsResult struct {
 		Name string `json:"name"`
 		ID   string `json:"id"`
 	} `json:"projects"`
+}
+type OIDCUsernameAndToken struct {
+	BearerToken string
+	Claims      struct {
+		PreferredUsername string `json:"preferred_username"`
+	}
 }

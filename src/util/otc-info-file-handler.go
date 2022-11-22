@@ -2,11 +2,15 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 )
 
-const TimeFormat = time.RFC3339
+const (
+	TimeFormat      = time.RFC3339
+	PrintTimeFormat = time.RFC1123
+)
 
 var otcInfoPath = GetHomeDir() + "/.otc-info"
 
@@ -39,7 +43,7 @@ type UnscopedToken struct {
 	ValidTill string `json:"validTill"`
 }
 
-func LoginNeeded() bool {
+func LoginNeeded(overwrite bool) bool {
 	if !fileExists(otcInfoPath) {
 		return true
 	}
@@ -47,15 +51,19 @@ func LoginNeeded() bool {
 	if otcInformation.UnscopedToken.ValidTill == "" {
 		return true
 	}
-	validTill, err := time.Parse(TimeFormat, otcInformation.UnscopedToken.ValidTill)
+	tokenExpirationDate, err := time.Parse(TimeFormat, otcInformation.UnscopedToken.ValidTill)
 	if err != nil {
 		OutputErrorToConsoleAndExit(err)
 	}
-	if validTill.After(time.Now()) {
-		println("Old unscoped token is still valid till: " + otcInformation.UnscopedToken.ValidTill)
+	if tokenExpirationDate.After(time.Now()) {
+		println(fmt.Sprintf("Unscoped token is still valid until: %s", tokenExpirationDate.Format(PrintTimeFormat)))
+		if overwrite {
+			println("Overwriting unscoped token...")
+			return true
+		}
 		return false
 	}
-	return false
+	return true
 }
 
 func GetScopedTokenFromOTCInfo(projectName string) string {
@@ -63,12 +71,12 @@ func GetScopedTokenFromOTCInfo(projectName string) string {
 	for i := range otcInfo.Projects {
 		project := otcInfo.Projects[i]
 		if project.Name == projectName {
-			tokenValidTill, err := time.Parse(TimeFormat, project.TokenValidTill)
+			tokenExpirationDate, err := time.Parse(TimeFormat, project.TokenValidTill)
 			if err != nil {
 				OutputErrorToConsoleAndExit(err)
 			}
-			if tokenValidTill.After(time.Now()) {
-				println("Old scoped token for project " + projectName + " is still valid till: " + project.TokenValidTill)
+			if tokenExpirationDate.After(time.Now()) {
+				println(fmt.Sprintf("Scoped token for project %s is still valid till: %s.", projectName, tokenExpirationDate.Format(PrintTimeFormat)))
 				return project.Token
 			}
 			break
@@ -119,7 +127,7 @@ func FindProjectID(projectName string) string {
 			return project.ID
 		}
 	}
-	OutputErrorMessageToConsoleAndExit("Something went wrong. Project with name=" + projectName + " not found inside otc-info file path=" + otcInfoPath)
+	OutputErrorMessageToConsoleAndExit(fmt.Sprintf("Something went wrong. Project \"%s\" not found in otc-info file located at %s", projectName, otcInfoPath))
 	return ""
 }
 

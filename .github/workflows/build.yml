@@ -4,7 +4,7 @@ on:
   - push
 jobs:
   lint:
-    name: Lint the otc-cli source code
+    name: Lint the otc-auth source code
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -16,7 +16,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    name: Build the otc-cli
+    name: Build the otc-auth
     runs-on: ubuntu-22.04
     steps:
       - name: Setup Go environment
@@ -33,9 +33,9 @@ jobs:
               dep ensure
           fi
       - name: Build
-        run: go build -v -o otc-cli ./src/*.go
+        run: go build -v -o otc-auth ./src/*.go
       - name: Upload the built binary executable for testing
         uses: actions/upload-artifact@v2
         with:
           name: build
-          path: otc-cli
+          path: otc-auth
