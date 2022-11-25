@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"otc-auth/src/iam"
 	"otc-auth/src/util"
 )
 
@@ -16,6 +15,8 @@ const (
 	envIdpName        string = "IDP_NAME"
 	envClientId       string = "CLIENT_ID"
 	envClientSecret   string = "CLIENT_SECRET"
+	envOsProjectName  string = "OS_PROJECT_NAME"
+	envClusterName    string = "CLUSTER_NAME"
 
 	authTypeIDP string = "idp"
 	authTypeIAM string = "iam"
@@ -24,38 +25,20 @@ const (
 	protocolOIDC string = "oidc"
 )
 
-func CheckLoginParamsOrThrow(authType string, params iam.LoginParams) (loginParams iam.LoginParams) {
-	loginParams.OverwriteFile = params.OverwriteFile
-	switch authType {
-	case authTypeIAM:
-		loginParams.AuthType = authTypeIAM
-		loginParams.Username = getUsernameOrThrow(params.Username)
-		loginParams.Password = getPasswordOrThrow(params.Password)
-		loginParams.DomainName = getDomainNameOrThrow(params.DomainName)
-		loginParams.Otp, loginParams.UserDomainId = checkMFAFlowIAM(params.Otp, params.UserDomainId)
-	case authTypeIDP:
-		switch params.Protocol {
-		case protocolSAML:
-			loginParams.AuthType = authTypeIDP
-			loginParams.Protocol = protocolSAML
-			loginParams.Username = getUsernameOrThrow(params.Username)
-			loginParams.Password = getPasswordOrThrow(params.Password)
-			loginParams.IdentityProvider, loginParams.IdentityProviderUrl = getIdpInfoOrThrow(params.IdentityProvider, params.IdentityProviderUrl)
-
-		case protocolOIDC:
-			loginParams.AuthType = authTypeIDP
-			loginParams.Protocol = protocolOIDC
-			loginParams.IdentityProvider, loginParams.IdentityProviderUrl = getIdpInfoOrThrow(params.IdentityProvider, params.IdentityProviderUrl)
-			loginParams.ClientId = getClientIdOrThrow(params.ClientId)
-			loginParams.ClientSecret = findClientSecretOrReturnEmpty(params.ClientSecret)
-		default:
-			util.OutputErrorMessageToConsoleAndExit("fatal: incorrect login command.\n\nPossible login commands are \"login iam\", \"login idp-saml\", and \"login idp-oidc\".")
-		}
-	default:
-		util.OutputErrorMessageToConsoleAndExit("fatal: incorrect login command.\n\nPossible login commands are \"login iam\", \"login idp-saml\", and \"login idp-oidc\".")
+func getProjectNameOrThrow(projectName string) string {
+	if projectName != "" {
+		return projectName
 	}
 
-	return
+	return getEnvironmentVariableOrThrow(osProjectName, envOsProjectName)
+}
+
+func getClusterNameOrThrow(clusterName string) string {
+	if clusterName != "" {
+		return clusterName
+	}
+
+	return getEnvironmentVariableOrThrow(clusterName, envClusterName)
 }
 
 func getIdpInfoOrThrow(provider string, url string) (string, string) {
@@ -69,12 +52,7 @@ func checkIDPProviderIsSet(provider string) string {
 		return provider
 	}
 
-	idpProviderNameEnvVar, ok := os.LookupEnv(envIdpName)
-	if !ok || idpProviderNameEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", idpName), envIdpName))
-	}
-
-	return idpProviderNameEnvVar
+	return getEnvironmentVariableOrThrow(idpName, envIdpName)
 }
 
 func checkAuthUrlIsSet(url string) string {
@@ -82,12 +60,7 @@ func checkAuthUrlIsSet(url string) string {
 		return url
 	}
 
-	idpUrlEnvVar, ok := os.LookupEnv(envOsAuthUrl)
-	if !ok || idpUrlEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", osAuthUrl), envOsAuthUrl))
-	}
-
-	return idpUrlEnvVar
+	return getEnvironmentVariableOrThrow(osAuthUrl, envOsAuthUrl)
 }
 
 func getUsernameOrThrow(username string) string {
@@ -95,12 +68,7 @@ func getUsernameOrThrow(username string) string {
 		return username
 	}
 
-	usernameEnvVar, ok := os.LookupEnv(envOsUsername)
-	if !ok || usernameEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", osUsername), envOsUsername))
-	}
-
-	return usernameEnvVar
+	return getEnvironmentVariableOrThrow(osUsername, envOsUsername)
 }
 
 func getPasswordOrThrow(password string) string {
@@ -108,12 +76,7 @@ func getPasswordOrThrow(password string) string {
 		return password
 	}
 
-	passwordEnvVar, ok := os.LookupEnv(envOsPassword)
-	if !ok || passwordEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", osPassword), envOsPassword))
-	}
-
-	return passwordEnvVar
+	return getEnvironmentVariableOrThrow(osPassword, envOsPassword)
 }
 
 func getDomainNameOrThrow(domainName string) string {
@@ -121,12 +84,7 @@ func getDomainNameOrThrow(domainName string) string {
 		return domainName
 	}
 
-	domainNameEnvVar, ok := os.LookupEnv(envOsDomainName)
-	if !ok || domainNameEnvVar == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", osDomainName), envOsDomainName))
-	}
-
-	return domainNameEnvVar
+	return getEnvironmentVariableOrThrow(osDomainName, envOsDomainName)
 }
 
 func checkMFAFlowIAM(otp string, userId string) (string, string) {
@@ -134,13 +92,7 @@ func checkMFAFlowIAM(otp string, userId string) (string, string) {
 		if userId != "" {
 			return otp, userId
 		}
-
-		userIdEnvVar, ok := os.LookupEnv(envOsUserDomainId)
-		if !ok {
-			util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", osUserDomainId), envOsUserDomainId))
-		}
-
-		userId = userIdEnvVar
+		userId = getEnvironmentVariableOrThrow(osUserDomainId, envOsUserDomainId)
 	}
 
 	return otp, userId
@@ -151,12 +103,7 @@ func getClientIdOrThrow(id string) string {
 		return id
 	}
 
-	idEnvVar, ok := os.LookupEnv(envClientId)
-	if !ok {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", clientId), envClientId))
-	}
-
-	return idEnvVar
+	return getEnvironmentVariableOrThrow(clientId, envClientId)
 }
 
 func findClientSecretOrReturnEmpty(secret string) string {
@@ -168,6 +115,15 @@ func findClientSecretOrReturnEmpty(secret string) string {
 		println(fmt.Sprintf("info: argument --%s not set. Continuing...\n", clientSecret))
 		return ""
 	}
+}
+
+func getEnvironmentVariableOrThrow(argument string, envVarName string) string {
+	environmentVariable, ok := os.LookupEnv(envVarName)
+	if !ok || environmentVariable == "" {
+		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", argument), envVarName))
+	}
+
+	return environmentVariable
 }
 
 func noArgumentProvidedErrorMessage(argument string, environmentVariable string) string {

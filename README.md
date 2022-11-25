@@ -36,7 +36,7 @@ The OIDC login flow is user initiated and will open a browser window with the Id
 
 `login idp-oidc --idp-name <idp_name> --os-auth-url <authorization_url> --client-id <client_id> --client-secret <client_secret>`
 
-The argument `--client-id` is required, but the argument `--client-secret` is only needed if configured on the IdP..otc
+The argument `--client-id` is required, but the argument `--client-secret` is only needed if configured on the IdP.
 
 ## Cloud Container Engine
 Use the `cce` command to retrieve a list of available clusters in your project and/or get the remote kube configuration file. You can see the help page by entering `cce --help` or `cce -h`.
@@ -50,3 +50,26 @@ To retrieve the remote kube configuration file (and merge to your local one) use
 `cce get-kube-config --os-project-name <project_name> --cluster <cluster_name>`
 
 Alternatively you can pass the argument `--days-valid` to set the period of days the configuration will be valid, the default is 7 days.
+
+## Manage Access Key and Secret Key Pair
+You can use the OTC-Auth tool to download the AK/SK pair directly from the OTC. It will download the "ak-sk-env.sh" file to the current directory. The file contains four environment variables.
+
+`otc-auth access-token create`
+
+The "ak-sk-env.sh" file must then be sourced before you can start using the environment variables.
+
+## Environment Variables
+The OTC-Auth tool also provides environment variables for all the required arguments. For the sake of compatibility, they are aligned with the Open Stack environment variables (starting with OS).
+
+| Environment Variable | Argument              | Short | Description                                   |
+|----------------------|-----------------------|:-----:|-----------------------------------------------|
+| OS_AUTH_URL          | `--os-auth-url`       |  N/A  |                                               |
+| OS_USERNAME          | `--os-username`       |  `u`  | Username (iam or idp)                         |
+| OS_PASSWORD          | `--os-password`       |  `p`  | Password (iam or idp)                         |
+| OS_DOMAIN_NAME       | `--os-domain-name`    |  `d`  | Domain Name from OTC Tenant                   |
+| OS_USER_DOMAIN_ID    | `--os-user-domain-id` |  `i`  | User id from OTC Tenant                       |
+| IDP_NAME             | `--idp-name`          |  `i`  | Identity Provider name (as configured on OTC) |
+| CLIENT_ID            | `--client-id`         |  `c`  | Client id as configured on the IdP            |
+| CLIENT_SECRET        | `--client-secret`     |  `s`  | Client secret as configured on the IdP        |
+| OS_PROJECT_NAME      | `--os-project-name`   |  `p`  | Project name on the OTC                       |
+| CLUSTER_NAME         | `--cluster`           |  `c`  | Cluster name on the OTC                       |

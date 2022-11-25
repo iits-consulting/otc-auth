@@ -21,6 +21,7 @@ const (
 	osAuthUrl      = "os-auth-url"
 	clientId       = "client-id"
 	clientSecret   = "client-secret"
+	osProjectName  = "os-project-name"
 )
 
 func main() {
@@ -31,13 +32,13 @@ func main() {
 
 	// Login with IAM
 	loginIamCommand := loginCommand.NewCommand("iam", "Login to the Open Telekom Cloud through its Identity and Access Management system.")
-	provideArgumentHelp := "Either provide this argument or set it on the environment variable"
+	provideArgumentHelp := "Either provide this argument or set the environment variable"
 	usernameIamLogin := loginIamCommand.String("u", osUsername, &argparse.Options{Required: false, Help: fmt.Sprintf("Username for the OTC IAM system. %s %s", provideArgumentHelp, envOsUsername)})
 	passwordIamLogin := loginIamCommand.String("p", osPassword, &argparse.Options{Required: false, Help: fmt.Sprintf("Password for the OTC IAM system. %s %s", provideArgumentHelp, envOsPassword)})
 	domainName := loginIamCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 	otp := loginIamCommand.String("t", totp, &argparse.Options{Required: false, Help: "6-digit time-based one-time password (TOTP) used for the MFA login flow."})
 	userDomainId := loginIamCommand.String("i", osUserDomainId, &argparse.Options{Required: false, Help: fmt.Sprintf("User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --otp is provided. %s %s", provideArgumentHelp, envOsUserDomainId)})
-	overwriteTokenHelp := "Overrides .otc-info file."
+	overwriteTokenHelp := "Overrides .otc-info file"
 	overwriteTokenLoginIam := loginIamCommand.Flag("o", overwriteToken, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
 
 	// Login with IDP + SAML
@@ -60,21 +61,21 @@ func main() {
 	identityProviderUrlOidcLogin := loginIdpOidcCommand.String("", osAuthUrl, &argparse.Options{Required: false, Help: idpUrlCommandHelp})
 
 	// Manage Cloud Container Engine
-	cceCommand := parser.NewCommand("cce", "Manage Cloud Container Engine")
-	projectName := cceCommand.String("p", "os-project-name", &argparse.Options{Required: true, Help: "Name of the project you want to access"})
+	cceCommand := parser.NewCommand("cce", "Manage Cloud Container Engine.")
+	projectName := cceCommand.String("p", osProjectName, &argparse.Options{Required: true, Help: fmt.Sprintf("Name of the project you want to access. %s %s.", provideArgumentHelp, envOsProjectName)})
 
 	// List clusters
-	getClustersCommand := cceCommand.NewCommand("list", "List Cluster Names")
+	getClustersCommand := cceCommand.NewCommand("list", "List Cluster Names.")
 
 	// Get Kubernetes Configuration
-	getKubeConfigCommand := cceCommand.NewCommand("get-kube-config", "Get remote kube config and merge it with existing local config file")
-	clusterName := getKubeConfigCommand.String("c", "cluster", &argparse.Options{Required: true, Help: "Name of the cluster you want to access"})
+	getKubeConfigCommand := cceCommand.NewCommand("get-kube-config", "Get remote kube config and merge it with existing local config file.")
+	clusterName := getKubeConfigCommand.String("c", "cluster", &argparse.Options{Required: true, Help: fmt.Sprintf("Name of the cluster you want to access %s %s.", provideArgumentHelp, envClusterName)})
 	daysValid := getKubeConfigCommand.String("v", "days-valid", &argparse.Options{Required: false, Help: "Period (in days) that the config will be valid", Default: "7"})
 
 	// AK/SK Management
-	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK")
-	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK")
-	durationSeconds := accessTokenCommandCreate.Int("d", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds", Default: 900})
+	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK.")
+	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK.")
+	durationSeconds := accessTokenCommandCreate.Int("d", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds.", Default: 900})
 
 	err := parser.Parse(os.Args)
 	if err != nil {
@@ -82,47 +83,47 @@ func main() {
 	}
 
 	if loginIamCommand.Happened() {
+		totpToken, userId := checkMFAFlowIAM(*otp, *userDomainId)
 		loginParams := iam.LoginParams{
 			AuthType:      authTypeIAM,
-			Username:      *usernameIamLogin,
-			Password:      *passwordIamLogin,
-			DomainName:    *domainName,
-			Otp:           *otp,
-			UserDomainId:  *userDomainId,
+			Username:      getUsernameOrThrow(*usernameIamLogin),
+			Password:      getPasswordOrThrow(*passwordIamLogin),
+			DomainName:    getDomainNameOrThrow(*domainName),
+			Otp:           totpToken,
+			UserDomainId:  userId,
 			OverwriteFile: *overwriteTokenLoginIam,
 		}
 
-		loginParams = CheckLoginParamsOrThrow(authTypeIAM, loginParams)
 		iam.Login(loginParams)
 	}
 
 	if loginIdpSamlCommand.Happened() {
+		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProviderSamlLogin, *identityProviderUrlSamlLogin)
 		loginParams := iam.LoginParams{
 			AuthType:            authTypeIDP,
-			Username:            *usernameSamlLogin,
-			Password:            *passwordSamlLogin,
-			IdentityProvider:    *identityProviderSamlLogin,
-			IdentityProviderUrl: *identityProviderUrlSamlLogin,
+			Username:            getUsernameOrThrow(*usernameSamlLogin),
+			Password:            getPasswordOrThrow(*passwordSamlLogin),
+			IdentityProvider:    identityProvider,
+			IdentityProviderUrl: identityProviderUrl,
 			Protocol:            protocolSAML,
 			OverwriteFile:       *overwriteTokenLoginSaml,
 		}
 
-		loginParams = CheckLoginParamsOrThrow(authTypeIDP, loginParams)
 		iam.Login(loginParams)
 	}
 
 	if loginIdpOidcCommand.Happened() {
+		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProviderOidcLogin, *identityProviderUrlOidcLogin)
 		loginParams := iam.LoginParams{
 			AuthType:            authTypeIDP,
-			IdentityProvider:    *identityProviderOidcLogin,
-			IdentityProviderUrl: *identityProviderUrlOidcLogin,
+			IdentityProvider:    identityProvider,
+			IdentityProviderUrl: identityProviderUrl,
 			Protocol:            protocolOIDC,
-			ClientId:            *clientIdCommand,
-			ClientSecret:        *clientSecretCommand,
+			ClientId:            getClientIdOrThrow(*clientIdCommand),
+			ClientSecret:        findClientSecretOrReturnEmpty(*clientSecretCommand),
 			OverwriteFile:       *overwriteTokenLoginOidc,
 		}
 
-		loginParams = CheckLoginParamsOrThrow(authTypeIDP, loginParams)
 		iam.Login(loginParams)
 	}
 
@@ -133,20 +134,28 @@ func main() {
 	}
 
 	if cceCommand.Happened() {
-		iam.GetScopedToken(*projectName)
+		project := getProjectNameOrThrow(*projectName)
+		iam.GetScopedToken(project)
+
 		if getKubeConfigCommand.Happened() {
+			cluster := getClusterNameOrThrow(*clusterName)
+
 			kubeConfigParams := cce.KubeConfigParams{
-				ProjectName: *projectName,
-				ClusterName: *clusterName,
+				ProjectName: project,
+				ClusterName: cluster,
 				DaysValid:   *daysValid,
 			}
+
 			newKubeConfigData := cce.GetKubeConfig(kubeConfigParams)
-			cce.MergeKubeConfig(*projectName, *clusterName, newKubeConfigData)
+
+			cce.MergeKubeConfig(project, cluster, newKubeConfigData)
+
 			println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", kubeConfigParams.ClusterName))
 			return
 		}
+
 		if getClustersCommand.Happened() {
-			projectName := *projectName
+			projectName := project
 			println(fmt.Sprintf("CCE Clusters inside the project %s:\n%s", projectName, strings.Join(cce.GetClusterNames(projectName), ",\n")))
 		}
 
