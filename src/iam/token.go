@@ -2,6 +2,7 @@ package iam
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"otc-auth/src/util"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -87,13 +87,18 @@ func GetNewScopedToken(projectName string) {
 
 			if scopedToken == "" {
 				respBytes, _ := io.ReadAll(resp.Body)
+				var formattedJson bytes.Buffer
+				err := json.Indent(&formattedJson, respBytes, "", "  ")
+				if err != nil {
+					util.OutputErrorToConsoleAndExit(err)
+				}
 				defer resp.Body.Close()
-				println("OTC API not reachable will try again. Errorcode:")
-				return errors.New("Statuscode: " + strconv.Itoa(resp.StatusCode) + ",Body:" + string(respBytes))
+				println("error: an error occurred while polling a scoped token. Will try again")
+				return errors.New(fmt.Sprintf("http status code: %s\nresponse body:\n%s", resp.Status, string(formattedJson.Bytes())))
 			}
 
-			valid23Hours := time.Now().Add(time.Hour)
-			newProjectEntry := util.Project{Name: projectName, ID: projectId, Token: scopedToken, TokenValidTill: valid23Hours.Format(util.TimeFormat)}
+			tokenExpirationDate := time.Now().Add(time.Hour * 23)
+			newProjectEntry := util.Project{Name: projectName, ID: projectId, Token: scopedToken, TokenValidTill: tokenExpirationDate.Format(util.TimeFormat)}
 			otcInfo.Projects = util.AppendOrReplaceProject(otcInfo.Projects, newProjectEntry)
 			util.UpdateOtcInformation(otcInfo)
 			return nil
@@ -101,7 +106,7 @@ func GetNewScopedToken(projectName string) {
 			log.Printf("#%d: %s\n", n, err)
 		}),
 		retry.DelayType(retry.FixedDelay),
-		retry.Delay(5*time.Second),
+		retry.Delay(time.Second*5),
 	)
 	if err != nil {
 		util.OutputErrorToConsoleAndExit(err)
