@@ -81,7 +81,7 @@ func startAndListenHttpServer(channel chan OIDCUsernameAndToken) {
 			util.OutputErrorToConsoleAndExit(err)
 		}
 		if !strings.HasSuffix(projectDir, "/src") {
-			projectDir += projectDir + "/src"
+			projectDir += "/src"
 		}
 		page, err := template.ParseFiles(fmt.Sprintf("%s/static/authorized.html", projectDir))
 		if err != nil {
