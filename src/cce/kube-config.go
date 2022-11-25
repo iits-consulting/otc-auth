@@ -5,14 +5,14 @@ import (
 	. "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"os"
-	"otc-cli/src/util"
+	"otc-auth/src/util"
 	"strings"
 )
 
 const CceUrl = "https://cce.eu-de.otc.t-systems.com:443"
 
 func getKubeConfig(kubeConfigParams KubeConfigParams) string {
-	println("Getting cluster certificate...")
+	println("Getting cluster certificate...\n")
 
 	clusterId, err := getClusterId(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {

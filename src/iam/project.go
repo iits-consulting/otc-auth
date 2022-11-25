@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"otc-cli/src/util"
+	"otc-auth/src/util"
 )
 
 func getProjects() (resp *http.Response, err error) {
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v3/auth/projects", IamAuthUrl), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v3/auth/projects", AuthUrlIam), nil)
 	if err != nil {
 		return nil, err
 	}

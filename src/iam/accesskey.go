@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"otc-cli/src/util"
+	"otc-auth/src/util"
 	"strconv"
 	"strings"
 	"time"
@@ -20,12 +20,12 @@ type AccessTokenCreationResponse struct {
 		Access        string    `json:"access"`
 		ExpiresAt     time.Time `json:"expires_at"`
 		Secret        string    `json:"secret"`
-		Securitytoken string    `json:"securitytoken"`
+		SecurityToken string    `json:"securitytoken"`
 	} `json:"credential"`
 }
 
 func CreateAccessToken(params AccessTokenCreateParams) {
-	println("Creating access token file...")
+	println("Creating access token file...\n")
 
 	resp := performAccessTokenRequest(strconv.Itoa(params.DurationSeconds))
 	defer resp.Body.Close()
@@ -45,7 +45,7 @@ func CreateAccessToken(params AccessTokenCreateParams) {
 		"\nexport AWS_SECRET_ACCESS_KEY=" + accessTokenCreationResponse.Credential.Secret
 
 	util.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
-	println("Creation finished")
+	println("Creation finished.\n")
 	println("Please source the ak-sk-env.sh in the current directory manually")
 }
 
@@ -53,7 +53,7 @@ func performAccessTokenRequest(durationSeconds string) *http.Response {
 	unscopedTokenFromFile := util.ReadOrCreateOTCInfoFromFile().UnscopedToken
 	body := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\", \"duration_seconds\": \"%s\"}}}}", unscopedTokenFromFile, durationSeconds)
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3.0/OS-CREDENTIAL/securitytokens", IamAuthUrl), strings.NewReader(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3.0/OS-CREDENTIAL/securitytokens", AuthUrlIam), strings.NewReader(body))
 	if err != nil {
 		return nil
 	}

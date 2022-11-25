@@ -4,232 +4,161 @@ import (
 	"fmt"
 	"github.com/akamensky/argparse"
 	"os"
-	cce2 "otc-cli/src/cce"
-	iam2 "otc-cli/src/iam"
-	util2 "otc-cli/src/util"
+	"otc-auth/src/cce"
+	"otc-auth/src/iam"
+	"otc-auth/src/util"
 	"strings"
 )
 
-const osAuthTypeEnv string = "OS_AUTH_TYPE"
-const osAuthIDPNameEnv string = "OS_AUTH_IDP_NAME"
-const osIDPUrlEnv string = "OS_IDP_URL"
-const osUsernameEnv string = "OS_USERNAME"
-const osPasswordEnv string = "OS_PASSWORD"
-const osDomainNameEnv string = "OS_DOMAIN_NAME"
-const osUserIdEnv string = "OS_USER_ID"
-const authTypeIDP string = "idp"
-const authTypeIAM string = "iam"
+const (
+	osUsername     = "os-username"
+	osPassword     = "os-password"
+	overwriteToken = "overwrite-token"
+	osDomainName   = "os-domain-name"
+	osUserDomainId = "os-user-domain-id"
+	totp           = "totp"
+	idpName        = "idp-name"
+	osAuthUrl      = "os-auth-url"
+	clientId       = "client-id"
+	clientSecret   = "client-secret"
+)
 
 func main() {
 	parser := argparse.NewParser("otc", "kubectl plugin for OTC")
 
 	//Login
-	loginCommand := parser.NewCommand("login", "Use credentials to login and generate an unscoped token")
+	loginCommand := parser.NewCommand("login", "Login to the Open Telekom Cloud and receive an unscoped token.")
 
+	// Login with IAM
+	loginIamCommand := loginCommand.NewCommand("iam", "Login to the Open Telekom Cloud through its Identity and Access Management system.")
 	provideArgumentHelp := "Either provide this argument or set it on the environment variable"
-	authTypeCommandHelp := fmt.Sprintf("Allowed values are idp or iam (from OTC). %s %s", provideArgumentHelp, osAuthTypeEnv)
-	authType := loginCommand.String("a", "os-auth-type", &argparse.Options{Required: false, Help: authTypeCommandHelp})
-	requiredIfAuthTypeIsIDP := "Required if --os-auth-type is set to idp."
-	idpCommandHelp := fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s", requiredIfAuthTypeIsIDP, provideArgumentHelp, osAuthIDPNameEnv)
-	identityProvider := loginCommand.String("I", "os-auth-idp-name", &argparse.Options{Required: false, Help: idpCommandHelp})
-	idpUrlCommandHelp := fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredIfAuthTypeIsIDP, provideArgumentHelp, osIDPUrlEnv)
-	identityProviderUrl := loginCommand.String("i", "os-idp-url", &argparse.Options{Required: false, Help: idpUrlCommandHelp})
-	username := loginCommand.String("U", "os-username", &argparse.Options{Required: false, Help: fmt.Sprintf("Username either from idp or OTC iam. %s %s", provideArgumentHelp, osUsernameEnv)})
-	password := loginCommand.String("P", "os-password", &argparse.Options{Required: false, Help: fmt.Sprintf("Password either from idp or OTC iam. %s %s", provideArgumentHelp, osPasswordEnv)})
-	protocol := loginCommand.String("p", "os-protocol", &argparse.Options{Required: false, Help: "Accepted values are oidc or saml, currently only saml is supported.", Default: "saml"})
-	domainName := loginCommand.String("d", "os-domain-name", &argparse.Options{Required: false, Help: "OTC domain name. Required if --os-auth-type is set to iam."})
-	otp := loginCommand.String("o", "otp", &argparse.Options{Required: false, Help: "Token used for MFA. Currently only supported for the iam login flow."})
-	userId := loginCommand.String("u", "os-user-id", &argparse.Options{Required: false, Help: fmt.Sprintf("User Id used for MFA, can be obtained on the \"My Credentials page\" on the otc. Required if --os-auth-type is set to iam and --otp is provided. %s %s", provideArgumentHelp, osUserIdEnv)})
+	usernameIamLogin := loginIamCommand.String("u", osUsername, &argparse.Options{Required: false, Help: fmt.Sprintf("Username for the OTC IAM system. %s %s", provideArgumentHelp, envOsUsername)})
+	passwordIamLogin := loginIamCommand.String("p", osPassword, &argparse.Options{Required: false, Help: fmt.Sprintf("Password for the OTC IAM system. %s %s", provideArgumentHelp, envOsPassword)})
+	domainName := loginIamCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
+	otp := loginIamCommand.String("t", totp, &argparse.Options{Required: false, Help: "6-digit time-based one-time password (TOTP) used for the MFA login flow."})
+	userDomainId := loginIamCommand.String("i", osUserDomainId, &argparse.Options{Required: false, Help: fmt.Sprintf("User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --otp is provided. %s %s", provideArgumentHelp, envOsUserDomainId)})
+	overwriteTokenHelp := "Overrides .otc-info file."
+	overwriteTokenLoginIam := loginIamCommand.Flag("o", overwriteToken, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
 
-	//Get Kubernetes Config
-	cceCommand := parser.NewCommand("cce", "Manage CCE")
-	projectName := cceCommand.String("p", "project", &argparse.Options{Required: true, Help: "Name of the project you want to access"})
+	// Login with IDP + SAML
+	loginIdpSamlCommand := loginCommand.NewCommand("idp-saml", "Login to the Open Telekom Cloud through an Identity Provider and SAML.")
+	usernameSamlLogin := loginIdpSamlCommand.String("u", osUsername, &argparse.Options{Required: false, Help: fmt.Sprintf("Username for the IdP. %s %s", provideArgumentHelp, envOsUsername)})
+	passwordSamlLogin := loginIdpSamlCommand.String("p", osPassword, &argparse.Options{Required: false, Help: fmt.Sprintf("Password for the IdP. %s %s", provideArgumentHelp, envOsPassword)})
+	requiredForIdp := "Required for authentication with IdP."
+	idpCommandHelp := fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s", requiredForIdp, provideArgumentHelp, envIdpName)
+	identityProviderSamlLogin := loginIdpSamlCommand.String("i", idpName, &argparse.Options{Required: false, Help: idpCommandHelp})
+	idpUrlCommandHelp := fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredForIdp, provideArgumentHelp, envOsAuthUrl)
+	overwriteTokenLoginSaml := loginIdpSamlCommand.Flag("o", overwriteToken, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
+	identityProviderUrlSamlLogin := loginIdpSamlCommand.String("", osAuthUrl, &argparse.Options{Required: false, Help: idpUrlCommandHelp})
 
+	// Login with IDP + OIDC
+	loginIdpOidcCommand := loginCommand.NewCommand("idp-oidc", "Login to the Open Telekom Cloud through an Identity Provider and OIDC.")
+	identityProviderOidcLogin := loginIdpOidcCommand.String("i", idpName, &argparse.Options{Required: false, Help: idpCommandHelp})
+	clientIdCommand := loginIdpOidcCommand.String("c", clientId, &argparse.Options{Required: false, Help: fmt.Sprintf("Client Id as set on the IdP. %s %s", provideArgumentHelp, envClientId)})
+	clientSecretCommand := loginIdpOidcCommand.String("s", clientSecret, &argparse.Options{Required: false, Help: fmt.Sprintf("Secret Id as set on the IdP. %s %s", provideArgumentHelp, envClientSecret)})
+	overwriteTokenLoginOidc := loginIdpOidcCommand.Flag("o", overwriteToken, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
+	identityProviderUrlOidcLogin := loginIdpOidcCommand.String("", osAuthUrl, &argparse.Options{Required: false, Help: idpUrlCommandHelp})
+
+	// Manage Cloud Container Engine
+	cceCommand := parser.NewCommand("cce", "Manage Cloud Container Engine")
+	projectName := cceCommand.String("p", "os-project-name", &argparse.Options{Required: true, Help: "Name of the project you want to access"})
+
+	// List clusters
 	getClustersCommand := cceCommand.NewCommand("list", "List Cluster Names")
 
+	// Get Kubernetes Configuration
 	getKubeConfigCommand := cceCommand.NewCommand("get-kube-config", "Get remote kube config and merge it with existing local config file")
 	clusterName := getKubeConfigCommand.String("c", "cluster", &argparse.Options{Required: true, Help: "Name of the cluster you want to access"})
 	daysValid := getKubeConfigCommand.String("v", "days-valid", &argparse.Options{Required: false, Help: "Period (in days) that the config will be valid", Default: "7"})
 
-	//AK/SK Management
+	// AK/SK Management
 	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK")
 	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK")
-	durationSeconds := accessTokenCommandCreate.Int("s", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds", Default: 900})
+	durationSeconds := accessTokenCommandCreate.Int("d", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds", Default: 900})
 
 	err := parser.Parse(os.Args)
 	if err != nil {
-		util2.OutputErrorMessageToConsoleAndExit(parser.Usage(err))
+		util.OutputErrorMessageToConsoleAndExit(parser.Usage(err))
 	}
 
-	if loginCommand.Happened() {
-		authType = getAuthTypeOrThrow(authType)
-		identityProvider, identityProviderUrl = getIDPInfoOrThrow(authType, identityProvider, identityProviderUrl)
-		username = getUsernameOrThrow(username)
-		password = getPasswordOrThrow(password)
-		domainName = getDomainNameOrThrow(authType, domainName)
-		authType, otp, userId = checkMFAFlowIAM(authType, otp, userId)
-
-		loginParams := iam2.LoginParams{
-			AuthType:            *authType,
-			IdentityProvider:    *identityProvider,
-			IdentityProviderUrl: *identityProviderUrl,
-			Username:            *username,
-			Password:            *password,
-			Protocol:            *protocol,
-			DomainName:          *domainName,
-			Otp:                 *otp,
-			UserId:              *userId,
+	if loginIamCommand.Happened() {
+		loginParams := iam.LoginParams{
+			AuthType:      authTypeIAM,
+			Username:      *usernameIamLogin,
+			Password:      *passwordIamLogin,
+			DomainName:    *domainName,
+			Otp:           *otp,
+			UserDomainId:  *userDomainId,
+			OverwriteFile: *overwriteTokenLoginIam,
 		}
-		iam2.Login(loginParams)
-		return
+
+		loginParams = CheckLoginParamsOrThrow(authTypeIAM, loginParams)
+		iam.Login(loginParams)
 	}
-	if util2.LoginNeeded() {
-		util2.OutputErrorMessageToConsoleAndExit("fatal: no unscoped token found.\n\nPlease run the \"otc login\" command first")
+
+	if loginIdpSamlCommand.Happened() {
+		loginParams := iam.LoginParams{
+			AuthType:            authTypeIDP,
+			Username:            *usernameSamlLogin,
+			Password:            *passwordSamlLogin,
+			IdentityProvider:    *identityProviderSamlLogin,
+			IdentityProviderUrl: *identityProviderUrlSamlLogin,
+			Protocol:            protocolSAML,
+			OverwriteFile:       *overwriteTokenLoginSaml,
+		}
+
+		loginParams = CheckLoginParamsOrThrow(authTypeIDP, loginParams)
+		iam.Login(loginParams)
 	}
+
+	if loginIdpOidcCommand.Happened() {
+		loginParams := iam.LoginParams{
+			AuthType:            authTypeIDP,
+			IdentityProvider:    *identityProviderOidcLogin,
+			IdentityProviderUrl: *identityProviderUrlOidcLogin,
+			Protocol:            protocolOIDC,
+			ClientId:            *clientIdCommand,
+			ClientSecret:        *clientSecretCommand,
+			OverwriteFile:       *overwriteTokenLoginOidc,
+		}
+
+		loginParams = CheckLoginParamsOrThrow(authTypeIDP, loginParams)
+		iam.Login(loginParams)
+	}
+
+	if !loginIamCommand.Happened() && !loginIdpSamlCommand.Happened() && !loginIdpOidcCommand.Happened() {
+		if util.LoginNeeded(false) {
+			util.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+	}
+
 	if cceCommand.Happened() {
-		iam2.GetScopedToken(*projectName)
+		iam.GetScopedToken(*projectName)
 		if getKubeConfigCommand.Happened() {
-			kubeConfigParams := cce2.KubeConfigParams{
+			kubeConfigParams := cce.KubeConfigParams{
 				ProjectName: *projectName,
 				ClusterName: *clusterName,
 				DaysValid:   *daysValid,
 			}
-			newKubeConfigData := cce2.GetKubeConfig(kubeConfigParams)
-			cce2.MergeKubeConfig(*projectName, *clusterName, newKubeConfigData)
-			println("Successfully fetched and merge kube config for cce cluster " + kubeConfigParams.ClusterName)
+			newKubeConfigData := cce.GetKubeConfig(kubeConfigParams)
+			cce.MergeKubeConfig(*projectName, *clusterName, newKubeConfigData)
+			println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", kubeConfigParams.ClusterName))
 			return
 		}
 		if getClustersCommand.Happened() {
-			println("CCE Clusters inside the project " + *projectName + ": " + strings.Join(cce2.GetClusterNames(*projectName), ","))
+			projectName := *projectName
+			println(fmt.Sprintf("CCE Clusters inside the project %s:\n%s", projectName, strings.Join(cce.GetClusterNames(projectName), ",\n")))
 		}
 
 	}
+
 	if accessTokenCommandCreate.Happened() {
 		if *durationSeconds < 900 {
-			util2.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
+			util.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
 		}
-		AccessTokeCreateParams := iam2.AccessTokenCreateParams{
+		AccessTokeCreateParams := iam.AccessTokenCreateParams{
 			DurationSeconds: *durationSeconds,
 		}
-		iam2.CreateAccessToken(AccessTokeCreateParams)
+		iam.CreateAccessToken(AccessTokeCreateParams)
 	}
-}
-
-func getAuthTypeOrThrow(authType *string) *string {
-	if authType != nil && *authType != "" {
-		return authType
-	}
-
-	authTypeEnvVar, ok := os.LookupEnv(osAuthTypeEnv)
-	if !ok || authTypeEnvVar == "" {
-		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-auth-type", osAuthTypeEnv))
-	}
-	authType = &authTypeEnvVar
-	return authType
-}
-
-func getIDPInfoOrThrow(authType *string, provider *string, url *string) (*string, *string) {
-	if *authType != authTypeIDP {
-		return provider, url
-	}
-
-	provider = checkIDPProviderIsSet(provider)
-	url = checkIDPUrlIsSet(url)
-	return provider, url
-}
-
-func checkIDPProviderIsSet(provider *string) *string {
-	if provider != nil && *provider != "" {
-		return provider
-	}
-
-	idpProviderNameEnvVar, ok := os.LookupEnv(osAuthIDPNameEnv)
-	if !ok || idpProviderNameEnvVar == "" {
-		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-auth-idp-name", osAuthIDPNameEnv))
-	}
-
-	provider = &idpProviderNameEnvVar
-	return provider
-}
-
-func checkIDPUrlIsSet(url *string) *string {
-	if url != nil && *url != "" {
-		return url
-	}
-
-	idpUrlEnvVar, ok := os.LookupEnv(osIDPUrlEnv)
-	if !ok || idpUrlEnvVar == "" {
-		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-idp-url", osIDPUrlEnv))
-	}
-
-	url = &idpUrlEnvVar
-	return url
-}
-
-func getUsernameOrThrow(username *string) *string {
-	if username != nil && *username != "" {
-		return username
-	}
-
-	usernameEnvVar, ok := os.LookupEnv(osUsernameEnv)
-	if !ok || usernameEnvVar == "" {
-		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--username", osUsernameEnv))
-	}
-	username = &usernameEnvVar
-	return username
-}
-
-func getPasswordOrThrow(password *string) *string {
-	if password != nil && *password != "" {
-		return password
-	}
-
-	passwordEnvVar, ok := os.LookupEnv(osPasswordEnv)
-	if !ok || passwordEnvVar == "" {
-		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--password", osPasswordEnv))
-	}
-	password = &passwordEnvVar
-	return password
-}
-
-func getDomainNameOrThrow(authType *string, domainName *string) *string {
-	if authType != nil && *authType != authTypeIAM {
-		return domainName
-	}
-
-	if domainName != nil && *domainName != "" {
-		return domainName
-	}
-
-	domainNameEnvVar, ok := os.LookupEnv(osDomainNameEnv)
-	if !ok || domainNameEnvVar == "" {
-		util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-domain-name", osDomainNameEnv))
-	}
-	domainName = &domainNameEnvVar
-	return domainName
-}
-
-func checkMFAFlowIAM(authType *string, otp *string, userId *string) (*string, *string, *string) {
-	if authType != nil && *authType != authTypeIAM {
-		return authType, otp, userId
-	}
-
-	if otp != nil && *otp != "" {
-		if userId != nil && *userId != "" {
-			return authType, otp, userId
-		}
-
-		userIdEnvVar, ok := os.LookupEnv(osUserIdEnv)
-		if !ok {
-			util2.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage("--os-user-id", osUserIdEnv))
-		}
-
-		userId = &userIdEnvVar
-	}
-
-	return authType, otp, userId
-}
-
-func noArgumentProvidedErrorMessage(argument string, environmentVariable string) string {
-	return fmt.Sprintf("fatal: %s not provided.\n\nPlease make sure the argument %s is provided or the environment variable %s is set.", argument, argument, environmentVariable)
 }
