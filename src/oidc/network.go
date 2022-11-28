@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
@@ -21,12 +22,17 @@ var (
 	idTokenVerifier *oidc.IDTokenVerifier
 )
 
-const localhost = "localhost:8088"
-const redirectURL = "http://localhost:8088/oidc/auth"
+const (
+	localhost   = "localhost:8088"
+	redirectURL = "http://localhost:8088/oidc/auth"
+
+	queryState = "state"
+	queryCode  = "code"
+)
 
 func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		rawAccessToken := r.Header.Get("Authorization")
+		rawAccessToken := r.Header.Get(headers.Authorization)
 		if rawAccessToken == "" {
 			http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
 			return
@@ -46,14 +52,14 @@ func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
 	})
 
 	http.HandleFunc("/oidc/auth", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("state") != state {
+		if r.URL.Query().Get(queryState) != state {
 			http.Error(w, "state does not match", http.StatusBadRequest)
 			return
 		}
 
-		oauth2Token, err := oAuth2Config.Exchange(ctx, r.URL.Query().Get("code"))
+		oauth2Token, err := oAuth2Config.Exchange(ctx, r.URL.Query().Get(queryCode))
 		if err != nil {
-			http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Failed to exchange token: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 
@@ -64,7 +70,7 @@ func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
 		}
 		rawIdToken, err := idTokenVerifier.Verify(ctx, idToken)
 		if err != nil {
-			http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Failed to verify ID Token: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 

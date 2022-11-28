@@ -2,29 +2,13 @@ package iam
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/go-http-utils/headers"
 	"io"
 	"net/http"
 	"otc-auth/src/common"
+	"otc-auth/src/common/endpoints"
+	"otc-auth/src/common/headervalues"
 )
-
-func getProjects() (resp *http.Response, err error) {
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v3/auth/projects", common.AuthUrlIam), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", common.JsonContentType)
-
-	client := common.GetHttpClientWithUnscopedToken()
-	resp, err = client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, err
-}
 
 func getProjectId(projectName string) string {
 	projectId := ""
@@ -54,4 +38,21 @@ func getProjectId(projectName string) string {
 	}
 
 	return projectId
+}
+
+func getProjects() (resp *http.Response, err error) {
+	req, err := http.NewRequest(http.MethodGet, endpoints.IamProjects, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add(headers.ContentType, headervalues.ApplicationJson)
+
+	client := common.GetHttpClientWithUnscopedToken()
+	resp, err = client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, err
 }

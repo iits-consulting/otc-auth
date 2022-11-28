@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-const CceUrl = "https://cce.eu-de.otc.t-systems.com:443"
-
 func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 	println("Getting kube config...\n")
 
@@ -77,11 +75,12 @@ func mergeKubeConfig(projectName string, clusterName string, newKubeConfigData s
 }
 
 func addContextInformationToKubeConfig(projectName string, clusterName string, newKubeConfigData string) string {
-	otcInfo := common.ReadOrCreateOTCAuthCredentialsFile()
+	otcAuthInfo := common.ReadOrCreateOTCAuthCredentialsFile()
+
 	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "internalCluster", projectName+"/"+clusterName+"-intranet")
 	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "externalCluster", projectName+"/"+clusterName)
 	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "internal", projectName+"/"+clusterName+"-intranet")
 	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "external", projectName+"/"+clusterName)
-	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, ":\"user\"", ":\""+otcInfo.Username+"\"")
+	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, ":\"user\"", ":\""+otcAuthInfo.Username+"\"")
 	return newKubeConfigData
 }

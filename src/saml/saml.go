@@ -3,10 +3,13 @@ package saml
 import (
 	"bytes"
 	"encoding/xml"
-	"fmt"
+	"github.com/go-http-utils/headers"
 	"io"
 	"net/http"
 	"otc-auth/src/common"
+	"otc-auth/src/common/endpoints"
+	"otc-auth/src/common/headervalues"
+	header "otc-auth/src/common/xheaders"
 )
 
 func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken string) {
@@ -29,13 +32,13 @@ func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken stri
 }
 
 func getServiceProviderInitiatedRequest(params common.AuthInfo, client http.Client) *http.Response {
-	request, err := http.NewRequest("GET", fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers/%s/protocols/%s/auth", common.AuthUrlIam, params.IdentityProvider, params.Protocol), nil)
+	request, err := http.NewRequest(http.MethodGet, endpoints.IdentityProviders(params.IdentityProvider, params.Protocol), nil)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	request.Header.Add("Accept", common.SoapContentType)
-	request.Header.Add("PAOS", common.SoapHeaderInfo)
+	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
+	request.Header.Add(header.Paos, headervalues.Paos)
 
 	defer client.CloseIdleConnections()
 	response, err := client.Do(request)
@@ -46,12 +49,12 @@ func getServiceProviderInitiatedRequest(params common.AuthInfo, client http.Clie
 }
 
 func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response, client http.Client) []byte {
-	request, err := http.NewRequest("POST", params.IdentityProviderUrl, samlResponse.Body)
+	request, err := http.NewRequest(http.MethodPost, params.IdentityProviderUrl, samlResponse.Body)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	request.Header.Add("Content-type", common.XmlContentType)
+	request.Header.Add(headers.ContentType, headervalues.TextXml)
 	request.SetBasicAuth(params.Username, params.Password)
 
 	response, err := client.Do(request)
@@ -67,12 +70,12 @@ func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response, cl
 }
 
 func validateAuthenticationWithServiceProvider(assertionResult common.GetSAMLAssertionResult, responseBodyBytes []byte, client http.Client) *http.Response {
-	request, err := http.NewRequest("POST", assertionResult.Header.Response.ConsumerUrl, bytes.NewReader(responseBodyBytes))
+	request, err := http.NewRequest(http.MethodPost, assertionResult.Header.Response.ConsumerUrl, bytes.NewReader(responseBodyBytes))
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	request.Header.Add("Content-type", common.SoapContentType)
+	request.Header.Add(headers.ContentType, headervalues.ApplicationPaos)
 	response, err := client.Do(request)
 	if err != nil || response.StatusCode != 201 {
 		common.OutputErrorToConsoleAndExit(err)

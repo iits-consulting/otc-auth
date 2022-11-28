@@ -8,14 +8,6 @@ import (
 	"os"
 )
 
-const (
-	AuthUrlIam      = "https://iam.eu-de.otc.t-systems.com:443"
-	XmlContentType  = "text/xml"
-	SoapContentType = "application/vnd.paos+xml"
-	SoapHeaderInfo  = `ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"`
-	JsonContentType = "application/json"
-)
-
 func WriteStringToFile(filepath string, content string) {
 	outputFile, err := os.Create(filepath)
 	if err != nil {

@@ -2,15 +2,17 @@ package cce
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/avast/retry-go"
+	"github.com/go-http-utils/headers"
 	"io"
 	"log"
 	"net/http"
 	"otc-auth/src/common"
+	"otc-auth/src/common/endpoints"
+	"otc-auth/src/common/headervalues"
+	"otc-auth/src/common/xheaders"
 	"otc-auth/src/iam"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -39,14 +41,14 @@ func getClusters(projectName string) GetClustersResult {
 			client := common.GetHttpClient()
 
 			projectId := common.FindProjectID(projectName)
-			req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v3/projects/%s/clusters", CceUrl, projectId), nil)
+			req, err := http.NewRequest(http.MethodGet, endpoints.Clusters(projectId), nil)
 			if err != nil {
 				return err
 			}
 
-			req.Header.Add("Content-Type", common.JsonContentType)
+			req.Header.Add(headers.ContentType, headervalues.ApplicationJson)
 			scopedToken := getScopedToken(projectName)
-			req.Header.Add("X-Auth-Token", scopedToken)
+			req.Header.Add(xheaders.XAuthToken, scopedToken)
 
 			resp, err := client.Do(req)
 			if err != nil {
@@ -58,7 +60,7 @@ func getClusters(projectName string) GetClustersResult {
 				return err
 			}
 			if resp.StatusCode != 200 {
-				return errors.New("Statuscode=" + strconv.Itoa(resp.StatusCode) + "," + string(responseBody))
+				return fmt.Errorf("error: status %s, body:\n%s", resp.Status, common.ErrorMessageToIndentedJsonFormat(responseBody))
 			}
 
 			err = json.Unmarshal(responseBody, &clustersResult)
@@ -70,7 +72,7 @@ func getClusters(projectName string) GetClustersResult {
 			log.Printf("#%d: %s\n", n, err)
 		}),
 		retry.DelayType(retry.FixedDelay),
-		retry.Delay(2*time.Second),
+		retry.Delay(time.Second*2),
 	)
 
 	if err != nil {
@@ -85,14 +87,14 @@ func postClusterCert(projectName string, clusterId string, duration string) (res
 	body := fmt.Sprintf("{\"duration\": %s}", duration)
 
 	projectId := common.FindProjectID(projectName)
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v3/projects/%s/clusters/%s/clustercert", CceUrl, projectId, clusterId), strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, endpoints.ClusterCert(projectId, clusterId), strings.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Content-Type", common.JsonContentType)
-	req.Header.Add("Accept", common.JsonContentType)
-	req.Header.Add("X-Auth-Token", getScopedToken(projectName))
+	req.Header.Add(headers.ContentType, headervalues.ApplicationJson)
+	req.Header.Add(headers.Accept, headervalues.ApplicationJson)
+	req.Header.Add(xheaders.XAuthToken, getScopedToken(projectName))
 
 	client := common.GetHttpClient()
 	resp, err = client.Do(req)

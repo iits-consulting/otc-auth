@@ -1,9 +1,10 @@
 package oidc
 
 import (
-	"fmt"
+	"github.com/go-http-utils/headers"
 	"net/http"
 	"otc-auth/src/common"
+	"otc-auth/src/common/endpoints"
 	"strings"
 )
 
@@ -14,15 +15,15 @@ func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken stri
 	return unscopedToken, oidcResponse.Claims.PreferredUsername
 }
 
-func authenticateWithServiceProvider(bearerToken string, params common.AuthInfo) (unscopedToken string) {
-	requestPath := fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers/%s/protocols/oidc/auth", common.AuthUrlIam, params.IdentityProvider)
+func authenticateWithServiceProvider(bearerToken string, authInfo common.AuthInfo) (unscopedToken string) {
+	requestPath := endpoints.IdentityProviders(authInfo.IdentityProvider, authInfo.Protocol)
 
-	request, err := http.NewRequest("POST", requestPath, strings.NewReader(""))
+	request, err := http.NewRequest(http.MethodPost, requestPath, strings.NewReader(""))
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	request.Header.Add("Authorization", bearerToken)
+	request.Header.Add(headers.Authorization, bearerToken)
 
 	client := common.GetHttpClient()
 	response, err := client.Do(request)

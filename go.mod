@@ -6,6 +6,7 @@ require (
 	github.com/akamensky/argparse v1.4.0
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/coreos/go-oidc/v3 v3.4.0
+	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/google/uuid v1.1.2
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1

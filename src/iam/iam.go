@@ -3,22 +3,26 @@ package iam
 import (
 	"fmt"
 	"github.com/avast/retry-go"
+	"github.com/go-http-utils/headers"
 	"io"
 	"log"
 	"net/http"
 	"otc-auth/src/common"
+	"otc-auth/src/common/endpoints"
+	"otc-auth/src/common/headervalues"
+	"otc-auth/src/common/xheaders"
 	"strings"
 	"time"
 )
 
 func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken string) {
 	requestBody := getRequestBodyForAuthenticationMethod(params)
-	request, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", common.AuthUrlIam), strings.NewReader(requestBody))
+	request, err := http.NewRequest(http.MethodPost, endpoints.IamTokens, strings.NewReader(requestBody))
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	request.Header.Add("Content-Type", common.JsonContentType)
+	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
 
 	client := common.GetHttpClient()
 	response, err := client.Do(request)
@@ -28,25 +32,26 @@ func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken stri
 		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: authentication failed with status %s. response:\n\n%s", response.Status, formattedError))
 	}
 	defer response.Body.Close()
-
 	unscopedToken = common.GetUnscopedTokenFromResponseOrThrow(response)
-
 	return
 }
 
 func GetScopedToken(projectName string) {
 	projectId := getProjectId(projectName)
+	if projectId == "" {
+		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: project with name %s not found.\n\nPlease verify the name is correct and try again.", projectName))
+	}
 	otcInfo := common.ReadOrCreateOTCAuthCredentialsFile()
 	err := retry.Do(
 		func() error {
 			tokenBody := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\"}}, \"scope\": {\"project\": {\"id\": \"%s\"}}}}", otcInfo.UnscopedToken.Value, projectId)
 
-			req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", common.AuthUrlIam), strings.NewReader(tokenBody))
+			req, err := http.NewRequest(http.MethodPost, endpoints.IamTokens, strings.NewReader(tokenBody))
 			if err != nil {
 				common.OutputErrorToConsoleAndExit(err)
 			}
 
-			req.Header.Add("Content-Type", common.JsonContentType)
+			req.Header.Add(headers.ContentType, headervalues.ApplicationJson)
 
 			client := common.GetHttpClient()
 			resp, err := client.Do(req)
@@ -55,7 +60,7 @@ func GetScopedToken(projectName string) {
 			}
 			defer resp.Body.Close()
 
-			scopedToken := resp.Header.Get("X-Subject-Token")
+			scopedToken := resp.Header.Get(xheaders.XSubjectToken)
 
 			if scopedToken == "" {
 				respBytes, _ := io.ReadAll(resp.Body)

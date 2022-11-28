@@ -2,6 +2,7 @@ package common
 
 import (
 	"net/http"
+	"otc-auth/src/common/xheaders"
 )
 
 var (
@@ -20,7 +21,7 @@ func GetHttpClientWithUnscopedToken() http.Client {
 }
 
 func (adt *RoundTripHeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("X-Auth-Token", ReadOrCreateOTCAuthCredentialsFile().UnscopedToken.Value)
+	req.Header.Add(xheaders.XAuthToken, ReadOrCreateOTCAuthCredentialsFile().UnscopedToken.Value)
 	return adt.T.RoundTrip(req)
 }
 

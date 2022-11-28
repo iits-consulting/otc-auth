@@ -3,9 +3,12 @@ package accesstoken
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-http-utils/headers"
 	"io"
 	"net/http"
 	"otc-auth/src/common"
+	"otc-auth/src/common/endpoints"
+	"otc-auth/src/common/headervalues"
 	"strconv"
 	"strings"
 )
@@ -39,12 +42,12 @@ func getAccessTokenFromServiceProvider(durationSeconds string) *http.Response {
 	unscopedTokenFromFile := common.ReadOrCreateOTCAuthCredentialsFile().UnscopedToken
 	body := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\", \"duration_seconds\": \"%s\"}}}}", unscopedTokenFromFile, durationSeconds)
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3.0/OS-CREDENTIAL/securitytokens", common.AuthUrlIam), strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, endpoints.IamSecurityTokens, strings.NewReader(body))
 	if err != nil {
 		return nil
 	}
 
-	req.Header.Add("Content-Type", common.JsonContentType)
+	req.Header.Add(headers.ContentType, headervalues.ApplicationJson)
 
 	client := common.GetHttpClientWithUnscopedToken()
 	resp, err := client.Do(req)

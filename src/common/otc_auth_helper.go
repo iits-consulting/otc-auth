@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"otc-auth/src/common/xheaders"
 	"strings"
 	"time"
 )
@@ -18,7 +19,7 @@ const (
 var otcAuthFilePath = GetHomeDir() + "/.otc-auth"
 
 func GetUnscopedTokenFromResponseOrThrow(response *http.Response) (unscopedToken string) {
-	unscopedToken = response.Header.Get("X-Subject-Token")
+	unscopedToken = response.Header.Get(xheaders.XSubjectToken)
 	if unscopedToken == "" {
 		responseBytes, _ := io.ReadAll(response.Body)
 		responseString := string(responseBytes)
