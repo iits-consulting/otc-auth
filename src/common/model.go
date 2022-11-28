@@ -1,10 +1,11 @@
-package iam
+package common
 
 import (
 	"encoding/xml"
+	"net/http"
 )
 
-type LoginParams struct {
+type AuthInfo struct {
 	AuthType            string
 	IdentityProvider    string
 	IdentityProviderUrl string
@@ -41,7 +42,29 @@ type OIDCUsernameAndToken struct {
 	}
 }
 
-const htmlFile = `
+type OtcAuthCredentials struct {
+	UnscopedToken UnscopedToken `json:"unscopedToken"`
+	Username      string        `json:"username"`
+	Projects      []Project     `json:"projects"`
+}
+
+type Project struct {
+	Name           string `json:"name"`
+	ID             string `json:"id"`
+	Token          string `json:"token"`
+	TokenValidTill string `json:"tokenValidTill"`
+}
+
+type UnscopedToken struct {
+	Value     string `json:"value"`
+	ValidTill string `json:"validTill"`
+}
+
+type RoundTripHeaderTransport struct {
+	T http.RoundTripper
+}
+
+const SuccessPageHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>

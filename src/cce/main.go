@@ -8,8 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"otc-auth/src/common"
 	"otc-auth/src/iam"
-	"otc-auth/src/util"
 	"strconv"
 	"strings"
 	"time"
@@ -36,16 +36,16 @@ func getClusters(projectName string) GetClustersResult {
 	clustersResult := GetClustersResult{}
 	err := retry.Do(
 		func() error {
-			client := iam.GetHttpClient()
+			client := common.GetHttpClient()
 
-			projectId := iam.GetProjectId(projectName)
+			projectId := common.FindProjectID(projectName)
 			req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v3/projects/%s/clusters", CceUrl, projectId), nil)
 			if err != nil {
 				return err
 			}
 
-			req.Header.Add("Content-Type", util.JsonContentType)
-			scopedToken := iam.GetScopedToken(projectName)
+			req.Header.Add("Content-Type", common.JsonContentType)
+			scopedToken := getScopedToken(projectName)
 			req.Header.Add("X-Auth-Token", scopedToken)
 
 			resp, err := client.Do(req)
@@ -74,7 +74,7 @@ func getClusters(projectName string) GetClustersResult {
 	)
 
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	return clustersResult
@@ -84,17 +84,17 @@ func postClusterCert(projectName string, clusterId string, duration string) (res
 
 	body := fmt.Sprintf("{\"duration\": %s}", duration)
 
-	projectId := util.FindProjectID(projectName)
+	projectId := common.FindProjectID(projectName)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v3/projects/%s/clusters/%s/clustercert", CceUrl, projectId, clusterId), strings.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Content-Type", util.JsonContentType)
-	req.Header.Add("Accept", util.JsonContentType)
-	req.Header.Add("X-Auth-Token", iam.GetScopedToken(projectName))
+	req.Header.Add("Content-Type", common.JsonContentType)
+	req.Header.Add("Accept", common.JsonContentType)
+	req.Header.Add("X-Auth-Token", getScopedToken(projectName))
 
-	client := iam.GetHttpClient()
+	client := common.GetHttpClient()
 	resp, err = client.Do(req)
 	if err != nil {
 		return nil, err
@@ -114,4 +114,13 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 		}
 	}
 	return clusterId, err
+}
+
+func getScopedToken(projectName string) string {
+	scopedTokenFromOTCInfoFile := common.GetScopedTokenFromOTCInfo(projectName)
+	if scopedTokenFromOTCInfoFile == "" {
+		iam.GetScopedToken(projectName)
+		return common.GetScopedTokenFromOTCInfo(projectName)
+	}
+	return scopedTokenFromOTCInfoFile
 }

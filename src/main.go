@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"github.com/akamensky/argparse"
 	"os"
+	"otc-auth/src/accesstoken"
 	"otc-auth/src/cce"
+	"otc-auth/src/common"
 	"otc-auth/src/iam"
-	"otc-auth/src/util"
 	"strings"
 )
 
@@ -62,14 +63,14 @@ func main() {
 
 	// Manage Cloud Container Engine
 	cceCommand := parser.NewCommand("cce", "Manage Cloud Container Engine.")
-	projectName := cceCommand.String("p", osProjectName, &argparse.Options{Required: true, Help: fmt.Sprintf("Name of the project you want to access. %s %s.", provideArgumentHelp, envOsProjectName)})
+	projectName := cceCommand.String("p", osProjectName, &argparse.Options{Required: false, Help: fmt.Sprintf("Name of the project you want to access. %s %s.", provideArgumentHelp, envOsProjectName)})
 
 	// List clusters
 	getClustersCommand := cceCommand.NewCommand("list", "List Cluster Names.")
 
 	// Get Kubernetes Configuration
 	getKubeConfigCommand := cceCommand.NewCommand("get-kube-config", "Get remote kube config and merge it with existing local config file.")
-	clusterName := getKubeConfigCommand.String("c", "cluster", &argparse.Options{Required: true, Help: fmt.Sprintf("Name of the cluster you want to access %s %s.", provideArgumentHelp, envClusterName)})
+	clusterName := getKubeConfigCommand.String("c", "cluster", &argparse.Options{Required: false, Help: fmt.Sprintf("Name of the cluster you want to access %s %s.", provideArgumentHelp, envClusterName)})
 	daysValid := getKubeConfigCommand.String("v", "days-valid", &argparse.Options{Required: false, Help: "Period (in days) that the config will be valid", Default: "7"})
 
 	// AK/SK Management
@@ -79,12 +80,12 @@ func main() {
 
 	err := parser.Parse(os.Args)
 	if err != nil {
-		util.OutputErrorMessageToConsoleAndExit(parser.Usage(err))
+		common.OutputErrorMessageToConsoleAndExit(parser.Usage(err))
 	}
 
 	if loginIamCommand.Happened() {
 		totpToken, userId := checkMFAFlowIAM(*otp, *userDomainId)
-		loginParams := iam.LoginParams{
+		authInfo := common.AuthInfo{
 			AuthType:      authTypeIAM,
 			Username:      getUsernameOrThrow(*usernameIamLogin),
 			Password:      getPasswordOrThrow(*passwordIamLogin),
@@ -94,12 +95,12 @@ func main() {
 			OverwriteFile: *overwriteTokenLoginIam,
 		}
 
-		iam.Login(loginParams)
+		AuthenticateAndGetUnscopedToken(authInfo)
 	}
 
 	if loginIdpSamlCommand.Happened() {
 		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProviderSamlLogin, *identityProviderUrlSamlLogin)
-		loginParams := iam.LoginParams{
+		authInfo := common.AuthInfo{
 			AuthType:            authTypeIDP,
 			Username:            getUsernameOrThrow(*usernameSamlLogin),
 			Password:            getPasswordOrThrow(*passwordSamlLogin),
@@ -109,12 +110,12 @@ func main() {
 			OverwriteFile:       *overwriteTokenLoginSaml,
 		}
 
-		iam.Login(loginParams)
+		AuthenticateAndGetUnscopedToken(authInfo)
 	}
 
 	if loginIdpOidcCommand.Happened() {
 		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProviderOidcLogin, *identityProviderUrlOidcLogin)
-		loginParams := iam.LoginParams{
+		authInfo := common.AuthInfo{
 			AuthType:            authTypeIDP,
 			IdentityProvider:    identityProvider,
 			IdentityProviderUrl: identityProviderUrl,
@@ -124,12 +125,12 @@ func main() {
 			OverwriteFile:       *overwriteTokenLoginOidc,
 		}
 
-		iam.Login(loginParams)
+		AuthenticateAndGetUnscopedToken(authInfo)
 	}
 
 	if !loginIamCommand.Happened() && !loginIdpSamlCommand.Happened() && !loginIdpOidcCommand.Happened() {
-		if util.LoginNeeded(false) {
-			util.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		if common.IsAuthenticationValid(false) {
+			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
 		}
 	}
 
@@ -163,11 +164,11 @@ func main() {
 
 	if accessTokenCommandCreate.Happened() {
 		if *durationSeconds < 900 {
-			util.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
+			common.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
 		}
-		AccessTokeCreateParams := iam.AccessTokenCreateParams{
+		tokenCreateArgs := accesstoken.TokenCreateArgs{
 			DurationSeconds: *durationSeconds,
 		}
-		iam.CreateAccessToken(AccessTokeCreateParams)
+		accesstoken.CreateAccessToken(tokenCreateArgs)
 	}
 }

@@ -1,4 +1,4 @@
-package iam
+package oidc
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
 	"net/http"
-	"otc-auth/src/util"
+	"otc-auth/src/common"
 	"strings"
 )
 
@@ -24,7 +24,7 @@ var (
 const localhost = "localhost:8088"
 const redirectURL = "http://localhost:8088/oidc/auth"
 
-func startAndListenHttpServer(channel chan OIDCUsernameAndToken) {
+func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		rawAccessToken := r.Header.Get("Authorization")
 		if rawAccessToken == "" {
@@ -68,13 +68,17 @@ func startAndListenHttpServer(channel chan OIDCUsernameAndToken) {
 			return
 		}
 
-		oidcUsernameAndToken := OIDCUsernameAndToken{}
+		oidcUsernameAndToken := common.OIDCUsernameAndToken{}
 		if err := rawIdToken.Claims(&oidcUsernameAndToken.Claims); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		w.Write([]byte(htmlFile))
+		_, err = w.Write([]byte(common.SuccessPageHtml))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		if idToken != "" {
 			oidcUsernameAndToken.BearerToken = fmt.Sprintf("Bearer %s", idToken)
@@ -84,17 +88,17 @@ func startAndListenHttpServer(channel chan OIDCUsernameAndToken) {
 
 	err := http.ListenAndServe(localhost, nil)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err, fmt.Sprintf("failed to start server at %s", localhost))
+		common.OutputErrorToConsoleAndExit(err, fmt.Sprintf("failed to start server at %s", localhost))
 	}
 }
 
-func AuthenticateWithIdp(params LoginParams) OIDCUsernameAndToken {
-	channel := make(chan OIDCUsernameAndToken)
+func authenticateWithIdp(params common.AuthInfo) common.OIDCUsernameAndToken {
+	channel := make(chan common.OIDCUsernameAndToken)
 	go startAndListenHttpServer(channel)
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, params.IdentityProviderUrl)
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	oAuth2Config = oauth2.Config{
@@ -110,7 +114,7 @@ func AuthenticateWithIdp(params LoginParams) OIDCUsernameAndToken {
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
 	if err != nil {
-		util.OutputErrorToConsoleAndExit(err)
+		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	return <-channel

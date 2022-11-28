@@ -1,9 +1,12 @@
-package util
+package common
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -12,19 +15,21 @@ const (
 	PrintTimeFormat = time.RFC1123
 )
 
-var otcInfoPath = GetHomeDir() + "/.otc-info"
+var otcAuthFilePath = GetHomeDir() + "/.otc-auth"
 
-type OtcInfo struct {
-	UnscopedToken UnscopedToken `json:"unscopedToken"`
-	Username      string        `json:"username"`
-	Projects      []Project     `json:"projects"`
-}
-
-type Project struct {
-	Name           string `json:"name"`
-	ID             string `json:"id"`
-	Token          string `json:"token"`
-	TokenValidTill string `json:"tokenValidTill"`
+func GetUnscopedTokenFromResponseOrThrow(response *http.Response) (unscopedToken string) {
+	unscopedToken = response.Header.Get("X-Subject-Token")
+	if unscopedToken == "" {
+		responseBytes, _ := io.ReadAll(response.Body)
+		responseString := string(responseBytes)
+		if strings.Contains(responseString, "mfa totp code verify fail") {
+			OutputErrorMessageToConsoleAndExit("fatal: invalid otp unscopedToken.\n\nPlease try it again with a new otp unscopedToken.")
+		} else {
+			formattedError := ErrorMessageToIndentedJsonFormat(responseBytes)
+			OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: response failed with status %s. Body:\n%s", response.Status, formattedError))
+		}
+	}
+	return unscopedToken
 }
 
 func AppendOrReplaceProject(projects []Project, newProject Project) []Project {
@@ -38,20 +43,15 @@ func AppendOrReplaceProject(projects []Project, newProject Project) []Project {
 	return newProjects
 }
 
-type UnscopedToken struct {
-	Value     string `json:"value"`
-	ValidTill string `json:"validTill"`
-}
-
-func LoginNeeded(overwrite bool) bool {
-	if !fileExists(otcInfoPath) {
+func IsAuthenticationValid(overwrite bool) bool {
+	if !fileExists(otcAuthFilePath) {
 		return true
 	}
-	otcInformation := ReadOrCreateOTCInfoFromFile()
-	if otcInformation.UnscopedToken.ValidTill == "" {
+	otcInfoFile := ReadOrCreateOTCAuthCredentialsFile()
+	if otcInfoFile.UnscopedToken.ValidTill == "" {
 		return true
 	}
-	tokenExpirationDate, err := time.Parse(TimeFormat, otcInformation.UnscopedToken.ValidTill)
+	tokenExpirationDate, err := time.Parse(TimeFormat, otcInfoFile.UnscopedToken.ValidTill)
 	if err != nil {
 		OutputErrorToConsoleAndExit(err)
 	}
@@ -67,7 +67,7 @@ func LoginNeeded(overwrite bool) bool {
 }
 
 func GetScopedTokenFromOTCInfo(projectName string) string {
-	otcInfo := ReadOrCreateOTCInfoFromFile()
+	otcInfo := ReadOrCreateOTCAuthCredentialsFile()
 	for i := range otcInfo.Projects {
 		project := otcInfo.Projects[i]
 		if project.Name == projectName {
@@ -93,17 +93,17 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func ReadOrCreateOTCInfoFromFile() OtcInfo {
-	var otcInfo OtcInfo
-	otcLoginInfoData, err := ReadFileContent(otcInfoPath)
+func ReadOrCreateOTCAuthCredentialsFile() OtcAuthCredentials {
+	var otcInfo OtcAuthCredentials
+	content, err := ReadFileContent(otcAuthFilePath)
 
 	if err != nil {
 		OutputErrorToConsoleAndExit(err)
 	}
-	if otcLoginInfoData == "" {
-		otcLoginInfoData = readOrCreateOTCInfoFile(otcInfo)
+	if content == "" {
+		content = readOrCreateOTCInfoFile(otcInfo)
 	}
-	err = json.Unmarshal([]byte(otcLoginInfoData), &otcInfo)
+	err = json.Unmarshal([]byte(content), &otcInfo)
 	if err != nil {
 		OutputErrorToConsoleAndExit(err)
 	}
@@ -111,32 +111,32 @@ func ReadOrCreateOTCInfoFromFile() OtcInfo {
 	return otcInfo
 }
 
-func UpdateOtcInformation(otcInformation OtcInfo) {
+func UpdateOtcInformation(otcInformation OtcAuthCredentials) {
 	otcInfoData, err := json.Marshal(otcInformation)
 	if err != nil {
 		OutputErrorToConsoleAndExit(err)
 	}
-	WriteStringToFile(otcInfoPath, string(otcInfoData))
+	WriteStringToFile(otcAuthFilePath, string(otcInfoData))
 }
 
 func FindProjectID(projectName string) string {
-	otcInfo := ReadOrCreateOTCInfoFromFile()
+	otcInfo := ReadOrCreateOTCAuthCredentialsFile()
 	for i := range otcInfo.Projects {
 		project := otcInfo.Projects[i]
 		if project.Name == projectName {
 			return project.ID
 		}
 	}
-	OutputErrorMessageToConsoleAndExit(fmt.Sprintf("Something went wrong. Project \"%s\" not found in otc-info file located at %s", projectName, otcInfoPath))
+	OutputErrorMessageToConsoleAndExit(fmt.Sprintf("Something went wrong. Project \"%s\" not found in otc-info file located at %s", projectName, otcAuthFilePath))
 	return ""
 }
 
-func readOrCreateOTCInfoFile(otcInfo OtcInfo) string {
+func readOrCreateOTCInfoFile(otcInfo OtcAuthCredentials) string {
 	result, err := json.Marshal(otcInfo)
 	if err != nil {
 		OutputErrorToConsoleAndExit(err)
 	}
 	otcInfoData := string(result)
-	WriteStringToFile(otcInfoPath, otcInfoData)
+	WriteStringToFile(otcAuthFilePath, otcInfoData)
 	return otcInfoData
 }

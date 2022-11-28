@@ -1,12 +1,20 @@
-package util
+package common
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 )
 
-const JsonContentType = "application/json"
+const (
+	AuthUrlIam      = "https://iam.eu-de.otc.t-systems.com:443"
+	XmlContentType  = "text/xml"
+	SoapContentType = "application/vnd.paos+xml"
+	SoapHeaderInfo  = `ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"`
+	JsonContentType = "application/json"
+)
 
 func WriteStringToFile(filepath string, content string) {
 	outputFile, err := os.Create(filepath)
@@ -63,4 +71,13 @@ func OutputErrorToConsoleAndExit(err error, errorMessage ...string) {
 func OutputErrorMessageToConsoleAndExit(errorMessage string) {
 	fmt.Println(errorMessage)
 	os.Exit(1)
+}
+
+func ErrorMessageToIndentedJsonFormat(errorMessage []byte) string {
+	var formattedJson bytes.Buffer
+	err := json.Indent(&formattedJson, errorMessage, "", " ")
+	if err != nil {
+		OutputErrorToConsoleAndExit(err)
+	}
+	return formattedJson.String()
 }

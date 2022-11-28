@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"otc-auth/src/util"
+	"otc-auth/src/common"
 )
 
 const (
@@ -120,7 +120,7 @@ func findClientSecretOrReturnEmpty(secret string) string {
 func getEnvironmentVariableOrThrow(argument string, envVarName string) string {
 	environmentVariable, ok := os.LookupEnv(envVarName)
 	if !ok || environmentVariable == "" {
-		util.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", argument), envVarName))
+		common.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", argument), envVarName))
 	}
 
 	return environmentVariable

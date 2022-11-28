@@ -2,70 +2,95 @@ package iam
 
 import (
 	"fmt"
-	"otc-auth/src/util"
+	"github.com/avast/retry-go"
+	"io"
+	"log"
+	"net/http"
+	"otc-auth/src/common"
+	"strings"
 	"time"
 )
 
-const (
-	AuthUrlIam             = "https://iam.eu-de.otc.t-systems.com:443"
-	XmlContentType         = "text/xml"
-	SoapContentType        = "application/vnd.paos+xml"
-	SoapHeaderInfo         = `ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"`
-	protocolSAML    string = "saml"
-	protocolOIDC    string = "oidc"
-)
-
-func Login(loginParams LoginParams) {
-	if !util.LoginNeeded(loginParams.OverwriteFile) {
-		println("info: will not retrieve unscoped token, because the current one is still valid.\n\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
-		return
+func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken string) {
+	requestBody := getRequestBodyForAuthenticationMethod(params)
+	request, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", common.AuthUrlIam), strings.NewReader(requestBody))
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	println("Retrieving unscoped token...")
+	request.Header.Add("Content-Type", common.JsonContentType)
 
-	var unscopedToken string
-	switch loginParams.AuthType {
-	case "idp":
-		if loginParams.Protocol == protocolSAML {
-			unscopedToken = getUnscopedSAMLToken(loginParams)
-		} else if loginParams.Protocol == protocolOIDC {
-			unscopedToken, loginParams.Username = getUnscopedOIDCToken(loginParams)
-		} else {
-			util.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". Please provide a valid argument and try again.")
-		}
-	case "iam":
-		unscopedToken = getUserToken(loginParams)
-	default:
-		util.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
+	client := common.GetHttpClient()
+	response, err := client.Do(request)
+	if err != nil {
+		respBytes, _ := io.ReadAll(response.Body)
+		formattedError := common.ErrorMessageToIndentedJsonFormat(respBytes)
+		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: authentication failed with status %s. response:\n\n%s", response.Status, formattedError))
 	}
+	defer response.Body.Close()
 
-	if unscopedToken == "" {
-		util.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
-	}
-	updateOTCInfoFile(loginParams, unscopedToken)
-	println("Successfully obtained unscoped token!")
+	unscopedToken = common.GetUnscopedTokenFromResponseOrThrow(response)
+
+	return
 }
 
-func updateOTCInfoFile(loginParams LoginParams, unscopedToken string) {
-	otcInfo := util.ReadOrCreateOTCInfoFromFile()
+func GetScopedToken(projectName string) {
+	projectId := getProjectId(projectName)
+	otcInfo := common.ReadOrCreateOTCAuthCredentialsFile()
+	err := retry.Do(
+		func() error {
+			tokenBody := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\"}}, \"scope\": {\"project\": {\"id\": \"%s\"}}}}", otcInfo.UnscopedToken.Value, projectId)
 
-	otcInfo.UnscopedToken.Value = unscopedToken
-	expirationDate := time.Now().Add(time.Hour * 23)
-	otcInfo.Username = loginParams.Username
-	otcInfo.UnscopedToken.ValidTill = expirationDate.Format(util.TimeFormat)
-	println(fmt.Sprintf("Unscoped token valid until %s", expirationDate.Format(util.PrintTimeFormat)))
-	util.UpdateOtcInformation(otcInfo)
-}
+			req, err := http.NewRequest("POST", fmt.Sprintf("%s/v3/auth/tokens", common.AuthUrlIam), strings.NewReader(tokenBody))
+			if err != nil {
+				common.OutputErrorToConsoleAndExit(err)
+			}
 
-func GetScopedToken(projectName string) string {
-	scopedTokenFromOTCInfoFile := util.GetScopedTokenFromOTCInfo(projectName)
-	if scopedTokenFromOTCInfoFile == "" {
-		GetNewScopedToken(projectName)
-		return util.GetScopedTokenFromOTCInfo(projectName)
+			req.Header.Add("Content-Type", common.JsonContentType)
+
+			client := common.GetHttpClient()
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			scopedToken := resp.Header.Get("X-Subject-Token")
+
+			if scopedToken == "" {
+				respBytes, _ := io.ReadAll(resp.Body)
+				formattedError := common.ErrorMessageToIndentedJsonFormat(respBytes)
+				defer resp.Body.Close()
+				println("error: an error occurred while polling a scoped token. Will try again")
+				return fmt.Errorf("http status code: %s\nresponse body:\n%s", resp.Status, formattedError)
+			}
+
+			tokenExpirationDate := time.Now().Add(time.Hour * 23)
+			newProjectEntry := common.Project{Name: projectName, ID: projectId, Token: scopedToken, TokenValidTill: tokenExpirationDate.Format(common.TimeFormat)}
+			otcInfo.Projects = common.AppendOrReplaceProject(otcInfo.Projects, newProjectEntry)
+			common.UpdateOtcInformation(otcInfo)
+			return nil
+		}, retry.OnRetry(func(n uint, err error) {
+			log.Printf("#%d: %s\n", n, err)
+		}),
+		retry.DelayType(retry.FixedDelay),
+		retry.Delay(time.Second*5),
+	)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
 	}
-	return scopedTokenFromOTCInfoFile
 }
 
-func GetProjectId(projectName string) string {
-	return util.FindProjectID(projectName)
+func getRequestBodyForAuthenticationMethod(authInfo common.AuthInfo) (requestBody string) {
+	if authInfo.Otp != "" && authInfo.UserDomainId != "" {
+		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\", \"totp\"], "+
+			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}, "+
+			"\"totp\" : {\"user\": {\"id\": \"%s\", \"passcode\": \"%s\"}}}, \"scope\": {\"domain\": {\"name\": \"%s\"}}}}",
+			authInfo.Username, authInfo.Password, authInfo.DomainName, authInfo.UserDomainId, authInfo.Otp, authInfo.DomainName)
+	} else {
+		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\"], "+
+			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}}, "+
+			"\"scope\": {\"domain\": {\"name\": \"%s\"}}}}", authInfo.Username, authInfo.Password, authInfo.DomainName, authInfo.DomainName)
+	}
+	return requestBody
 }
