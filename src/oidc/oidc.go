@@ -5,33 +5,24 @@ import (
 	"net/http"
 	"otc-auth/src/common"
 	"otc-auth/src/common/endpoints"
-	"strings"
 )
 
-func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken string, username string) {
-	oidcResponse := authenticateWithIdp(params)
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
+	oidcCredentials := authenticateWithIdp(authInfo)
 
-	unscopedToken = authenticateWithServiceProvider(oidcResponse.BearerToken, params)
-	return unscopedToken, oidcResponse.Claims.PreferredUsername
+	return authenticateWithServiceProvider(oidcCredentials, authInfo)
 }
 
-func authenticateWithServiceProvider(bearerToken string, authInfo common.AuthInfo) (unscopedToken string) {
-	requestPath := endpoints.IdentityProviders(authInfo.IdentityProvider, authInfo.Protocol)
+func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
+	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol)
 
-	request, err := http.NewRequest(http.MethodPost, requestPath, strings.NewReader(""))
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
+	request := common.GetRequest(http.MethodPost, url, nil)
+	request.Header.Add(headers.Authorization, oidcCredentials.BearerToken)
 
-	request.Header.Add(headers.Authorization, bearerToken)
+	response := common.HttpClientMakeRequest(request)
 
-	client := common.GetHttpClient()
-	response, err := client.Do(request)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
+	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
+	tokenResponse.Token.User.Name = oidcCredentials.Claims.PreferredUsername
 	defer response.Body.Close()
-
-	unscopedToken = common.GetUnscopedTokenFromResponseOrThrow(response)
 	return
 }

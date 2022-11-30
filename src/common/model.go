@@ -2,66 +2,67 @@ package common
 
 import (
 	"encoding/xml"
-	"net/http"
 )
 
 type AuthInfo struct {
-	AuthType            string
-	IdentityProvider    string
-	IdentityProviderUrl string
-	Username            string
-	Password            string
-	Protocol            string
-	DomainName          string
-	Otp                 string
-	UserDomainId        string
-	ClientId            string
-	ClientSecret        string
-	OverwriteFile       bool
+	AuthType      string
+	IdpName       string
+	IdpUrl        string
+	Username      string
+	Password      string
+	AuthProtocol  string
+	DomainName    string
+	Otp           string
+	UserDomainId  string
+	ClientId      string
+	ClientSecret  string
+	OverwriteFile bool
 }
-
-type GetSAMLAssertionResult struct {
-	XMLName xml.Name
-	Header  struct {
+type SamlAssertionResponse struct {
+	Name   xml.Name
+	Header struct {
 		Response struct {
-			ConsumerUrl string `xml:"AssertionConsumerServiceURL,attr"`
+			AssertionConsumerServiceURL string `xml:"AssertionConsumerServiceURL,attr"`
 		} `xml:"Response"`
 	} `xml:"Header"`
 }
 
-type GetProjectsResult struct {
-	Projects []struct {
-		Name string `json:"name"`
-		ID   string `json:"id"`
-	} `json:"projects"`
-}
-type OIDCUsernameAndToken struct {
+type OidcCredentialsResponse struct {
 	BearerToken string
 	Claims      struct {
 		PreferredUsername string `json:"preferred_username"`
 	}
 }
 
-type OtcAuthCredentials struct {
-	UnscopedToken UnscopedToken `json:"unscopedToken"`
-	Username      string        `json:"username"`
-	Projects      []Project     `json:"projects"`
+type TokenResponse struct {
+	Token struct {
+		Secret    string
+		ExpiresAt string `json:"expires_at"`
+		IssuedAt  string `json:"issued_at"`
+		User      struct {
+			Domain struct {
+				Id   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"domain"`
+			Name string `json:"name"`
+		} `json:"user"`
+	} `json:"token"`
 }
 
-type Project struct {
-	Name           string `json:"name"`
-	ID             string `json:"id"`
-	Token          string `json:"token"`
-	TokenValidTill string `json:"tokenValidTill"`
+type ProjectsResponse struct {
+	Projects []struct {
+		Name string `json:"name"`
+		Id   string `json:"id"`
+	} `json:"projects"`
 }
 
-type UnscopedToken struct {
-	Value     string `json:"value"`
-	ValidTill string `json:"validTill"`
-}
-
-type RoundTripHeaderTransport struct {
-	T http.RoundTripper
+type ClustersResponse struct {
+	Items []struct {
+		Metadata struct {
+			Name string `json:"name"`
+			UID  string `json:"uid"`
+		} `json:"metadata"`
+	} `json:"items"`
 }
 
 const SuccessPageHtml = `

@@ -26,11 +26,12 @@ const (
 	localhost   = "localhost:8088"
 	redirectURL = "http://localhost:8088/oidc/auth"
 
-	queryState = "state"
-	queryCode  = "code"
+	queryState   = "state"
+	queryCode    = "code"
+	idTokenField = "id_token"
 )
 
-func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
+func startAndListenHttpServer(channel chan common.OidcCredentialsResponse) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		rawAccessToken := r.Header.Get(headers.Authorization)
 		if rawAccessToken == "" {
@@ -63,7 +64,7 @@ func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
 			return
 		}
 
-		idToken, ok := oauth2Token.Extra("id_token").(string)
+		idToken, ok := oauth2Token.Extra(idTokenField).(string)
 		if !ok {
 			http.Error(w, "No id_token field in oauth2 token.", http.StatusInternalServerError)
 			return
@@ -74,7 +75,7 @@ func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
 			return
 		}
 
-		oidcUsernameAndToken := common.OIDCUsernameAndToken{}
+		oidcUsernameAndToken := common.OidcCredentialsResponse{}
 		if err := rawIdToken.Claims(&oidcUsernameAndToken.Claims); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -98,11 +99,11 @@ func startAndListenHttpServer(channel chan common.OIDCUsernameAndToken) {
 	}
 }
 
-func authenticateWithIdp(params common.AuthInfo) common.OIDCUsernameAndToken {
-	channel := make(chan common.OIDCUsernameAndToken)
+func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse {
+	channel := make(chan common.OidcCredentialsResponse)
 	go startAndListenHttpServer(channel)
 	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, params.IdentityProviderUrl)
+	provider, err := oidc.NewProvider(ctx, params.IdpUrl)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}

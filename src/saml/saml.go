@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/xml"
 	"github.com/go-http-utils/headers"
-	"io"
 	"net/http"
 	"otc-auth/src/common"
 	"otc-auth/src/common/endpoints"
@@ -12,74 +11,43 @@ import (
 	header "otc-auth/src/common/xheaders"
 )
 
-func AuthenticateAndGetUnscopedToken(params common.AuthInfo) (unscopedToken string) {
-	client := common.GetHttpClient()
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
+	spInitiatedRequest := getServiceProviderInitiatedRequest(authInfo)
 
-	spInitiatedRequest := getServiceProviderInitiatedRequest(params, client)
+	bodyBytes := authenticateWithIdp(authInfo, spInitiatedRequest)
 
-	responseBodyBytes := authenticateWithIdp(params, spInitiatedRequest, client)
-
-	assertionResult := common.GetSAMLAssertionResult{}
-	err := xml.Unmarshal(responseBodyBytes, &assertionResult)
+	assertionResult := common.SamlAssertionResponse{}
+	err := xml.Unmarshal(bodyBytes, &assertionResult)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		common.OutputErrorToConsoleAndExit(err, "fatal: error deserializing xml.\ntrace: %s")
 	}
 
-	validatedResponse := validateAuthenticationWithServiceProvider(assertionResult, responseBodyBytes, client)
-	unscopedToken = common.GetUnscopedTokenFromResponseOrThrow(validatedResponse)
-	defer validatedResponse.Body.Close()
+	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes)
+	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
+	defer response.Body.Close()
 	return
 }
 
-func getServiceProviderInitiatedRequest(params common.AuthInfo, client http.Client) *http.Response {
-	request, err := http.NewRequest(http.MethodGet, endpoints.IdentityProviders(params.IdentityProvider, params.Protocol), nil)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-
+func getServiceProviderInitiatedRequest(params common.AuthInfo) *http.Response {
+	request := common.GetRequest(http.MethodGet, endpoints.IdentityProviders(params.IdpName, params.AuthProtocol), nil)
 	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
 	request.Header.Add(header.Paos, headervalues.Paos)
 
-	defer client.CloseIdleConnections()
-	response, err := client.Do(request)
-	if err != nil || response.StatusCode != 200 {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	return response
+	return common.HttpClientMakeRequest(request)
 }
 
-func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response, client http.Client) []byte {
-	request, err := http.NewRequest(http.MethodPost, params.IdentityProviderUrl, samlResponse.Body)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-
+func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response) []byte {
+	request := common.GetRequest(http.MethodPost, params.IdpUrl, samlResponse.Body)
 	request.Header.Add(headers.ContentType, headervalues.TextXml)
 	request.SetBasicAuth(params.Username, params.Password)
 
-	response, err := client.Do(request)
-	if err != nil || response.StatusCode != 200 {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-
-	responseBodyBytes, err := io.ReadAll(response.Body)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	return responseBodyBytes
+	response := common.HttpClientMakeRequest(request)
+	return common.GetBodyBytesFromResponse(response)
 }
 
-func validateAuthenticationWithServiceProvider(assertionResult common.GetSAMLAssertionResult, responseBodyBytes []byte, client http.Client) *http.Response {
-	request, err := http.NewRequest(http.MethodPost, assertionResult.Header.Response.ConsumerUrl, bytes.NewReader(responseBodyBytes))
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-
+func validateAuthenticationWithServiceProvider(assertionResult common.SamlAssertionResponse, responseBodyBytes []byte) *http.Response {
+	request := common.GetRequest(http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL, bytes.NewReader(responseBodyBytes))
 	request.Header.Add(headers.ContentType, headervalues.ApplicationPaos)
-	response, err := client.Do(request)
-	if err != nil || response.StatusCode != 201 {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	defer response.Body.Close()
-	return response
+
+	return common.HttpClientMakeRequest(request)
 }
