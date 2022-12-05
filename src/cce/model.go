@@ -6,21 +6,11 @@ type KubeConfigParams struct {
 	DaysValid   string
 }
 
-type GetClustersResult struct {
-	Items []struct {
-		Metadata struct {
-			Name string `json:"name"`
-			UID  string `json:"uid"`
-		} `json:"metadata"`
-	} `json:"items"`
-}
-
 type KubeConfig struct {
-	Kind        string `json:"kind"`
-	APIVersion  string `json:"apiVersion"`
-	Preferences struct {
-	} `json:"preferences"`
-	Clusters []struct {
+	Kind        string   `json:"kind"`
+	APIVersion  string   `json:"apiVersion"`
+	Preferences struct{} `json:"preferences"`
+	Clusters    []struct {
 		Name    string `json:"name"`
 		Cluster struct {
 			Server                   string `json:"server"`

@@ -1,64 +1,58 @@
 package cce
 
 import (
-	"io"
+	"fmt"
 	. "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"os"
 	"otc-auth/src/common"
+	"otc-auth/src/config"
 	"strings"
 )
 
 func getKubeConfig(kubeConfigParams KubeConfigParams) string {
-	println("Getting kube config...\n")
+	println("Getting kube config...")
 
 	clusterId, err := getClusterId(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster ID: %s")
+		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster id: %s")
 	}
 
-	kubeConfigResponse, err := postClusterCert(kubeConfigParams.ProjectName, clusterId, kubeConfigParams.DaysValid)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster certificate: %s")
-	}
+	response := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterId, kubeConfigParams.DaysValid)
 
-	kubeConfigContextData, err := io.ReadAll(kubeConfigResponse.Body)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	return string(kubeConfigContextData)
+	return string(common.GetBodyBytesFromResponse(response))
 }
 
-func mergeKubeConfig(projectName string, clusterName string, newKubeConfigData string) {
-	newKubeConfigContextData := addContextInformationToKubeConfig(projectName, clusterName, newKubeConfigData)
+func mergeKubeConfig(projectName string, clusterName string, kubeConfigData string) {
+	kubeConfigContextData := addContextInformationToKubeConfig(projectName, clusterName, kubeConfigData)
 	currentConfig, err := NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	newClientConfig, err := NewClientConfigFromBytes([]byte(newKubeConfigContextData))
+	clientConfig, err := NewClientConfigFromBytes([]byte(kubeConfigContextData))
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	newKubeConfig, err := newClientConfig.RawConfig()
+	kubeConfig, err := clientConfig.RawConfig()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	newKubeConfigFileName := "newKubeContext"
-	currentKubeConfigFileName := "currentConfig"
+	filenameNewFile := "kubeConfig_new"
+	filenameCurrentFile := "kubeConfig_current"
 
-	err = WriteToFile(newKubeConfig, newKubeConfigFileName)
+	err = WriteToFile(kubeConfig, filenameNewFile)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	err = WriteToFile(*currentConfig, currentKubeConfigFileName)
+	err = WriteToFile(*currentConfig, filenameCurrentFile)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	loadingRules := ClientConfigLoadingRules{
-		Precedence: []string{newKubeConfigFileName, currentKubeConfigFileName},
+		Precedence: []string{filenameNewFile, filenameCurrentFile},
 	}
 
 	mergedConfig, err := loadingRules.Load()
@@ -70,17 +64,18 @@ func mergeKubeConfig(projectName string, clusterName string, newKubeConfigData s
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	os.RemoveAll(newKubeConfigFileName)
-	os.RemoveAll(currentKubeConfigFileName)
+	os.RemoveAll(filenameNewFile)
+	os.RemoveAll(filenameCurrentFile)
 }
 
-func addContextInformationToKubeConfig(projectName string, clusterName string, newKubeConfigData string) string {
-	otcAuthInfo := common.ReadOrCreateOTCAuthCredentialsFile()
+func addContextInformationToKubeConfig(projectName string, clusterName string, kubeConfigData string) string {
+	cloud := config.GetActiveCloudConfig()
 
-	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "internalCluster", projectName+"/"+clusterName+"-intranet")
-	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "externalCluster", projectName+"/"+clusterName)
-	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "internal", projectName+"/"+clusterName+"-intranet")
-	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, "external", projectName+"/"+clusterName)
-	newKubeConfigData = strings.ReplaceAll(newKubeConfigData, ":\"user\"", ":\""+otcAuthInfo.Username+"\"")
-	return newKubeConfigData
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internalCluster", fmt.Sprintf("%s/%s-intranet", projectName, clusterName))
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "externalCluster", fmt.Sprintf("%s/%s", projectName, clusterName))
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internal", fmt.Sprintf("%s/%s-intranet", projectName, clusterName))
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "external", fmt.Sprintf("%s/%s", projectName, clusterName))
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, ":\"user\"", fmt.Sprintf(":\"%s\"", cloud.Username))
+
+	return kubeConfigData
 }

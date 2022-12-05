@@ -7,15 +7,15 @@ import (
 )
 
 const (
-	envOsAuthUrl      string = "OS_AUTH_URL"
 	envOsUsername     string = "OS_USERNAME"
 	envOsPassword     string = "OS_PASSWORD"
 	envOsDomainName   string = "OS_DOMAIN_NAME"
 	envOsUserDomainId string = "OS_USER_DOMAIN_ID"
+	envOsProjectName  string = "OS_PROJECT_NAME"
 	envIdpName        string = "IDP_NAME"
+	envIdpUrl         string = "IDP_URL"
 	envClientId       string = "CLIENT_ID"
 	envClientSecret   string = "CLIENT_SECRET"
-	envOsProjectName  string = "OS_PROJECT_NAME"
 	envClusterName    string = "CLUSTER_NAME"
 
 	authTypeIDP string = "idp"
@@ -43,7 +43,7 @@ func getClusterNameOrThrow(clusterName string) string {
 
 func getIdpInfoOrThrow(provider string, url string) (string, string) {
 	provider = checkIDPProviderIsSet(provider)
-	url = checkAuthUrlIsSet(url)
+	url = checkIdpUrlIsSet(url)
 	return provider, url
 }
 
@@ -55,12 +55,12 @@ func checkIDPProviderIsSet(provider string) string {
 	return getEnvironmentVariableOrThrow(idpName, envIdpName)
 }
 
-func checkAuthUrlIsSet(url string) string {
+func checkIdpUrlIsSet(url string) string {
 	if url != "" {
 		return url
 	}
 
-	return getEnvironmentVariableOrThrow(osAuthUrl, envOsAuthUrl)
+	return getEnvironmentVariableOrThrow(idpUrlArg, envIdpUrl)
 }
 
 func getUsernameOrThrow(username string) string {
@@ -103,7 +103,7 @@ func getClientIdOrThrow(id string) string {
 		return id
 	}
 
-	return getEnvironmentVariableOrThrow(clientId, envClientId)
+	return getEnvironmentVariableOrThrow(clientIdArg, envClientId)
 }
 
 func findClientSecretOrReturnEmpty(secret string) string {
@@ -112,7 +112,7 @@ func findClientSecretOrReturnEmpty(secret string) string {
 	} else if secretEnvVar, ok := os.LookupEnv(envClientSecret); ok {
 		return secretEnvVar
 	} else {
-		println(fmt.Sprintf("info: argument --%s not set. Continuing...\n", clientSecret))
+		println(fmt.Sprintf("info: argument --%s not set. Continuing...\n", clientSecretArg))
 		return ""
 	}
 }

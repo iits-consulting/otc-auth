@@ -1,52 +1,72 @@
 package main
 
 import (
-	"fmt"
 	"otc-auth/src/common"
+	"otc-auth/src/config"
 	"otc-auth/src/iam"
 	"otc-auth/src/oidc"
 	"otc-auth/src/saml"
-	"time"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
-	if !common.IsAuthenticationValid(authInfo.OverwriteFile) {
+	config.LoadCloudConfig(authInfo.DomainName)
+
+	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
 		println("info: will not retrieve unscoped token, because the current one is still valid.\n\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
 		return
 	}
 
-	println("Retrieving unscoped token...")
+	println("Retrieving unscoped token for active cloud...")
 
-	var unscopedToken string
+	var tokenResponse common.TokenResponse
 	switch authInfo.AuthType {
 	case "idp":
-		if authInfo.Protocol == protocolSAML {
-			unscopedToken = saml.AuthenticateAndGetUnscopedToken(authInfo)
-		} else if authInfo.Protocol == protocolOIDC {
-			unscopedToken, authInfo.Username = oidc.AuthenticateAndGetUnscopedToken(authInfo)
+		if authInfo.AuthProtocol == protocolSAML {
+			tokenResponse = saml.AuthenticateAndGetUnscopedToken(authInfo)
+		} else if authInfo.AuthProtocol == protocolOIDC {
+			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo)
 		} else {
 			common.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". Please provide a valid argument and try again.")
 		}
 	case "iam":
-		unscopedToken = iam.AuthenticateAndGetUnscopedToken(authInfo)
+		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
 		common.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
 	}
 
-	if unscopedToken == "" {
+	if tokenResponse.Token.Secret == "" {
 		common.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
 	}
-	updateOTCInfoFile(authInfo, unscopedToken)
+	updateOTCInfoFile(tokenResponse)
 	println("Successfully obtained unscoped token!")
 }
 
-func updateOTCInfoFile(authInfo common.AuthInfo, unscopedToken string) {
-	otcInfo := common.ReadOrCreateOTCAuthCredentialsFile()
-
-	otcInfo.UnscopedToken.Value = unscopedToken
-	expirationDate := time.Now().Add(time.Hour * 23)
-	otcInfo.Username = authInfo.Username
-	otcInfo.UnscopedToken.ValidTill = expirationDate.Format(common.TimeFormat)
-	println(fmt.Sprintf("Unscoped token valid until %s", expirationDate.Format(common.PrintTimeFormat)))
-	common.UpdateOtcInformation(otcInfo)
+func updateOTCInfoFile(tokenResponse common.TokenResponse) {
+	cloud := config.GetActiveCloudConfig()
+	if cloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
+		// Sanity check: we're in the same cloud as the active cloud
+		common.OutputErrorMessageToConsoleAndExit("fatal: authorization made for wrong cloud configuration")
+	}
+	cloud.Domain.Id = tokenResponse.Token.User.Domain.Id
+	if cloud.Username != tokenResponse.Token.User.Name && cloud.Tokens.HasScopedToken() {
+		cloud.Tokens.UpdateToken(config.Token{
+			Type:      config.Scoped,
+			Secret:    "",
+			IssuedAt:  "",
+			ExpiresAt: "",
+		})
+	}
+	cloud.Username = tokenResponse.Token.User.Name
+	token := config.Token{
+		Type:      config.Unscoped,
+		Secret:    tokenResponse.Token.Secret,
+		IssuedAt:  tokenResponse.Token.IssuedAt,
+		ExpiresAt: tokenResponse.Token.ExpiresAt,
+	}
+	if cloud.Tokens.HasUnscopedToken() {
+		cloud.Tokens.UpdateToken(token)
+	} else {
+		cloud.Tokens = append(cloud.Tokens, token)
+	}
+	config.UpdateCloudConfig(cloud)
 }

@@ -1,6 +1,12 @@
 # OTC-Auth
 Open Source CLI for the Authorization with the Open Telekom Cloud.
 
+[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](hhttps://github.com/iits-consulting/otc-auth/blob/main/LICENSE)
+![Build](https://github.com/iits-consulting/otc-auth/workflows/Build/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/iits-consulting/otc-auth)](https://goreportcard.com/report/github.com/iits-consulting/otc-auth)
+![CodeQL](https://github.com/iits-consulting/otc-auth/workflows/CodeQL/badge.svg)
+![ViewCount](https://views.whatilearened.today/views/github/iits-consulting/otc-auth.svg)
+
 With this CLI you can log in to the OTC through its Identity Access Manager (IAM) or through an external Identity Provider (IdP) in order to get an unscoped token. The allowed protocols for IdP login are SAML and OIDC. When logging in directly with Telekom's IAM it is also possible to use Multi-Factor Authentication (MFA) in the process.
 
 After you have retrieved an unscoped token, you can use it to get a list of the clusters in a project from the Cloud Container Engine (CCE) and also get the remote kube config file and merge with your local file.

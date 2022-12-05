@@ -1,72 +1,100 @@
 package cce
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/avast/retry-go"
 	"github.com/go-http-utils/headers"
-	"io"
 	"log"
 	"net/http"
 	"otc-auth/src/common"
 	"otc-auth/src/common/endpoints"
 	"otc-auth/src/common/headervalues"
 	"otc-auth/src/common/xheaders"
+	"otc-auth/src/config"
 	"otc-auth/src/iam"
 	"strings"
 	"time"
 )
 
-func GetClusterNames(projectName string) []string {
-	clustersResult := getClusters(projectName)
-	var clusterNames []string
-	for i := range clustersResult.Items {
-		clusterNames = append(clusterNames, clustersResult.Items[i].Metadata.Name)
+func GetClusterNames(projectName string) config.Clusters {
+	clustersResult := getClustersForProjectFromServiceProvider(projectName)
+	var clusters config.Clusters
+
+	for _, item := range clustersResult.Items {
+		clusters = append(clusters, config.Cluster{
+			Name: item.Metadata.Name,
+			Id:   item.Metadata.UID,
+		})
 	}
-	return clusterNames
+
+	config.UpdateClusters(clusters)
+	println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
+	return clusters
 }
 
-func GetKubeConfig(kubeConfigParams KubeConfigParams) string {
-	return getKubeConfig(kubeConfigParams)
+func GetKubeConfig(configParams KubeConfigParams) {
+	kubeConfig := getKubeConfig(configParams)
+
+	mergeKubeConfig(configParams.ProjectName, configParams.ClusterName, kubeConfig)
+
+	println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", configParams.ClusterName))
 }
 
-func MergeKubeConfig(projectName string, clusterName string, newKubeConfigData string) {
-	mergeKubeConfig(projectName, clusterName, newKubeConfigData)
+func GetProjects() {
+	projectsResponse := getProjectsFromServiceProvider()
+
+	var projects config.Projects
+	for _, project := range projectsResponse.Projects {
+		projects = append(projects, config.Project{
+			Name: project.Name,
+			Id:   project.Id,
+		})
+	}
+
+	config.UpdateProjects(projects)
+	println(fmt.Sprintf("Projects for active cloud:\n%s", strings.Join(projects.GetProjectNames(), ",\n")))
 }
 
-func getClusters(projectName string) GetClustersResult {
-	clustersResult := GetClustersResult{}
+func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
+	cloud := config.GetActiveCloudConfig()
+	println(fmt.Sprintf("info: fetching projects for cloud %s", cloud.Domain.Name))
+
+	request := common.GetRequest(http.MethodGet, endpoints.IamProjects, nil)
+	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
+	request.Header.Add(xheaders.XAuthToken, cloud.Tokens.GetUnscopedToken().Secret)
+
+	response := common.HttpClientMakeRequest(request)
+	bodyBytes := common.GetBodyBytesFromResponse(response)
+	projectsResponse = *common.DeserializeJsonForType[common.ProjectsResponse](bodyBytes)
+
+	return projectsResponse
+}
+
+func getClustersForProjectFromServiceProvider(projectName string) common.ClustersResponse {
+	clustersResponse := common.ClustersResponse{}
+	cloud := config.GetActiveCloudConfig()
+	project := cloud.Projects.FindProjectByName(projectName)
+	if project == nil {
+		GetProjects()
+		cloud = config.GetActiveCloudConfig()
+		verifiedProject := cloud.Projects.GetProjectByNameOrThrow(projectName)
+		project = &verifiedProject
+	}
+
 	err := retry.Do(
 		func() error {
-			client := common.GetHttpClient()
-
-			projectId := common.FindProjectID(projectName)
-			req, err := http.NewRequest(http.MethodGet, endpoints.Clusters(projectId), nil)
-			if err != nil {
-				return err
-			}
-
-			req.Header.Add(headers.ContentType, headervalues.ApplicationJson)
+			infoMessage := fmt.Sprintf("info: fetching clusters for project %s", projectName)
+			println(infoMessage)
+			request := common.GetRequest(http.MethodGet, endpoints.Clusters(project.Id), nil)
+			request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
 			scopedToken := getScopedToken(projectName)
-			req.Header.Add(xheaders.XAuthToken, scopedToken)
+			request.Header.Add(xheaders.XAuthToken, scopedToken.Secret)
 
-			resp, err := client.Do(req)
-			if err != nil {
-				return err
-			}
+			response := common.HttpClientMakeRequest(request)
+			bodyBytes := common.GetBodyBytesFromResponse(response)
 
-			responseBody, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return err
-			}
-			if resp.StatusCode != 200 {
-				return fmt.Errorf("error: status %s, body:\n%s", resp.Status, common.ErrorMessageToIndentedJsonFormat(responseBody))
-			}
-
-			err = json.Unmarshal(responseBody, &clustersResult)
-			if err != nil {
-				return err
-			}
+			clustersResponse = *common.DeserializeJsonForType[common.ClustersResponse](bodyBytes)
 			return nil
 		}, retry.OnRetry(func(n uint, err error) {
 			log.Printf("#%d: %s\n", n, err)
@@ -74,55 +102,72 @@ func getClusters(projectName string) GetClustersResult {
 		retry.DelayType(retry.FixedDelay),
 		retry.Delay(time.Second*2),
 	)
-
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	return clustersResult
+	return clustersResponse
 }
 
-func postClusterCert(projectName string, clusterId string, duration string) (resp *http.Response, err error) {
-
+func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (response *http.Response) {
 	body := fmt.Sprintf("{\"duration\": %s}", duration)
+	projectId := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName).Id
 
-	projectId := common.FindProjectID(projectName)
-	req, err := http.NewRequest(http.MethodPost, endpoints.ClusterCert(projectId, clusterId), strings.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
+	request := common.GetRequest(http.MethodPost, endpoints.ClusterCert(projectId, clusterId), strings.NewReader(body))
+	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
+	request.Header.Add(headers.Accept, headervalues.ApplicationJson)
+	tokens := config.GetActiveCloudConfig().Tokens
+	request.Header.Add(xheaders.XAuthToken, tokens.GetScopedToken().Secret)
 
-	req.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-	req.Header.Add(headers.Accept, headervalues.ApplicationJson)
-	req.Header.Add(xheaders.XAuthToken, getScopedToken(projectName))
+	response = common.HttpClientMakeRequest(request)
 
-	client := common.GetHttpClient()
-	resp, err = client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, err
+	return response
 }
 
 func getClusterId(clusterName string, projectName string) (clusterId string, err error) {
-	clustersResult := getClusters(projectName)
+	cloud := config.GetActiveCloudConfig()
 
-	for i := range clustersResult.Items {
-		cluster := clustersResult.Items[i]
-		if cluster.Metadata.Name == clusterName {
-			clusterId = cluster.Metadata.UID
-			break
-		}
+	if cloud.Clusters.ContainsClusterByName(clusterName) {
+		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
 	}
-	return clusterId, err
+
+	clustersResult := getClustersForProjectFromServiceProvider(projectName)
+
+	var clusters config.Clusters
+	for _, cluster := range clustersResult.Items {
+		clusters = append(clusters, config.Cluster{
+			Name: cluster.Metadata.Name,
+			Id:   cluster.Metadata.UID,
+		})
+	}
+	println(fmt.Sprintf("Clustes for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
+
+	config.UpdateClusters(clusters)
+	cloud = config.GetActiveCloudConfig()
+
+	if cloud.Clusters.ContainsClusterByName(clusterName) {
+		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
+	}
+
+	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(clusters.GetClusterNames(), ",\n"))
+	return clusterId, errors.New(errorMessage)
 }
 
-func getScopedToken(projectName string) string {
-	scopedTokenFromOTCInfoFile := common.GetScopedTokenFromOTCInfo(projectName)
-	if scopedTokenFromOTCInfoFile == "" {
-		iam.GetScopedToken(projectName)
-		return common.GetScopedTokenFromOTCInfo(projectName)
+func getScopedToken(projectName string) config.Token {
+	tokens := config.GetActiveCloudConfig().Tokens
+
+	if tokens.HasScopedToken() {
+		token := tokens.GetScopedToken()
+
+		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
+		if tokenExpirationDate.After(time.Now()) {
+			println(fmt.Sprintf("info: scoped token is valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
+			return token
+		}
 	}
-	return scopedTokenFromOTCInfoFile
+
+	println("attempting to request a scoped token.")
+	iam.GetScopedTokenFromServiceProvider(projectName)
+	tokens = config.GetActiveCloudConfig().Tokens
+	return tokens.GetScopedToken()
 }
