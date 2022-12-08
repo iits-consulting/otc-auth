@@ -32,6 +32,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
 		common.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
+
 	}
 
 	if tokenResponse.Token.Secret == "" {
@@ -48,25 +49,22 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse) {
 		common.OutputErrorMessageToConsoleAndExit("fatal: authorization made for wrong cloud configuration")
 	}
 	cloud.Domain.Id = tokenResponse.Token.User.Domain.Id
-	if cloud.Username != tokenResponse.Token.User.Name && cloud.Tokens.HasScopedToken() {
-		cloud.Tokens.UpdateToken(config.Token{
-			Type:      config.Scoped,
-			Secret:    "",
-			IssuedAt:  "",
-			ExpiresAt: "",
-		})
+	if cloud.Username != tokenResponse.Token.User.Name {
+		for i, project := range cloud.Projects {
+			cloud.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{
+				Secret:    "",
+				IssuedAt:  "",
+				ExpiresAt: "",
+			})
+		}
 	}
 	cloud.Username = tokenResponse.Token.User.Name
 	token := config.Token{
-		Type:      config.Unscoped,
 		Secret:    tokenResponse.Token.Secret,
 		IssuedAt:  tokenResponse.Token.IssuedAt,
 		ExpiresAt: tokenResponse.Token.ExpiresAt,
 	}
-	if cloud.Tokens.HasUnscopedToken() {
-		cloud.Tokens.UpdateToken(token)
-	} else {
-		cloud.Tokens = append(cloud.Tokens, token)
-	}
+
+	cloud.UnscopedToken = token
 	config.UpdateCloudConfig(cloud)
 }

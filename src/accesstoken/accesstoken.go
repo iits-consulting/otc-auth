@@ -38,7 +38,7 @@ func CreateAccessToken(durationSeconds int) {
 }
 
 func getAccessTokenFromServiceProvider(durationSeconds string) *http.Response {
-	secret := config.GetUnscopedToken().Secret
+	secret := config.GetActiveCloudConfig().UnscopedToken.Secret
 	body := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\", \"duration_seconds\": \"%s\"}}}}", secret, durationSeconds)
 
 	request := common.GetRequest(http.MethodPost, endpoints.IamSecurityTokens, strings.NewReader(body))

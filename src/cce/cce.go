@@ -47,8 +47,7 @@ func GetProjects() {
 	var projects config.Projects
 	for _, project := range projectsResponse.Projects {
 		projects = append(projects, config.Project{
-			Name: project.Name,
-			Id:   project.Id,
+			NameAndIdResource: config.NameAndIdResource{Name: project.Name, Id: project.Id},
 		})
 	}
 
@@ -62,7 +61,7 @@ func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse)
 
 	request := common.GetRequest(http.MethodGet, endpoints.IamProjects, nil)
 	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-	request.Header.Add(xheaders.XAuthToken, cloud.Tokens.GetUnscopedToken().Secret)
+	request.Header.Add(xheaders.XAuthToken, cloud.UnscopedToken.Secret)
 
 	response := common.HttpClientMakeRequest(request)
 	bodyBytes := common.GetBodyBytesFromResponse(response)
@@ -116,8 +115,8 @@ func getClusterCertFromServiceProvider(projectName string, clusterId string, dur
 	request := common.GetRequest(http.MethodPost, endpoints.ClusterCert(projectId, clusterId), strings.NewReader(body))
 	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
 	request.Header.Add(headers.Accept, headervalues.ApplicationJson)
-	tokens := config.GetActiveCloudConfig().Tokens
-	request.Header.Add(xheaders.XAuthToken, tokens.GetScopedToken().Secret)
+	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	request.Header.Add(xheaders.XAuthToken, project.ScopedToken.Secret)
 
 	response = common.HttpClientMakeRequest(request)
 
@@ -154,10 +153,10 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 }
 
 func getScopedToken(projectName string) config.Token {
-	tokens := config.GetActiveCloudConfig().Tokens
+	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 
-	if tokens.HasScopedToken() {
-		token := tokens.GetScopedToken()
+	if project.ScopedToken.IsTokenValid() {
+		token := project.ScopedToken
 
 		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
 		if tokenExpirationDate.After(time.Now()) {
@@ -168,6 +167,6 @@ func getScopedToken(projectName string) config.Token {
 
 	println("attempting to request a scoped token.")
 	iam.GetScopedTokenFromServiceProvider(projectName)
-	tokens = config.GetActiveCloudConfig().Tokens
-	return tokens.GetScopedToken()
+	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	return project.ScopedToken
 }

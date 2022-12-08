@@ -1,6 +1,7 @@
 package iam
 
 import (
+	"errors"
 	"fmt"
 	"github.com/avast/retry-go"
 	"github.com/go-http-utils/headers"
@@ -32,7 +33,7 @@ func GetScopedTokenFromServiceProvider(projectName string) {
 
 	err := retry.Do(
 		func() error {
-			requestBody := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\"}}, \"scope\": {\"project\": {\"id\": \"%s\"}}}}", cloud.Tokens.GetUnscopedToken().Secret, projectId)
+			requestBody := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\"}}, \"scope\": {\"project\": {\"id\": \"%s\"}}}}", cloud.UnscopedToken.Secret, projectId)
 
 			request := common.GetRequest(http.MethodPost, endpoints.IamTokens, strings.NewReader(requestBody))
 			request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
@@ -54,12 +55,16 @@ func GetScopedTokenFromServiceProvider(projectName string) {
 			defer response.Body.Close()
 
 			token := config.Token{
-				Type:      config.Scoped,
 				Secret:    scopedToken,
 				IssuedAt:  tokenResponse.Token.IssuedAt,
 				ExpiresAt: tokenResponse.Token.ExpiresAt,
 			}
-			cloud.Tokens.UpdateToken(token)
+			index := cloud.Projects.FindProjectIndexByName(projectName)
+			if index == nil {
+				errorMessage := fmt.Sprintf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", projectName)
+				common.OutputErrorToConsoleAndExit(errors.New(errorMessage))
+			}
+			cloud.Projects[*index].ScopedToken = token
 			config.UpdateCloudConfig(cloud)
 			println("scoped token acquired successfully.")
 

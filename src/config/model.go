@@ -98,15 +98,18 @@ func (clouds *Clouds) NumberOfActiveCloudConfigs() int {
 }
 
 type Cloud struct {
-	Domain   NameAndIdResource `json:"domain"`
-	Tokens   Tokens            `json:"tokens"`
-	Projects Projects          `json:"projects"`
-	Clusters Clusters          `json:"clusters"`
-	Username string            `json:"username"`
-	Active   bool              `json:"active"`
+	Domain        NameAndIdResource `json:"domain"`
+	UnscopedToken Token             `json:"unscopedToken"`
+	Projects      Projects          `json:"projects"`
+	Clusters      Clusters          `json:"clusters"`
+	Username      string            `json:"username"`
+	Active        bool              `json:"active"`
 }
 
-type Project NameAndIdResource
+type Project struct {
+	NameAndIdResource
+	ScopedToken Token `json:"scopedToken"`
+}
 type Projects []Project
 
 func (projects Projects) FindProjectByName(name string) *Project {
@@ -125,6 +128,15 @@ func (projects Projects) GetProjectByNameOrThrow(name string) Project {
 		common.OutputErrorToConsoleAndExit(errors.New(errorMessage))
 	}
 	return *project
+}
+
+func (projects Projects) FindProjectIndexByName(name string) *int {
+	for i, project := range projects {
+		if project.Name == name {
+			return &i
+		}
+	}
+	return nil
 }
 
 func (projects Projects) GetProjectNames() (names []string) {
@@ -176,7 +188,6 @@ type NameAndIdResource struct {
 }
 
 type Token struct {
-	Type      string `json:"type"`
 	Secret    string `json:"secret"`
 	IssuedAt  string `json:"issued_at"`
 	ExpiresAt string `json:"expires_at"`
@@ -184,103 +195,17 @@ type Token struct {
 
 type Tokens []Token
 
-func (tokens *Tokens) GetUnscopedToken() Token {
-	token, err := tokens.getTokenByType(Unscoped)
-	if err != nil || token == nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: no unscoped token found.")
+func (token *Token) IsTokenValid() bool {
+	if common.ParseTimeOrThrow(token.ExpiresAt).After(time.Now()) {
+		return true
+	} else {
+		return false
 	}
+}
+
+func (token *Token) UpdateToken(updatedToken Token) Token {
+	token.Secret = updatedToken.Secret
+	token.ExpiresAt = updatedToken.ExpiresAt
+	token.IssuedAt = updatedToken.IssuedAt
 	return *token
-}
-
-func (tokens *Tokens) GetScopedToken() Token {
-	token, err := tokens.getTokenByType(Scoped)
-	if err != nil || token == nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: no scoped token found.")
-	}
-	return *token
-}
-
-func (tokens *Tokens) HasScopedToken() bool {
-	if _, err := tokens.getTokenByType(Scoped); err == nil {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (tokens *Tokens) HasUnscopedToken() bool {
-	if _, err := tokens.getTokenByType(Unscoped); err == nil {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (tokens *Tokens) IsUnscopedTokenValid() bool {
-	if common.ParseTimeOrThrow(tokens.GetUnscopedToken().ExpiresAt).After(time.Now()) {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (tokens *Tokens) IsScopedTokenValid() bool {
-	if common.ParseTimeOrThrow(tokens.GetScopedToken().ExpiresAt).After(time.Now()) {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (tokens *Tokens) UpdateToken(updatedToken Token) (ok bool) {
-	if updatedToken.Type == Scoped {
-		if tokens.HasScopedToken() {
-			scopedToken := &(*tokens)[*tokens.getScopedTokenIndex()]
-			scopedToken.Secret = updatedToken.Secret
-			scopedToken.ExpiresAt = updatedToken.ExpiresAt
-			scopedToken.IssuedAt = updatedToken.IssuedAt
-
-			return true
-		}
-		*tokens = append(*tokens, updatedToken)
-		return true
-	} else if updatedToken.Type == Unscoped {
-		if tokens.HasUnscopedToken() {
-			unscopedToken := &(*tokens)[*tokens.getUnscopedTokenIndex()]
-			unscopedToken.Secret = updatedToken.Secret
-			unscopedToken.ExpiresAt = updatedToken.ExpiresAt
-			unscopedToken.IssuedAt = updatedToken.IssuedAt
-
-			return true
-		}
-		*tokens = append(*tokens, updatedToken)
-		return true
-	}
-	return false
-}
-
-func (tokens *Tokens) getTokenIndex(tokenType string) *int {
-	for index, token := range *tokens {
-		if token.Type == tokenType {
-			return &index
-		}
-	}
-	return nil
-}
-
-func (tokens *Tokens) getUnscopedTokenIndex() *int {
-	return tokens.getTokenIndex(Unscoped)
-}
-
-func (tokens *Tokens) getScopedTokenIndex() *int {
-	return tokens.getTokenIndex(Scoped)
-}
-
-func (tokens *Tokens) getTokenByType(tokenType string) (*Token, error) {
-	for _, token := range *tokens {
-		if token.Type == tokenType {
-			return &token, nil
-		}
-	}
-	return nil, errors.New("no token found")
 }

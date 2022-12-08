@@ -21,6 +21,7 @@ func LoadCloudConfig(domainName string) {
 		RegisterCloudConfig(domainName)
 	}
 
+	otcConfig = getOtcConfigContent()
 	if otcConfig.Clouds.GetActiveCloud().Domain.Name != domainName {
 		clouds := otcConfig.Clouds
 		clouds.SetActiveByName(domainName)
@@ -58,11 +59,11 @@ func RegisterCloudConfig(domainName string) {
 func IsAuthenticationValid() bool {
 	cloud := GetActiveCloudConfig()
 
-	if !cloud.Tokens.HasUnscopedToken() {
+	if !cloud.UnscopedToken.IsTokenValid() {
 		return false
 	}
 
-	unscopedToken := cloud.Tokens.GetUnscopedToken()
+	unscopedToken := cloud.UnscopedToken
 
 	tokenExpirationDate := common.ParseTimeOrThrow(unscopedToken.ExpiresAt)
 	if tokenExpirationDate.After(time.Now()) {
@@ -123,11 +124,6 @@ func GetActiveCloudConfig() Cloud {
 		common.OutputErrorToConsoleAndExit(err, "fatal: %s.\n\nPlease use the cloud-config register or the cloud-config load command to set an active cloud configuration.")
 	}
 	return *cloud
-}
-
-func GetUnscopedToken() Token {
-	tokens := GetActiveCloudConfig().Tokens
-	return tokens.GetUnscopedToken()
 }
 
 func OtcConfigFileExists() bool {
@@ -216,8 +212,6 @@ func writeStringToFile(content string) {
 func appendCloudConfig(cloud Cloud) {
 	otcConfig := getOtcConfigContent()
 	clouds := otcConfig.Clouds
-
-	clouds.ContainsCloud(cloud.Domain.Name)
 
 	if otcConfig.Clouds.ContainsCloud(cloud.Domain.Name) {
 		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command.", cloud.Domain.Name))
