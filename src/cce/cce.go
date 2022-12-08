@@ -20,7 +20,6 @@ import (
 func GetClusterNames(projectName string) config.Clusters {
 	clustersResult := getClustersForProjectFromServiceProvider(projectName)
 	var clusters config.Clusters
-
 	for _, item := range clustersResult.Items {
 		clusters = append(clusters, config.Cluster{
 			Name: item.Metadata.Name,
@@ -41,9 +40,8 @@ func GetKubeConfig(configParams KubeConfigParams) {
 	println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", configParams.ClusterName))
 }
 
-func GetProjects() {
+func GetProjectsInActiveCloud() {
 	projectsResponse := getProjectsFromServiceProvider()
-
 	var projects config.Projects
 	for _, project := range projectsResponse.Projects {
 		projects = append(projects, config.Project{
@@ -75,7 +73,7 @@ func getClustersForProjectFromServiceProvider(projectName string) common.Cluster
 	cloud := config.GetActiveCloudConfig()
 	project := cloud.Projects.FindProjectByName(projectName)
 	if project == nil {
-		GetProjects()
+		GetProjectsInActiveCloud()
 		cloud = config.GetActiveCloudConfig()
 		verifiedProject := cloud.Projects.GetProjectByNameOrThrow(projectName)
 		project = &verifiedProject

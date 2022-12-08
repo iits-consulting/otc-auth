@@ -77,14 +77,17 @@ func main() {
 	clientId := loginIdpOidcCommand.String("c", clientIdArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Client Id as set on the IdP. %s %s", provideArgumentHelp, envClientId)})
 	clientSecret := loginIdpOidcCommand.String("s", clientSecretArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Secret Id as set on the IdP. %s %s", provideArgumentHelp, envClientSecret)})
 
+	// List Projects
+	projectsCommand := parser.NewCommand("projects", "Manage Project Information")
+	listProjectsCommand := projectsCommand.NewCommand("list", "List Projects in Active Cloud")
+
 	// Manage Cloud Container Engine
 	cceCommand := parser.NewCommand("cce", "Manage Cloud Container Engine.")
 	projectName := cceCommand.String("p", osProjectName, &argparse.Options{Required: false, Help: fmt.Sprintf("Name of the project you want to access. %s %s.", provideArgumentHelp, envOsProjectName)})
 	cceDomainName := cceCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 
 	// List clusters
-	getClustersCommand := cceCommand.NewCommand("list-clusters", "Lists project clusters.")
-	getProjectsCommand := cceCommand.NewCommand("list-projects", "Lists cloud projects.")
+	getClustersCommand := cceCommand.NewCommand("list", "Lists Project Clusters in CCE.")
 
 	// Get Kubernetes Configuration
 	getKubeConfigCommand := cceCommand.NewCommand("get-kube-config", "Get remote kube config and merge it with existing local config file.")
@@ -161,17 +164,16 @@ func main() {
 		config.RemoveCloudConfig(domainNameToRemove)
 	}
 
+	if listProjectsCommand.Happened() {
+		cce.GetProjectsInActiveCloud()
+	}
+
 	if cceCommand.Happened() {
 		domainName := getDomainNameOrThrow(*cceDomainName)
 		config.LoadCloudConfig(domainName)
 
 		if !config.IsAuthenticationValid() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
-		}
-
-		if getProjectsCommand.Happened() {
-			cce.GetProjects()
-			return
 		}
 
 		project := getProjectNameOrThrow(*projectName)
