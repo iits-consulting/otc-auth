@@ -42,14 +42,10 @@ func RegisterCloudConfig(domainName string) {
 		},
 		Active: true,
 	}
-	help := "Use the login command to authenticate.\nChange cloud configuration with the cloud-config load command."
 
 	if !OtcConfigFileExists() {
 		createConfigFileWithCloudConfig(OtcConfigContent{Clouds: Clouds{cloud}})
-		_, err := fmt.Fprintf(os.Stdout, "info: cloud config created. Cloud %s set to active.\n%s", domainName, help)
-		if err != nil {
-			common.OutputErrorToConsoleAndExit(err)
-		}
+		println("info: cloud config created.")
 		return
 	}
 
