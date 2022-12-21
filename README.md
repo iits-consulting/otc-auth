@@ -1,7 +1,7 @@
 # OTC-Auth
 Open Source CLI for the Authorization with the Open Telekom Cloud.
 
-[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](hhttps://github.com/iits-consulting/otc-auth/blob/main/LICENSE)
+[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/iits-consulting/otc-auth/blob/main/LICENSE)
 ![Build](https://github.com/iits-consulting/otc-auth/workflows/Build/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/iits-consulting/otc-auth)](https://goreportcard.com/report/github.com/iits-consulting/otc-auth)
 ![CodeQL](https://github.com/iits-consulting/otc-auth/workflows/CodeQL/badge.svg)
@@ -12,6 +12,15 @@ With this CLI you can log in to the OTC through its Identity Access Manager (IAM
 After you have retrieved an unscoped token, you can use it to get a list of the clusters in a project from the Cloud Container Engine (CCE) and also get the remote kube config file and merge with your local file.
 
 This tool can also be used to manage (create) a pair of Access Key/ Secret Key in order to make requests more secure.
+
+## Install
+
+Binary downloads of the Helm client can be found on the [Releases page](https://github.com/iits-consulting/otc-auth/releases).
+
+Unpack the helm binary and add it to your PATH and you are good to go!
+
+## Demo
+
 
 ## Login
 Use the `login` command to retrieve an unscoped token either by logging in directly with the Service Provider or through an IdP. You can see the help page by entering `login --help` or `login -h`. There are three log in options (`iam`, `idp-saml`, and `idp-oidc`) and one of them must be provided.
