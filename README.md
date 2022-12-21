@@ -13,14 +13,14 @@ After you have retrieved an unscoped token, you can use it to get a list of the 
 
 This tool can also be used to manage (create) a pair of Access Key/ Secret Key in order to make requests more secure.
 
+## Demo
+https://user-images.githubusercontent.com/19291722/208880256-b0da924e-254e-4bc4-b9ee-396c43234a5b.mp4
+
 ## Install
 
 Binary downloads of the Helm client can be found on the [Releases page](https://github.com/iits-consulting/otc-auth/releases).
 
 Unpack the helm binary and add it to your PATH and you are good to go!
-
-## Demo
-
 
 ## Login
 Use the `login` command to retrieve an unscoped token either by logging in directly with the Service Provider or through an IdP. You can see the help page by entering `login --help` or `login -h`. There are three log in options (`iam`, `idp-saml`, and `idp-oidc`) and one of them must be provided.
