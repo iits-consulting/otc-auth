@@ -137,7 +137,7 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 			Id:   cluster.Metadata.UID,
 		})
 	}
-	println(fmt.Sprintf("Clustes for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
+	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
 
 	config.UpdateClusters(clusters)
 	cloud = config.GetActiveCloudConfig()

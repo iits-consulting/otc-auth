@@ -7,22 +7,22 @@ import (
 )
 
 const (
-	envOsUsername     string = "OS_USERNAME"
-	envOsPassword     string = "OS_PASSWORD"
-	envOsDomainName   string = "OS_DOMAIN_NAME"
-	envOsUserDomainId string = "OS_USER_DOMAIN_ID"
-	envOsProjectName  string = "OS_PROJECT_NAME"
-	envIdpName        string = "IDP_NAME"
-	envIdpUrl         string = "IDP_URL"
-	envClientId       string = "CLIENT_ID"
-	envClientSecret   string = "CLIENT_SECRET"
-	envClusterName    string = "CLUSTER_NAME"
+	envOsUsername     = "OS_USERNAME"
+	envOsPassword     = "OS_PASSWORD"
+	envOsDomainName   = "OS_DOMAIN_NAME"
+	envOsUserDomainId = "OS_USER_DOMAIN_ID"
+	envOsProjectName  = "OS_PROJECT_NAME"
+	envIdpName        = "IDP_NAME"
+	envIdpUrl         = "IDP_URL"
+	envClientId       = "CLIENT_ID"
+	envClientSecret   = "CLIENT_SECRET"
+	envClusterName    = "CLUSTER_NAME"
 
-	authTypeIDP string = "idp"
-	authTypeIAM string = "iam"
+	authTypeIDP = "idp"
+	authTypeIAM = "iam"
 
-	protocolSAML string = "saml"
-	protocolOIDC string = "oidc"
+	protocolSAML = "saml"
+	protocolOIDC = "oidc"
 )
 
 func getProjectNameOrThrow(projectName string) string {
@@ -38,7 +38,7 @@ func getClusterNameOrThrow(clusterName string) string {
 		return clusterName
 	}
 
-	return getEnvironmentVariableOrThrow(clusterName, envClusterName)
+	return getEnvironmentVariableOrThrow(clusterArg, envClusterName)
 }
 
 func getIdpInfoOrThrow(provider string, url string) (string, string) {

@@ -28,6 +28,7 @@ const (
 	idpUrlArg         = "idp-url"
 	clientIdArg       = "client-id"
 	clientSecretArg   = "client-secret"
+	clusterArg        = "cluster"
 )
 
 func main() {
@@ -91,7 +92,7 @@ func main() {
 
 	// Get Kubernetes Configuration
 	getKubeConfigCommand := cceCommand.NewCommand("get-kube-config", "Get remote kube config and merge it with existing local config file.")
-	clusterName := getKubeConfigCommand.String("c", "cluster", &argparse.Options{Required: false, Help: fmt.Sprintf("Name of the cluster you want to access %s %s.", provideArgumentHelp, envClusterName)})
+	clusterName := getKubeConfigCommand.String("c", clusterArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Name of the clusterArg you want to access %s %s.", provideArgumentHelp, envClusterName)})
 	daysValid := getKubeConfigCommand.String("v", "days-valid", &argparse.Options{Required: false, Help: "Period (in days) that the config will be valid", Default: "7"})
 
 	// AK/SK Management
