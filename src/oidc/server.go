@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-http-utils/headers"
@@ -9,6 +10,7 @@ import (
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
 	"net/http"
+	"net/url"
 	"otc-auth/src/common"
 	"strings"
 )
@@ -96,6 +98,24 @@ func startAndListenHttpServer(channel chan common.OidcCredentialsResponse) {
 	err := http.ListenAndServe(localhost, nil)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, fmt.Sprintf("failed to start server at %s", localhost))
+	}
+}
+
+func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCredentialsResponse {
+	data := url.Values{}
+	data.Set("grant_type", "client_credentials")
+	data.Set("scope", "openid")
+	url := "https://some.identity.provider/realms/yourRealm/protocol/openid-connect/token" // TODO: pass in as argument
+	request := common.GetRequest(http.MethodPost, url, strings.NewReader(data.Encode()))
+	request.SetBasicAuth(params.ClientId, params.ClientSecret)
+	request.Header.Add(headers.ContentType, "application/x-www-form-urlencoded")
+	response := common.HttpClientMakeRequest(request)
+	bodyBytes := common.GetBodyBytesFromResponse(response)
+	var values map[string]string
+	json.Unmarshal(bodyBytes, &values)
+
+	return common.OidcCredentialsResponse{
+		BearerToken: values["id_token"],
 	}
 }
 
