@@ -3,18 +3,19 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"otc-auth/src/common"
+	"strings"
+
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
-	"net/http"
-	"otc-auth/src/common"
-	"strings"
 )
 
 var (
-	scopes = []string{oidc.ScopeOpenID, "profile", "roles", "name", "groups", "email"}
+	scopes = []string{oidc.ScopeOpenID, "profile", "openid", "email"}
 	ctx    = context.Background()
 
 	oAuth2Config    oauth2.Config
