@@ -17,18 +17,19 @@ var (
 )
 
 const (
-	osUsername        = "os-username"
-	osPassword        = "os-password"
-	overwriteTokenArg = "overwrite-token"
-	osDomainName      = "os-domain-name"
-	osUserDomainId    = "os-user-domain-id"
-	osProjectName     = "os-project-name"
-	totpArg           = "totp"
-	idpName           = "idp-name"
-	idpUrlArg         = "idp-url"
-	clientIdArg       = "client-id"
-	clientSecretArg   = "client-secret"
-	clusterArg        = "cluster"
+	osUsername          = "os-username"
+	osPassword          = "os-password"
+	overwriteTokenArg   = "overwrite-token"
+	osDomainName        = "os-domain-name"
+	osUserDomainId      = "os-user-domain-id"
+	osProjectName       = "os-project-name"
+	totpArg             = "totp"
+	idpName             = "idp-name"
+	idpUrlArg           = "idp-url"
+	clientIdArg         = "client-id"
+	clientSecretArg     = "client-secret"
+	clusterArg          = "cluster"
+	isServiceAccountArg = "service-account"
 )
 
 func main() {
@@ -38,14 +39,16 @@ func main() {
 		requiredForIdp      = "Required for authentication with IdP."
 	)
 	var (
-		domainName          *string
-		username            *string
-		password            *string
-		overwriteToken      *bool
-		identityProvider    *string
-		identityProviderUrl *string
-		idpCommandHelp      = fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s", requiredForIdp, provideArgumentHelp, envIdpName)
-		idpUrlCommandHelp   = fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredForIdp, provideArgumentHelp, envIdpUrl)
+		domainName           *string
+		username             *string
+		password             *string
+		overwriteToken       *bool
+		identityProvider     *string
+		identityProviderUrl  *string
+		isServiceAccount     *bool
+		idpCommandHelp       = fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s", requiredForIdp, provideArgumentHelp, envIdpName)
+		idpUrlCommandHelp    = fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredForIdp, provideArgumentHelp, envIdpUrl)
+		isServiceAccountHelp = "Flag to set if the account is a service account. The service account needs to be configured in your identity provider."
 	)
 
 	parser := argparse.NewParser("otc-auth", "OTC-Auth Command Line Interface for managing OTC clouds.")
@@ -61,6 +64,7 @@ func main() {
 	overwriteToken = loginCommand.Flag("o", overwriteTokenArg, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
 	identityProvider = loginCommand.String("i", idpName, &argparse.Options{Required: false, Help: idpCommandHelp})
 	identityProviderUrl = loginCommand.String("", idpUrlArg, &argparse.Options{Required: false, Help: idpUrlCommandHelp})
+	isServiceAccount = loginCommand.Flag("", isServiceAccountArg, &argparse.Options{Required: false, Help: isServiceAccountHelp})
 
 	// Remove Login information
 	removeLoginCommand := loginCommand.NewCommand("remove", "Removes login information for a cloud")
@@ -147,14 +151,15 @@ func main() {
 	if loginIdpOidcCommand.Happened() {
 		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProvider, *identityProviderUrl)
 		authInfo := common.AuthInfo{
-			AuthType:      authTypeIDP,
-			IdpName:       identityProvider,
-			IdpUrl:        identityProviderUrl,
-			AuthProtocol:  protocolOIDC,
-			DomainName:    getDomainNameOrThrow(*domainName),
-			ClientId:      getClientIdOrThrow(*clientId),
-			ClientSecret:  findClientSecretOrReturnEmpty(*clientSecret),
-			OverwriteFile: *overwriteToken,
+			AuthType:         authTypeIDP,
+			IdpName:          identityProvider,
+			IdpUrl:           identityProviderUrl,
+			AuthProtocol:     protocolOIDC,
+			DomainName:       getDomainNameOrThrow(*domainName),
+			ClientId:         getClientIdOrThrow(*clientId),
+			ClientSecret:     findClientSecretOrReturnEmpty(*clientSecret),
+			OverwriteFile:    *overwriteToken,
+			IsServiceAccount: *isServiceAccount,
 		}
 
 		AuthenticateAndGetUnscopedToken(authInfo)

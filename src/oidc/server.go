@@ -102,17 +102,25 @@ func startAndListenHttpServer(channel chan common.OidcCredentialsResponse) {
 }
 
 func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCredentialsResponse {
+	idpTokenUrl, err := url.JoinPath(params.IdpUrl, "protocol/openid-connect/token")
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
 	data.Set("scope", "openid")
-	url := "https://some.identity.provider/realms/yourRealm/protocol/openid-connect/token" // TODO: pass in as argument
-	request := common.GetRequest(http.MethodPost, url, strings.NewReader(data.Encode()))
+	request := common.GetRequest(http.MethodPost, idpTokenUrl, strings.NewReader(data.Encode()))
 	request.SetBasicAuth(params.ClientId, params.ClientSecret)
 	request.Header.Add(headers.ContentType, "application/x-www-form-urlencoded")
 	response := common.HttpClientMakeRequest(request)
 	bodyBytes := common.GetBodyBytesFromResponse(response)
+
 	var values map[string]string
-	json.Unmarshal(bodyBytes, &values)
+	err = json.Unmarshal(bodyBytes, &values)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 
 	return common.OidcCredentialsResponse{
 		BearerToken: values["id_token"],

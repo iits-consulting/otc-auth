@@ -9,7 +9,12 @@ import (
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
-	oidcCredentials := authenticateServiceAccountWithIdp(authInfo) // authenticateServiceAccountWithIdp(authInfo)
+	var oidcCredentials common.OidcCredentialsResponse
+	if authInfo.IsServiceAccount {
+		oidcCredentials = authenticateServiceAccountWithIdp(authInfo)
+	} else {
+		oidcCredentials = authenticateWithIdp(authInfo)
+	}
 
 	return authenticateWithServiceProvider(oidcCredentials, authInfo)
 }
