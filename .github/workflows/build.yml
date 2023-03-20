@@ -7,12 +7,16 @@ jobs:
     name: Lint the otc-auth source code
     runs-on: ubuntu-22.04
     steps:
+      - name: Setup Go environment
+        uses: actions/setup-go@v3
+        with:
+          go-version: ^1.19
       - name: Checkout
         uses: actions/checkout@v2
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: latest
+          version: v3.4.0
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
