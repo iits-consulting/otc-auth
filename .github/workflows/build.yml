@@ -16,7 +16,7 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v3.4.0
+          version: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
