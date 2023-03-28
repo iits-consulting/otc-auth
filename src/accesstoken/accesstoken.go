@@ -24,7 +24,7 @@ func CreateAccessToken(durationSeconds int) {
 	accessKeyFileContent := fmt.Sprintf(
 		"export OS_ACCESS_KEY=%s\n"+
 			"export AWS_ACCESS_KEY_ID=%s\n"+
-			"export OS_ACCESS_KEY=%s\n"+
+			"export OS_SECRET_KEY=%s\n"+
 			"export AWS_SECRET_ACCESS_KEY=%s",
 		accessTokenCreationResponse.Credential.Access,
 		accessTokenCreationResponse.Credential.Access,
