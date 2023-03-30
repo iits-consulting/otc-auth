@@ -27,7 +27,26 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	return common.GetCloudCredentialsFromResponseOrThrow(response)
 }
 
-func GetScopedTokenFromServiceProvider(projectName string) {
+func GetScopedToken(projectName string) config.Token {
+	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+
+	if project.ScopedToken.IsTokenValid() {
+		token := project.ScopedToken
+
+		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
+		if tokenExpirationDate.After(time.Now()) {
+			println(fmt.Sprintf("info: scoped token is valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
+			return token
+		}
+	}
+
+	println("attempting to request a scoped token.")
+	getScopedTokenFromServiceProvider(projectName)
+	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	return project.ScopedToken
+}
+
+func getScopedTokenFromServiceProvider(projectName string) {
 	cloud := config.GetActiveCloudConfig()
 	projectId := cloud.Projects.GetProjectByNameOrThrow(projectName).Id
 
