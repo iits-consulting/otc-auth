@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var otcConfigPath = getHomeFolder() + "/.otc-auth-config"
+var otcConfigPath = GetHomeFolder() + "/.otc-auth-config"
 
 func LoadCloudConfig(domainName string) {
 	if !OtcConfigFileExists() {
@@ -142,7 +142,7 @@ func getOtcConfigContent() OtcConfigContent {
 	return otcConfig
 }
 
-func getHomeFolder() (homeFolder string) {
+func GetHomeFolder() (homeFolder string) {
 	homeFolder, err := os.UserHomeDir()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error retrieving home directory.\ntrace: %s")
@@ -161,7 +161,7 @@ func writeOtcConfigContentToFile(content OtcConfigContent) {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error encoding json.\ntrace: %s")
 	}
 
-	writeStringToFile(common.ByteSliceToIndentedJsonFormat(contentAsBytes))
+	WriteConfigFile(common.ByteSliceToIndentedJsonFormat(contentAsBytes), otcConfigPath)
 }
 
 func readFileContent() string {
@@ -188,8 +188,8 @@ func readFileContent() string {
 	return content
 }
 
-func writeStringToFile(content string) {
-	file, err := os.Create(otcConfigPath)
+func WriteConfigFile(content string, configPath string) {
+	file, err := os.Create(configPath)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error reading config file.\ntrace: %s")
 	}

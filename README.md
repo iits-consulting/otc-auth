@@ -84,6 +84,17 @@ You can use the OTC-Auth tool to download the AK/SK pair directly from the OTC. 
 
 The "ak-sk-env.sh" file must then be sourced before you can start using the environment variables.
 
+## Openstack Integration
+The OTC-Auth tool is able to generate the clouds.yaml config file for openstack. With this file it is possible to
+reuse the clouds.yaml with terraform.
+
+If you execute this command
+
+`otc-auth openstack config-create`
+
+It will create a cloud config for every project which you have access to and generate a scoped token. After that it overrides the
+the clouds.yaml (by default: ~/.config/openstack/clouds.yaml) file.
+
 ## Environment Variables
 The OTC-Auth tool also provides environment variables for all the required arguments. For the sake of compatibility, they are aligned with the Open Stack environment variables (starting with OS).
 
@@ -99,5 +110,3 @@ The OTC-Auth tool also provides environment variables for all the required argum
 | OS_USERNAME          | `--os-username`       |  `u`  | Username (iam or idp)                         |
 | IDP_NAME             | `--idp-name`          |  `i`  | Identity Provider name (as configured on OTC) |
 | IDP_URL              | `--idp-url`           |  N/A  | Authorization endpoint on the IDP             |
-
-
