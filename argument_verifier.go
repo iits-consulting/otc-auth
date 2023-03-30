@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"otc-auth/src/common"
+	"otc-auth/common"
 )
 
 const (

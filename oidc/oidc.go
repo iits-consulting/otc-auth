@@ -3,8 +3,8 @@ package oidc
 import (
 	"github.com/go-http-utils/headers"
 	"net/http"
-	"otc-auth/src/common"
-	"otc-auth/src/common/endpoints"
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {

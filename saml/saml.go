@@ -5,10 +5,10 @@ import (
 	"encoding/xml"
 	"github.com/go-http-utils/headers"
 	"net/http"
-	"otc-auth/src/common"
-	"otc-auth/src/common/endpoints"
-	"otc-auth/src/common/headervalues"
-	header "otc-auth/src/common/xheaders"
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
+	"otc-auth/common/headervalues"
+	header "otc-auth/common/xheaders"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {

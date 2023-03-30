@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/akamensky/argparse"
 	"os"
-	"otc-auth/src/accesstoken"
-	"otc-auth/src/cce"
-	"otc-auth/src/common"
-	"otc-auth/src/config"
+	"otc-auth/accesstoken"
+	"otc-auth/cce"
+	"otc-auth/common"
+	"otc-auth/config"
 )
 
 // GoReleaser will set the following 2 ldflags by default
