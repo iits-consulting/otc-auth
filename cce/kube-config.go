@@ -5,8 +5,8 @@ import (
 	. "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"os"
-	"otc-auth/src/common"
-	"otc-auth/src/config"
+	"otc-auth/common"
+	"otc-auth/config"
 	"strings"
 )
 
