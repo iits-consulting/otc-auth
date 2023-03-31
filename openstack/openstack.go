@@ -7,6 +7,7 @@ import (
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 	"otc-auth/iam"
+	"path"
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
@@ -58,7 +59,8 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 	}
 
 	if openStackConfigFileLocation == "" {
-		config.WriteConfigFile(string(contentAsBytes), config.GetHomeFolder()+"/.config/openstack/clouds.yaml")
+		configFilePath := path.Join(config.GetHomeFolder(), ".config", "openstack", "clouds.yaml")
+		config.WriteConfigFile(string(contentAsBytes), configFilePath)
 	} else {
 		config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
 	}
