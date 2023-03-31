@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"os"
 	"otc-auth/common"
+	"path"
 	"time"
 )
 
-var otcConfigPath = GetHomeFolder() + "/.otc-auth-config"
+var otcConfigPath = path.Join(GetHomeFolder(), ".otc-auth-config")
 
 func LoadCloudConfig(domainName string) {
 	if !OtcConfigFileExists() {
