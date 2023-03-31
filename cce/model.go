@@ -1,9 +1,10 @@
 package cce
 
 type KubeConfigParams struct {
-	ProjectName string
-	ClusterName string
-	DaysValid   string
+	ProjectName    string
+	ClusterName    string
+	DaysValid      string
+	TargetLocation string
 }
 
 type KubeConfig struct {

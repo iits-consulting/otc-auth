@@ -99,6 +99,7 @@ func main() {
 	getKubeConfigCommand := cceCommand.NewCommand("get-kube-config", "Get remote kube config and merge it with existing local config file.")
 	clusterName := getKubeConfigCommand.String("c", clusterArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Name of the clusterArg you want to access %s %s.", provideArgumentHelp, envClusterName)})
 	daysValid := getKubeConfigCommand.String("v", "days-valid", &argparse.Options{Required: false, Help: "Period (in days) that the config will be valid", Default: "7"})
+	targetLocation := getKubeConfigCommand.String("l", "target-location", &argparse.Options{Required: false, Help: "Where the kube config should be saved, Default: ~/.kube/config"})
 
 	// AK/SK Management
 	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK.")
@@ -194,9 +195,10 @@ func main() {
 			cluster := getClusterNameOrThrow(*clusterName)
 
 			kubeConfigParams := cce.KubeConfigParams{
-				ProjectName: project,
-				ClusterName: cluster,
-				DaysValid:   *daysValid,
+				ProjectName:    project,
+				ClusterName:    cluster,
+				DaysValid:      *daysValid,
+				TargetLocation: *targetLocation,
 			}
 
 			cce.GetKubeConfig(kubeConfigParams)

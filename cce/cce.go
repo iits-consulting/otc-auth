@@ -35,7 +35,7 @@ func GetClusterNames(projectName string) config.Clusters {
 func GetKubeConfig(configParams KubeConfigParams) {
 	kubeConfig := getKubeConfig(configParams)
 
-	mergeKubeConfig(configParams.ProjectName, configParams.ClusterName, kubeConfig)
+	mergeKubeConfig(configParams, kubeConfig)
 
 	println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", configParams.ClusterName))
 }
