@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
 	"net/http"
-	"otc-auth/src/common"
+	"otc-auth/common"
 	"strings"
 )
 

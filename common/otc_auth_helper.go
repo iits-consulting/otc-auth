@@ -3,7 +3,7 @@ package common
 import (
 	"fmt"
 	"net/http"
-	"otc-auth/src/common/xheaders"
+	"otc-auth/common/xheaders"
 	"strings"
 	"time"
 )

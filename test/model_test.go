@@ -1,7 +1,7 @@
 package test
 
 import (
-	"otc-auth/src/config"
+	"otc-auth/config"
 	"reflect"
 	"strings"
 	"testing"
