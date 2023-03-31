@@ -7,6 +7,8 @@ import (
 	"os"
 	"otc-auth/common"
 	"otc-auth/config"
+	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -23,8 +25,8 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 	return string(common.GetBodyBytesFromResponse(response))
 }
 
-func mergeKubeConfig(projectName string, clusterName string, kubeConfigData string) {
-	kubeConfigContextData := addContextInformationToKubeConfig(projectName, clusterName, kubeConfigData)
+func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
+	kubeConfigContextData := addContextInformationToKubeConfig(configParams.ProjectName, configParams.ClusterName, kubeConfigData)
 	currentConfig, err := NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
@@ -59,13 +61,26 @@ func mergeKubeConfig(projectName string, clusterName string, kubeConfigData stri
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	err = WriteToFile(*mergedConfig, homedir.HomeDir()+"/.kube/config")
+	err = WriteToFile(*mergedConfig, determineTargetLocation(configParams.TargetLocation))
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	os.RemoveAll(filenameNewFile)
 	os.RemoveAll(filenameCurrentFile)
+}
+
+func determineTargetLocation(targetLocation string) string {
+	defaultKubeConfigLocation := path.Join(homedir.HomeDir(), ".kube", "config")
+	if targetLocation != "" {
+		err := os.MkdirAll(filepath.Dir(targetLocation), os.ModePerm)
+		if err != nil {
+			common.OutputErrorMessageToConsoleAndExit(err.Error())
+		}
+		return targetLocation
+	} else {
+		return defaultKubeConfigLocation
+	}
 }
 
 func addContextInformationToKubeConfig(projectName string, clusterName string, kubeConfigData string) string {
