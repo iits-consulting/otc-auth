@@ -48,5 +48,8 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCreden
 
 	return common.OidcCredentialsResponse{
 		BearerToken: result.IdToken,
+		Claims: struct {
+			PreferredUsername string `json:"preferred_username"`
+		}(struct{ PreferredUsername string }{PreferredUsername: "ServiceAccount"}),
 	}
 }
