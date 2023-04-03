@@ -65,7 +65,6 @@ func main() {
 	overwriteToken = loginCommand.Flag("o", overwriteTokenArg, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
 	identityProvider = loginCommand.String("i", idpName, &argparse.Options{Required: false, Help: idpCommandHelp})
 	identityProviderUrl = loginCommand.String("", idpUrlArg, &argparse.Options{Required: false, Help: idpUrlCommandHelp})
-	isServiceAccount = loginCommand.Flag("", isServiceAccountArg, &argparse.Options{Required: false, Help: isServiceAccountHelp})
 
 	// Remove Login information
 	removeLoginCommand := loginCommand.NewCommand("remove", "Removes login information for a cloud")
@@ -82,6 +81,7 @@ func main() {
 	loginIdpOidcCommand := loginCommand.NewCommand("idp-oidc", "Login to the Open Telekom Cloud through an Identity Provider and OIDC.")
 	clientId := loginIdpOidcCommand.String("c", clientIdArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Client Id as set on the IdP. %s %s", provideArgumentHelp, envClientId)})
 	clientSecret := loginIdpOidcCommand.String("s", clientSecretArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Secret Id as set on the IdP. %s %s", provideArgumentHelp, envClientSecret)})
+	isServiceAccount = loginIdpOidcCommand.Flag("", isServiceAccountArg, &argparse.Options{Required: false, Help: isServiceAccountHelp})
 
 	// List Projects
 	projectsCommand := parser.NewCommand("projects", "Manage Project Information")
