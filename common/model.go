@@ -5,18 +5,19 @@ import (
 )
 
 type AuthInfo struct {
-	AuthType      string
-	IdpName       string
-	IdpUrl        string
-	Username      string
-	Password      string
-	AuthProtocol  string
-	DomainName    string
-	Otp           string
-	UserDomainId  string
-	ClientId      string
-	ClientSecret  string
-	OverwriteFile bool
+	AuthType         string
+	IdpName          string
+	IdpUrl           string
+	Username         string
+	Password         string
+	AuthProtocol     string
+	DomainName       string
+	Otp              string
+	UserDomainId     string
+	ClientId         string
+	ClientSecret     string
+	OverwriteFile    bool
+	IsServiceAccount bool
 }
 type SamlAssertionResponse struct {
 	Name   xml.Name
