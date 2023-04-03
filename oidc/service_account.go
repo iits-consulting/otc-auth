@@ -46,10 +46,9 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCreden
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	return common.OidcCredentialsResponse{
-		BearerToken: result.IdToken,
-		Claims: struct {
-			PreferredUsername string `json:"preferred_username"`
-		}(struct{ PreferredUsername string }{PreferredUsername: "ServiceAccount"}),
-	}
+	serviceAccountCreds := common.OidcCredentialsResponse{}
+	serviceAccountCreds.BearerToken = result.IdToken
+	serviceAccountCreds.Claims.PreferredUsername = "ServiceAccount"
+
+	return serviceAccountCreds
 }
