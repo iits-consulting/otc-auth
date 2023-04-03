@@ -53,6 +53,20 @@ The OIDC login flow is user initiated and will open a browser window with the Id
 
 The argument `--client-id` is required, but the argument `--client-secret` is only needed if configured on the IdP.
 
+#### Service Account via external IdP and OIDC
+
+If you have set up your IdP to provide service accounts then you can utilize service account with `otc-auth` too. Make also sure that the IdP is correctly configured in the OTC Identity and Access Management. Then run the `otc-auth` as follows:
+
+
+```shell
+otc-auth login idp-oidc \
+    --idp-name NameOfClientInIdp \
+    --idp-url IdpAuthUrl \
+    --os-domain-name YourDomainName \
+    --client-id NameOfIdpInOtcIam \
+    --client-secret ClientSecretForTheClientInIdp \
+    --service-account
+```
 ### Remove Login
 Clouds are differentiated by their identifier `--os-domain-name`. To delete a cloud, use the `remove` command.
 
