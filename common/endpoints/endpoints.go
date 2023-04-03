@@ -5,17 +5,17 @@ import (
 )
 
 const (
-	baseUrlIam = "https://iam.eu-de.otc.t-systems.com:443"
+	BaseUrlIam = "https://iam.eu-de.otc.t-systems.com:443"
 	baseUrlCce = "https://cce.eu-de.otc.t-systems.com:443"
 	protocols  = "protocols"
 	auth       = "auth"
 )
 
 var (
-	IamProjects       = fmt.Sprintf("%s/v3/projects", baseUrlIam)
-	IamTokens         = fmt.Sprintf("%s/v3/auth/tokens", baseUrlIam)
-	IamSecurityTokens = fmt.Sprintf("%s/v3.0/OS-CREDENTIAL/securitytokens", baseUrlIam)
-	identityProviders = fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers", baseUrlIam)
+	IamProjects       = fmt.Sprintf("%s/v3/projects", BaseUrlIam)
+	IamTokens         = fmt.Sprintf("%s/v3/auth/tokens", BaseUrlIam)
+	IamSecurityTokens = fmt.Sprintf("%s/v3.0/OS-CREDENTIAL/securitytokens", BaseUrlIam)
+	identityProviders = fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers", BaseUrlIam)
 
 	cceProjects = fmt.Sprintf("%s/api/v3/projects", baseUrlCce)
 	clusters    = "clusters"

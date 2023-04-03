@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"github.com/akamensky/argparse"
 	"os"
-	"otc-auth/src/accesstoken"
-	"otc-auth/src/cce"
-	"otc-auth/src/common"
-	"otc-auth/src/config"
+	"otc-auth/accesstoken"
+	"otc-auth/cce"
+	"otc-auth/common"
+	"otc-auth/config"
+	"otc-auth/openstack"
 )
 
 // GoReleaser will set the following 2 ldflags by default
@@ -104,6 +105,11 @@ func main() {
 	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK.")
 	atDomainName := accessTokenCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 	durationSeconds := accessTokenCommandCreate.Int("t", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds.", Default: 900})
+
+	//Openstack Management
+	openStackCommand := parser.NewCommand("openstack", "Manage Openstack Integration")
+	openStackCommandCreateConfigFile := openStackCommand.NewCommand("config-create", "Creates new clouds.yaml")
+	openStackConfigLocation := openStackCommand.String("l", "config-location", &argparse.Options{Required: false, Help: "Where the config should be saved, Default: ~/.config/openstack/clouds.yaml"})
 
 	err := parser.Parse(os.Args)
 	if err != nil {
@@ -215,6 +221,10 @@ func main() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
 		}
 		accesstoken.CreateAccessToken(*durationSeconds)
+	}
+
+	if openStackCommandCreateConfigFile.Happened() {
+		openstack.WriteOpenStackCloudsYaml(*openStackConfigLocation)
 	}
 
 }

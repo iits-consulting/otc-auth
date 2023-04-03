@@ -37,7 +37,7 @@ jobs:
               dep ensure
           fi
       - name: Build
-        run: go build -v -o otc-auth ./src/*.go
+        run: go build -v -o otc-auth .
       - name: Upload the built binary executable for testing
         uses: actions/upload-artifact@v2
         with:

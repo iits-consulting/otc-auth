@@ -1,11 +1,11 @@
 package main
 
 import (
-	"otc-auth/src/common"
-	"otc-auth/src/config"
-	"otc-auth/src/iam"
-	"otc-auth/src/oidc"
-	"otc-auth/src/saml"
+	"otc-auth/common"
+	"otc-auth/config"
+	"otc-auth/iam"
+	"otc-auth/oidc"
+	"otc-auth/saml"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {

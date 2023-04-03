@@ -7,12 +7,12 @@ import (
 	"github.com/go-http-utils/headers"
 	"log"
 	"net/http"
-	"otc-auth/src/common"
-	"otc-auth/src/common/endpoints"
-	"otc-auth/src/common/headervalues"
-	"otc-auth/src/common/xheaders"
-	"otc-auth/src/config"
-	"otc-auth/src/iam"
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
+	"otc-auth/common/headervalues"
+	"otc-auth/common/xheaders"
+	"otc-auth/config"
+	"otc-auth/iam"
 	"strings"
 	"time"
 )
@@ -85,7 +85,7 @@ func getClustersForProjectFromServiceProvider(projectName string) common.Cluster
 			println(infoMessage)
 			request := common.GetRequest(http.MethodGet, endpoints.Clusters(project.Id), nil)
 			request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-			scopedToken := getScopedToken(projectName)
+			scopedToken := iam.GetScopedToken(projectName)
 			request.Header.Add(xheaders.XAuthToken, scopedToken.Secret)
 
 			response := common.HttpClientMakeRequest(request)
@@ -148,23 +148,4 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 
 	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(clusters.GetClusterNames(), ",\n"))
 	return clusterId, errors.New(errorMessage)
-}
-
-func getScopedToken(projectName string) config.Token {
-	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
-
-	if project.ScopedToken.IsTokenValid() {
-		token := project.ScopedToken
-
-		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
-		if tokenExpirationDate.After(time.Now()) {
-			println(fmt.Sprintf("info: scoped token is valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
-			return token
-		}
-	}
-
-	println("attempting to request a scoped token.")
-	iam.GetScopedTokenFromServiceProvider(projectName)
-	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
-	return project.ScopedToken
 }

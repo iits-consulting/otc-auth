@@ -3,7 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
-	"otc-auth/src/common"
+	"otc-auth/common"
 	"time"
 )
 

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"github.com/go-http-utils/headers"
 	"net/http"
-	"otc-auth/src/common"
-	"otc-auth/src/common/endpoints"
-	"otc-auth/src/common/headervalues"
-	"otc-auth/src/common/xheaders"
-	"otc-auth/src/config"
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
+	"otc-auth/common/headervalues"
+	"otc-auth/common/xheaders"
+	"otc-auth/config"
 	"strconv"
 	"strings"
 )
@@ -24,7 +24,7 @@ func CreateAccessToken(durationSeconds int) {
 	accessKeyFileContent := fmt.Sprintf(
 		"export OS_ACCESS_KEY=%s\n"+
 			"export AWS_ACCESS_KEY_ID=%s\n"+
-			"export OS_ACCESS_KEY=%s\n"+
+			"export OS_SECRET_KEY=%s\n"+
 			"export AWS_SECRET_ACCESS_KEY=%s",
 		accessTokenCreationResponse.Credential.Access,
 		accessTokenCreationResponse.Credential.Access,
