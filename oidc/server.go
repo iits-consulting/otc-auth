@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-http-utils/headers"
@@ -9,6 +10,7 @@ import (
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
 	"net/http"
+	"net/url"
 	"otc-auth/common"
 	"strings"
 )
