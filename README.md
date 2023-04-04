@@ -20,15 +20,19 @@ https://user-images.githubusercontent.com/19291722/208880256-b0da924e-254e-4bc4-
 You can download the binary for your system in the [releases page](https://github.com/iits-consulting/otc-auth/releases).
 Unpack the binary and add it to your PATH and you are good to go!
 
+### Arch Linux
+
+Users of Arch Linux may use the package published in the [AUR](https://aur.archlinux.org/packages/otc-auth)
+
 ## Login
 Use the `login` command to retrieve an unscoped token either by logging in directly with the Service Provider or through an IdP. You can see the help page by entering `login --help` or `login -h`. There are three log in options (`iam`, `idp-saml`, and `idp-oidc`) and one of them must be provided.
 
 ### Service Provider Login (IAM)
-To log in directly with the Open Telekom Cloud's IAM, you will have to supply the domain name you're attempting to log in to (usually starting with "OTC-EU", following the region and a longer identifier), your username and password. 
+To log in directly with the Open Telekom Cloud's IAM, you will have to supply the domain name you're attempting to log in to (usually starting with "OTC-EU", following the region and a longer identifier), your username and password.
 
 `otc-auth login iam --os-username <username> --os-password <password> --os-domain-name <domain_name>`
 
-In addition, it is possible to use MFA if that's desired and/or required. In this case both arguments `--os-user-domain-id` and `--totp` are required. The user id can be obtained in the "My Credentials" page on the OTC. 
+In addition, it is possible to use MFA if that's desired and/or required. In this case both arguments `--os-user-domain-id` and `--totp` are required. The user id can be obtained in the "My Credentials" page on the OTC.
 
 ```
 otc-auth login iam --os-username <username> --os-password <password> --os-domain-name <domain_name> --os-user-domain-id <user_domain_id> --totp <6_digit_token>
@@ -37,7 +41,7 @@ otc-auth login iam --os-username <username> --os-password <password> --os-domain
 The OTP Token is 6-digit long and refreshes every 30 seconds. For more information on MFA please refer to the [OTC's documentation](https://docs.otc.t-systems.com/en-us/usermanual/iam/iam_10_0002.html).
 
 ### Identity Provider Login (IdP)
-You can log in with an external IdP using either the `saml` or the `oidc` protocols. In both cases you will need to specify the authorization URL, the name of the Identity Provider (as set on the OTC), as well as username and password for the SAML login and client id (and optionally client secret) for the OIDC login flow. 
+You can log in with an external IdP using either the `saml` or the `oidc` protocols. In both cases you will need to specify the authorization URL, the name of the Identity Provider (as set on the OTC), as well as username and password for the SAML login and client id (and optionally client secret) for the OIDC login flow.
 
 #### External IdP and SAML
 The SAML login flow is SP initiated and requires you to send username and password to the SP. The SP then authorizes you with the configured IdP and returns either an unscoped token or an error, if the user is not allowed to log in.
@@ -47,7 +51,7 @@ The SAML login flow is SP initiated and requires you to send username and passwo
 At the moment, no MFA is supported for this login flow.
 
 #### External IdP and OIDC
-The OIDC login flow is user initiated and will open a browser window with the IdP's authorization URL for the user to log in as desired. This flow does support MFA (this requires it to be configured on the IdP). After being successfully authenticated with the IdP, the SP will be contacted with the corresponding credentials and will return either an unscoped token or an error, if the user is not allowed to log in. 
+The OIDC login flow is user initiated and will open a browser window with the IdP's authorization URL for the user to log in as desired. This flow does support MFA (this requires it to be configured on the IdP). After being successfully authenticated with the IdP, the SP will be contacted with the corresponding credentials and will return either an unscoped token or an error, if the user is not allowed to log in.
 
 ```otc-auth login idp-oidc --idp-name <idp_name> --idp-url <authorization_url> --client-id <client_id> --os-domain-name <os_domain_name> [--client-secret <client_secret>]```
 
