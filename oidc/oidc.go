@@ -2,10 +2,12 @@ package oidc
 
 import (
 	"fmt"
-	"github.com/go-http-utils/headers"
 	"net/http"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
+	"strings"
+
+	"github.com/go-http-utils/headers"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
@@ -23,8 +25,12 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol)
 
 	request := common.GetRequest(http.MethodPost, url, nil)
+
+	if !strings.HasPrefix(oidcCredentials.BearerToken, "Bearer ") {
+		oidcCredentials.BearerToken = fmt.Sprintf("Bearer %s", oidcCredentials.BearerToken)
+	}
 	request.Header.Add(
-		headers.Authorization, fmt.Sprintf("Bearer %s", oidcCredentials.BearerToken),
+		headers.Authorization, oidcCredentials.BearerToken,
 	)
 
 	response := common.HttpClientMakeRequest(request)
