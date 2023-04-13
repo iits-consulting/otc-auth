@@ -31,6 +31,7 @@ const (
 	clientSecretArg     = "client-secret"
 	clusterArg          = "cluster"
 	isServiceAccountArg = "service-account"
+	oidcScopesArg       = "scopes"
 )
 
 func main() {
@@ -50,6 +51,7 @@ func main() {
 		idpCommandHelp       = fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s", requiredForIdp, provideArgumentHelp, envIdpName)
 		idpUrlCommandHelp    = fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredForIdp, provideArgumentHelp, envIdpUrl)
 		isServiceAccountHelp = "Flag to set if the account is a service account. The service account needs to be configured in your identity provider."
+		oidcScopesHelp       = "Flag to set the scopes which are expected from the oidc request."
 	)
 
 	parser := argparse.NewParser("otc-auth", "OTC-Auth Command Line Interface for managing OTC clouds.")
@@ -82,7 +84,7 @@ func main() {
 	clientId := loginIdpOidcCommand.String("c", clientIdArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Client Id as set on the IdP. %s %s", provideArgumentHelp, envClientId)})
 	clientSecret := loginIdpOidcCommand.String("s", clientSecretArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Secret Id as set on the IdP. %s %s", provideArgumentHelp, envClientSecret)})
 	isServiceAccount = loginIdpOidcCommand.Flag("", isServiceAccountArg, &argparse.Options{Required: false, Help: isServiceAccountHelp})
-
+	oidcScopes := loginIdpOidcCommand.String("", oidcScopesArg, &argparse.Options{Required: false, Help: oidcScopesHelp})
 	// List Projects
 	projectsCommand := parser.NewCommand("projects", "Manage Project Information")
 	listProjectsCommand := projectsCommand.NewCommand("list", "List Projects in Active Cloud")
@@ -167,6 +169,7 @@ func main() {
 			ClientSecret:     findClientSecretOrReturnEmpty(*clientSecret),
 			OverwriteFile:    *overwriteToken,
 			IsServiceAccount: *isServiceAccount,
+			OidcScopes:       getOidcScopes(oidcScopes),
 		}
 
 		AuthenticateAndGetUnscopedToken(authInfo)
