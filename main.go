@@ -8,6 +8,7 @@ import (
 	"otc-auth/cce"
 	"otc-auth/common"
 	"otc-auth/config"
+	"otc-auth/iam"
 	"otc-auth/openstack"
 )
 
@@ -178,7 +179,7 @@ func main() {
 	}
 
 	if listProjectsCommand.Happened() {
-		cce.GetProjectsInActiveCloud()
+		iam.GetProjectsInActiveCloud()
 	}
 
 	if cceCommand.Happened() {
