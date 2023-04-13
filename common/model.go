@@ -18,6 +18,7 @@ type AuthInfo struct {
 	ClientSecret     string
 	OverwriteFile    bool
 	IsServiceAccount bool
+	OidcScopes       []string
 }
 type SamlAssertionResponse struct {
 	Name   xml.Name

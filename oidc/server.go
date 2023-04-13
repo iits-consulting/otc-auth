@@ -14,8 +14,7 @@ import (
 )
 
 var (
-	scopes = []string{oidc.ScopeOpenID, "profile", "roles", "name", "groups", "email"}
-	ctx    = context.Background()
+	ctx = context.Background()
 
 	oAuth2Config    oauth2.Config
 	state           string
@@ -113,7 +112,7 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 		ClientSecret: params.ClientSecret,
 		RedirectURL:  redirectURL,
 		Endpoint:     provider.Endpoint(),
-		Scopes:       scopes,
+		Scopes:       params.OidcScopes,
 	}
 
 	idTokenVerifier = provider.Verifier(&oidc.Config{ClientID: params.ClientId})
