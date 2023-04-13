@@ -6,29 +6,18 @@ import (
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
-	"otc-auth/iam"
 	"path"
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
 	cloudConfig := config.GetActiveCloudConfig()
 	domainName := cloudConfig.Domain.Name
-	println("info: will get a scoped token for every project from domain=" + domainName)
-	createScopedTokenForEveryProject(cloudConfig.Projects.GetProjectNames())
-
-	updatedCloudConfig := config.GetActiveCloudConfig()
 	clouds := make(map[string]clientconfig.Cloud)
-	for _, project := range updatedCloudConfig.Projects {
+	for _, project := range cloudConfig.Projects {
 		cloudName := domainName + "_" + project.Name
 		clouds[cloudName] = createOpenstackCloudConfig(project, domainName)
 	}
 	createOpenstackCloudsYAML(clientconfig.Clouds{Clouds: clouds}, openStackConfigFileLocation)
-}
-
-func createScopedTokenForEveryProject(projectNames []string) {
-	for _, projectName := range projectNames {
-		iam.GetScopedToken(projectName)
-	}
 }
 
 func createOpenstackCloudConfig(project config.Project, domainName string) clientconfig.Cloud {

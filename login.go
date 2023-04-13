@@ -39,7 +39,13 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 		common.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
 	}
 	updateOTCInfoFile(tokenResponse)
+	createScopedTokenForEveryProject()
 	println("Successfully obtained unscoped token!")
+}
+
+func createScopedTokenForEveryProject() {
+	projectsInActiveCloud := iam.GetProjectsInActiveCloud()
+	iam.CreateScopedTokenForEveryProject(projectsInActiveCloud.GetProjectNames())
 }
 
 func updateOTCInfoFile(tokenResponse common.TokenResponse) {
