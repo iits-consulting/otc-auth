@@ -121,17 +121,15 @@ func findClientSecretOrReturnEmpty(secret string) string {
 }
 
 func getOidcScopes(scopesFromFlag string) []string {
-	scopes := scopesFromFlag
-	var ok bool
-
-	if scopesFromFlag == "" {
-		scopes, ok = os.LookupEnv(envOidScopes)
-		if !ok {
-			scopes = envOidcScopesDefault
-		}
+	if scopesFromFlag != "" {
+		return strings.Split(scopesFromFlag, ",")
 	}
-	return strings.Split(scopes, ",")
 
+	scopeFromEnv, ok := os.LookupEnv(envOidScopes)
+	if ok {
+		return strings.Split(scopeFromEnv, ",")
+	}
+	return strings.Split(envOidcScopesDefault, ",")
 }
 
 func getEnvironmentVariableOrThrow(argument string, envVarName string) string {
