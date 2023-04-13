@@ -31,7 +31,7 @@ const (
 	clientSecretArg     = "client-secret"
 	clusterArg          = "cluster"
 	isServiceAccountArg = "service-account"
-	oidcScopesArg       = "scopes"
+	oidcScopesArg       = "oidc-scopes"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 		idpCommandHelp       = fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s", requiredForIdp, provideArgumentHelp, envIdpName)
 		idpUrlCommandHelp    = fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredForIdp, provideArgumentHelp, envIdpUrl)
 		isServiceAccountHelp = "Flag to set if the account is a service account. The service account needs to be configured in your identity provider."
-		oidcScopesHelp       = "Flag to set the scopes which are expected from the oidc request."
+		oidcScopesHelp       = "Flag to set the scopes which are expected from the OIDC request."
 	)
 
 	parser := argparse.NewParser("otc-auth", "OTC-Auth Command Line Interface for managing OTC clouds.")
