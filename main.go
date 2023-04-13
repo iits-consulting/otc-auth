@@ -169,7 +169,7 @@ func main() {
 			ClientSecret:     findClientSecretOrReturnEmpty(*clientSecret),
 			OverwriteFile:    *overwriteToken,
 			IsServiceAccount: *isServiceAccount,
-			OidcScopes:       getOidcScopes(oidcScopes),
+			OidcScopes:       getOidcScopes(*oidcScopes),
 		}
 
 		AuthenticateAndGetUnscopedToken(authInfo)
