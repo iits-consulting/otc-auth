@@ -120,16 +120,15 @@ func findClientSecretOrReturnEmpty(secret string) string {
 	}
 }
 
-func getOidcScopes(scopesFromFlag *string) []string {
-	var scopes string
+func getOidcScopes(scopesFromFlag string) []string {
+	scopes := scopesFromFlag
+	var ok bool
 
-	if scopesFromFlag != nil {
-		scopes = *scopesFromFlag
-	}
-
-	scopes, ok := os.LookupEnv(envOidScopes)
-	if !ok {
-		scopes = envOidcScopesDefault
+	if scopesFromFlag == "" {
+		scopes, ok = os.LookupEnv(envOidScopes)
+		if !ok {
+			scopes = envOidcScopesDefault
+		}
 	}
 	return strings.Split(scopes, ",")
 
