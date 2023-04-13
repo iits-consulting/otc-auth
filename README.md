@@ -67,6 +67,16 @@ otc-auth login idp-oidc \
     --client-secret ClientSecretForTheClientInIdp \
     --service-account
 ```
+
+### OIDC Scopes
+
+The OIDC scopes can be configured if required. To do so simply provide one of the following two when logging in with `idp-oidc`:
+
+- provide the flag `--oidc-scopes pleasePut,HereAll,YourScopes,WhichYouNeed` 
+- provide the environment variable `export OIDC_SCOPES="pleasePut,HereAll,YourScopes,WhichYouNeed"`
+
+The default value is `openid,profile,roles,name,groups,email`
+
 ### Remove Login
 Clouds are differentiated by their identifier `--os-domain-name`. To delete a cloud, use the `remove` command.
 
