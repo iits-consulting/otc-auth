@@ -13,22 +13,14 @@ import (
 var otcConfigPath = path.Join(GetHomeFolder(), ".otc-auth-config")
 
 func LoadCloudConfig(domainName string) {
-	if !OtcConfigFileExists() {
-		RegisterCloudConfig(domainName)
+	otcConfig := getOtcConfig()
+	clouds := otcConfig.Clouds
+	if !clouds.ContainsCloud(domainName) {
+		clouds = registerNewCloud(domainName)
 	}
-
-	otcConfig := getOtcConfigContent()
-	if !otcConfig.Clouds.ContainsCloud(domainName) {
-		RegisterCloudConfig(domainName)
-	}
-
-	otcConfig = getOtcConfigContent()
-	if otcConfig.Clouds.GetActiveCloud().Domain.Name != domainName {
-		clouds := otcConfig.Clouds
-		clouds.SetActiveByName(domainName)
-		otcConfig.Clouds = clouds
-		writeOtcConfigContentToFile(otcConfig)
-	}
+	clouds.SetActiveByName(domainName)
+	otcConfig.Clouds = clouds
+	writeOtcConfigContentToFile(otcConfig)
 
 	_, err := fmt.Fprintf(os.Stdout, "Cloud %s loaded successfully and set to active.\n", domainName)
 	if err != nil {
@@ -36,21 +28,21 @@ func LoadCloudConfig(domainName string) {
 	}
 }
 
-func RegisterCloudConfig(domainName string) {
-	cloud := Cloud{
+func registerNewCloud(domainName string) Clouds {
+	otcConfig := getOtcConfig()
+	clouds := otcConfig.Clouds
+
+	newCloud := Cloud{
 		Domain: NameAndIdResource{
 			Name: domainName,
 		},
-		Active: true,
+	}
+	if otcConfig.Clouds.ContainsCloud(newCloud.Domain.Name) {
+		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command.", newCloud.Domain.Name))
+		return nil
 	}
 
-	if !OtcConfigFileExists() {
-		createConfigFileWithCloudConfig(OtcConfigContent{Clouds: Clouds{cloud}})
-		println("info: cloud config created.")
-		return
-	}
-
-	appendCloudConfig(cloud)
+	return append(clouds, newCloud)
 }
 
 func IsAuthenticationValid() bool {
@@ -74,11 +66,7 @@ func IsAuthenticationValid() bool {
 }
 
 func RemoveCloudConfig(domainName string) {
-	if !OtcConfigFileExists() {
-		common.OutputErrorMessageToConsoleAndExit("fatal: config file does not exist.\n\nPlease try logging in and try again")
-	}
-
-	otcConfig := getOtcConfigContent()
+	otcConfig := getOtcConfig()
 	if !otcConfig.Clouds.ContainsCloud(domainName) {
 		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: cloud with name %s does not exist in the config file.", domainName))
 	}
@@ -92,21 +80,21 @@ func RemoveCloudConfig(domainName string) {
 }
 
 func UpdateClusters(clusters Clusters) {
-	otcConfig := getOtcConfigContent()
+	otcConfig := getOtcConfig()
 	cloudIndex := otcConfig.Clouds.GetActiveCloudIndex()
 	otcConfig.Clouds[cloudIndex].Clusters = clusters
 	writeOtcConfigContentToFile(otcConfig)
 }
 
 func UpdateProjects(projects Projects) {
-	otcConfig := getOtcConfigContent()
+	otcConfig := getOtcConfig()
 	cloudIndex := otcConfig.Clouds.GetActiveCloudIndex()
 	otcConfig.Clouds[cloudIndex].Projects = projects
 	writeOtcConfigContentToFile(otcConfig)
 }
 
 func UpdateCloudConfig(updatedCloud Cloud) {
-	otcConfig := getOtcConfigContent()
+	otcConfig := getOtcConfig()
 	index := otcConfig.Clouds.GetActiveCloudIndex()
 	otcConfig.Clouds[index] = updatedCloud
 
@@ -114,7 +102,7 @@ func UpdateCloudConfig(updatedCloud Cloud) {
 }
 
 func GetActiveCloudConfig() Cloud {
-	otcConfig := getOtcConfigContent()
+	otcConfig := getOtcConfig()
 	clouds := otcConfig.Clouds
 	cloud, _, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil {
@@ -132,7 +120,12 @@ func OtcConfigFileExists() bool {
 	return !fileInfo.IsDir()
 }
 
-func getOtcConfigContent() OtcConfigContent {
+func getOtcConfig() OtcConfigContent {
+	if !OtcConfigFileExists() {
+		createConfigFileWithCloudConfig(OtcConfigContent{})
+		println("info: cloud config created.")
+	}
+
 	var otcConfig OtcConfigContent
 	content := readFileContent()
 
@@ -206,22 +199,8 @@ func WriteConfigFile(content string, configPath string) {
 	}
 }
 
-func appendCloudConfig(cloud Cloud) {
-	otcConfig := getOtcConfigContent()
-	clouds := otcConfig.Clouds
-
-	if otcConfig.Clouds.ContainsCloud(cloud.Domain.Name) {
-		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command.", cloud.Domain.Name))
-		return
-	}
-
-	clouds = append(clouds, cloud)
-	otcConfig.Clouds = clouds
-	writeOtcConfigContentToFile(otcConfig)
-}
-
 func removeCloudConfig(name string) {
-	otcConfig := getOtcConfigContent()
+	otcConfig := getOtcConfig()
 
 	otcConfig.Clouds.RemoveCloudByNameIfExists(name)
 	writeOtcConfigContentToFile(otcConfig)
