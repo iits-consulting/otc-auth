@@ -3,10 +3,12 @@ package openstack
 import (
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"gopkg.in/yaml.v2"
+	"os"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 	"path"
+	"path/filepath"
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
@@ -48,11 +50,13 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 	}
 
 	if openStackConfigFileLocation == "" {
-		configFilePath := path.Join(config.GetHomeFolder(), ".config", "openstack", "clouds.yaml")
-		config.WriteConfigFile(string(contentAsBytes), configFilePath)
-	} else {
-		config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
+		openStackConfigFileLocation = path.Join(config.GetHomeFolder(), ".config", "openstack", "clouds.yaml")
 	}
+	mkDirError := os.MkdirAll(filepath.Dir(openStackConfigFileLocation), os.ModePerm)
+	if mkDirError != nil {
+		common.OutputErrorMessageToConsoleAndExit(err.Error())
+	}
+	config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
 
 	println("info: openstack clouds.yaml was updated")
 }
