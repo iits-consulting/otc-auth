@@ -31,7 +31,6 @@ func CreateAccessToken(durationSeconds int) {
 	common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
 	println("Access token file created successfully.")
 	println("Please source the ak-sk-env.sh file in the current directory manually")
-	return
 }
 
 func getAccessTokenFromServiceProvider(durationSeconds int) (*credentials.TemporaryCredential, error) {
