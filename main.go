@@ -107,10 +107,8 @@ func main() {
 	// AK/SK Management
 	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK.")
 	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK.")
-	accessTokenCommandCreate2 := accessTokenCommand.NewCommand("create2", "Create new AK/SK with GTC.")
 	atDomainName := accessTokenCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 	durationSeconds := accessTokenCommandCreate.Int("t", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds.", Default: 900})
-	durationSeconds2 := accessTokenCommandCreate2.Int("q", "duration-seconds2", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds.", Default: 900})
 
 	//Openstack Management
 	openStackCommand := parser.NewCommand("openstack", "Manage Openstack Integration")
@@ -229,20 +227,6 @@ func main() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
 		}
 		accesstoken.CreateAccessToken(*durationSeconds)
-	}
-
-	if accessTokenCommandCreate2.Happened() {
-		domainName := getDomainNameOrThrow(*atDomainName)
-		config.LoadCloudConfig(domainName)
-
-		if !config.IsAuthenticationValid() {
-			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
-		}
-
-		if *durationSeconds2 < 900 {
-			common.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
-		}
-		accesstoken.CreateAccessToken(*durationSeconds2, true)
 	}
 
 	if openStackCommandCreateConfigFile.Happened() {
