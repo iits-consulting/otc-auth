@@ -107,6 +107,9 @@ func main() {
 	// AK/SK Management
 	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK.")
 	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK.")
+	accessTokenCommandList := accessTokenCommand.NewCommand("list", "List existing AK/SKs.") // TODO specify user id?
+	accessTokenCommandDelete := accessTokenCommand.NewCommand("delete", "Delete existing AK/SK.")
+	credentialId := accessTokenCommandDelete.String("c", "credential-id", &argparse.Options{Required: true, Help: "The AK/SK credential ID to delete."})
 	atDomainName := accessTokenCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 	durationSeconds := accessTokenCommandCreate.Int("t", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds.", Default: 900})
 
@@ -227,6 +230,38 @@ func main() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
 		}
 		accesstoken.CreateAccessToken(*durationSeconds)
+	}
+
+	if accessTokenCommandList.Happened() {
+		domainName := getDomainNameOrThrow(*atDomainName)
+		config.LoadCloudConfig(domainName)
+
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		//accessTokens, err := accesstoken.ListAccessTokensFromServiceProvider()
+		if err != nil {
+			common.OutputErrorToConsoleAndExit(err)
+		}
+		//println(accessTokens)
+	}
+
+	if accessTokenCommandDelete.Happened() {
+		domainName := getDomainNameOrThrow(*atDomainName)
+		config.LoadCloudConfig(domainName)
+
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		if *credentialId != "" {
+			common.OutputErrorMessageToConsoleAndExit("fatal: argument credential-id cannot be empty.")
+		}
+		//err := accesstoken.DeleteAccessTokenFromServiceProvider(*credentialId)
+		if err != nil {
+			common.OutputErrorToConsoleAndExit(err)
+		}
 	}
 
 	if openStackCommandCreateConfigFile.Happened() {

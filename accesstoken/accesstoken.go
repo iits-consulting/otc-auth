@@ -5,6 +5,7 @@ import (
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/credentials"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
@@ -12,10 +13,9 @@ import (
 
 func CreateAccessToken(durationSeconds int) {
 	println("Creating access token file with GTC...")
-	resp, err := getAccessTokenFromServiceProvider(durationSeconds)
+	resp, err := getAccessTokenFromServiceProvider()
 	if err != nil {
-		println("[!] ", err)
-		return
+		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	accessKeyFileContent := fmt.Sprintf(
@@ -33,7 +33,7 @@ func CreateAccessToken(durationSeconds int) {
 	println("Please source the ak-sk-env.sh file in the current directory manually")
 }
 
-func getAccessTokenFromServiceProvider(durationSeconds int) (*credentials.TemporaryCredential, error) {
+func getAccessTokenFromServiceProvider() (*credentials.Credential, error) {
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.Id,
@@ -47,9 +47,12 @@ func getAccessTokenFromServiceProvider(durationSeconds int) (*credentials.Tempor
 	if err != nil {
 		return nil, err
 	}
-	return credentials.CreateTemporary(client, credentials.CreateTemporaryOpts{
-		Methods:  []string{"token"},
-		Token:    config.GetActiveCloudConfig().UnscopedToken.Secret,
-		Duration: durationSeconds,
+	user, err := tokens.Get(client, config.GetActiveCloudConfig().UnscopedToken.Secret).ExtractUser()
+	if err != nil {
+		return nil, err
+	}
+	return credentials.Create(client, credentials.CreateOpts{
+		UserID:      user.ID,
+		Description: "Test Token from GOTC",
 	}).Extract()
 }
