@@ -34,16 +34,7 @@ func CreateAccessToken(tokenDescription string) {
 }
 
 func ListAccessToken() ([]credentials.Credential, error) {
-	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
-		DomainID:         config.GetActiveCloudConfig().Domain.Id,
-		TenantID:         config.GetActiveCloudConfig().Domain.Name,
-		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
-	})
-	if err != nil {
-		return nil, err
-	}
-	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	client, err := getIdentityServiceClient()
 	if err != nil {
 		return nil, err
 	}
@@ -55,16 +46,7 @@ func ListAccessToken() ([]credentials.Credential, error) {
 }
 
 func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Credential, error) {
-	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
-		DomainID:         config.GetActiveCloudConfig().Domain.Id,
-		TenantID:         config.GetActiveCloudConfig().Domain.Name,
-		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
-	})
-	if err != nil {
-		return nil, err
-	}
-	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	client, err := getIdentityServiceClient()
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +61,14 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 }
 
 func DeleteAccessToken(token string) error {
+	client, err := getIdentityServiceClient()
+	if err != nil {
+		return err
+	}
+	return credentials.Delete(client, token).ExtractErr()
+}
+
+func getIdentityServiceClient() (*golangsdk.ServiceClient, error) {
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.Id,
@@ -86,11 +76,7 @@ func DeleteAccessToken(token string) error {
 		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
-	if err != nil {
-		return err
-	}
-	return credentials.Delete(client, token).ExtractErr()
+	return openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 }
