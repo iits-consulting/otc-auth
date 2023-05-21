@@ -11,9 +11,9 @@ import (
 	"otc-auth/config"
 )
 
-func CreateAccessToken(durationSeconds int) {
+func CreateAccessToken(tokenDescription string) {
 	println("Creating access token file with GTC...")
-	resp, err := getAccessTokenFromServiceProvider()
+	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
@@ -33,7 +33,28 @@ func CreateAccessToken(durationSeconds int) {
 	println("Please source the ak-sk-env.sh file in the current directory manually")
 }
 
-func getAccessTokenFromServiceProvider() (*credentials.Credential, error) {
+func ListAccessToken() ([]credentials.Credential, error) {
+	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		TenantID:         config.GetActiveCloudConfig().Domain.Name,
+		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
+	})
+	if err != nil {
+		return nil, err
+	}
+	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		return nil, err
+	}
+	user, err := tokens.Get(client, config.GetActiveCloudConfig().UnscopedToken.Secret).ExtractUser()
+	if err != nil {
+		return nil, err
+	}
+	return credentials.List(client, credentials.ListOpts{UserID: user.ID}).Extract()
+}
+
+func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Credential, error) {
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.Id,
@@ -53,6 +74,24 @@ func getAccessTokenFromServiceProvider() (*credentials.Credential, error) {
 	}
 	return credentials.Create(client, credentials.CreateOpts{
 		UserID:      user.ID,
-		Description: "Test Token from GOTC",
+		Description: tokenDescription,
 	}).Extract()
+}
+
+// TODO get token to del
+func DeleteAccessToken(token string) error {
+	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		TenantID:         config.GetActiveCloudConfig().Domain.Name,
+		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
+	})
+	if err != nil {
+		return err
+	}
+	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		return err
+	}
+	return credentials.Delete(client, token).ExtractErr()
 }

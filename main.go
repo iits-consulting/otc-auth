@@ -107,11 +107,11 @@ func main() {
 	// AK/SK Management
 	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK.")
 	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK.")
-	accessTokenCommandList := accessTokenCommand.NewCommand("list", "List existing AK/SKs.") // TODO specify user id?
+	tokenDescription := accessTokenCommandCreate.String("s", "description", &argparse.Options{Required: false, Help: "Description of the token.", Default: "Token by otc-auth"})
+	accessTokenCommandList := accessTokenCommand.NewCommand("list", "List existing AK/SKs.")
 	accessTokenCommandDelete := accessTokenCommand.NewCommand("delete", "Delete existing AK/SK.")
-	credentialId := accessTokenCommandDelete.String("c", "credential-id", &argparse.Options{Required: true, Help: "The AK/SK credential ID to delete."})
+	token := accessTokenCommandDelete.String("t", "token", &argparse.Options{Required: true, Help: "The AK/SK token to delete."})
 	atDomainName := accessTokenCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
-	durationSeconds := accessTokenCommandCreate.Int("t", "duration-seconds", &argparse.Options{Required: false, Help: "Lifetime of AK/SK, min 900 seconds.", Default: 900})
 
 	//Openstack Management
 	openStackCommand := parser.NewCommand("openstack", "Manage Openstack Integration")
@@ -226,10 +226,7 @@ func main() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
 		}
 
-		if *durationSeconds < 900 {
-			common.OutputErrorMessageToConsoleAndExit("fatal: argument duration-seconds may not be smaller then 900 seconds")
-		}
-		accesstoken.CreateAccessToken(*durationSeconds)
+		accesstoken.CreateAccessToken(*tokenDescription)
 	}
 
 	if accessTokenCommandList.Happened() {
@@ -240,11 +237,11 @@ func main() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
 		}
 
-		//accessTokens, err := accesstoken.ListAccessTokensFromServiceProvider()
+		accessTokens, err := accesstoken.ListAccessToken()
 		if err != nil {
 			common.OutputErrorToConsoleAndExit(err)
 		}
-		//println(accessTokens)
+		fmt.Printf("%v", accessTokens)
 	}
 
 	if accessTokenCommandDelete.Happened() {
@@ -255,10 +252,10 @@ func main() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
 		}
 
-		if *credentialId != "" {
-			common.OutputErrorMessageToConsoleAndExit("fatal: argument credential-id cannot be empty.")
+		if *token == "" {
+			common.OutputErrorMessageToConsoleAndExit("fatal: argument token cannot be empty.")
 		}
-		//err := accesstoken.DeleteAccessTokenFromServiceProvider(*credentialId)
+		err := accesstoken.DeleteAccessToken(*token)
 		if err != nil {
 			common.OutputErrorToConsoleAndExit(err)
 		}
