@@ -78,7 +78,6 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 	}).Extract()
 }
 
-// TODO get token to del
 func DeleteAccessToken(token string) error {
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
