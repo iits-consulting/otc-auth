@@ -15,7 +15,7 @@ func CreateAccessToken(tokenDescription string) {
 	println("Creating access token file with GTC...")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		common.OutputErrorToConsoleAndExit(err) // TODO - make error more specific when logged in with oidc
 	}
 
 	accessKeyFileContent := fmt.Sprintf(

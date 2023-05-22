@@ -3,27 +3,29 @@ package cce
 import (
 	"errors"
 	"fmt"
-	"github.com/avast/retry-go"
 	"github.com/go-http-utils/headers"
-	"log"
+	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 	"net/http"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/common/headervalues"
 	"otc-auth/common/xheaders"
 	"otc-auth/config"
-	"otc-auth/iam"
 	"strings"
-	"time"
 )
 
 func GetClusterNames(projectName string) config.Clusters {
-	clustersResult := getClustersForProjectFromServiceProvider(projectName)
+	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 	var clusters config.Clusters
-	for _, item := range clustersResult.Items {
+	for _, item := range clustersResult {
 		clusters = append(clusters, config.Cluster{
 			Name: item.Metadata.Name,
-			Id:   item.Metadata.UID,
+			Id:   item.Metadata.Id,
 		})
 	}
 
@@ -40,35 +42,22 @@ func GetKubeConfig(configParams KubeConfigParams) {
 	println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", configParams.ClusterName))
 }
 
-func getClustersForProjectFromServiceProvider(projectName string) common.ClustersResponse {
-	clustersResponse := common.ClustersResponse{}
+func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
-
-	err := retry.Do(
-		func() error {
-			infoMessage := fmt.Sprintf("info: fetching clusters for project %s", projectName)
-			println(infoMessage)
-			request := common.GetRequest(http.MethodGet, endpoints.Clusters(project.Id), nil)
-			request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-			scopedToken := iam.GetScopedToken(projectName)
-			request.Header.Add(xheaders.XAuthToken, scopedToken.Secret)
-
-			response := common.HttpClientMakeRequest(request)
-			bodyBytes := common.GetBodyBytesFromResponse(response)
-
-			clustersResponse = *common.DeserializeJsonForType[common.ClustersResponse](bodyBytes)
-			return nil
-		}, retry.OnRetry(func(n uint, err error) {
-			log.Printf("#%d: %s\n", n, err)
-		}),
-		retry.DelayType(retry.FixedDelay),
-		retry.Delay(time.Second*2),
-	)
+	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		TokenID:          project.ScopedToken.Secret,
+		TenantID:         project.Id,
+	})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		return nil, err
 	}
-
-	return clustersResponse
+	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		return nil, err
+	}
+	return clusters.List(client, clusters.ListOpts{})
 }
 
 func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (response *http.Response) {
@@ -93,13 +82,16 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
 	}
 
-	clustersResult := getClustersForProjectFromServiceProvider(projectName)
+	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 
 	var clusters config.Clusters
-	for _, cluster := range clustersResult.Items {
+	for _, cluster := range clustersResult {
 		clusters = append(clusters, config.Cluster{
 			Name: cluster.Metadata.Name,
-			Id:   cluster.Metadata.UID,
+			Id:   cluster.Metadata.Id,
 		})
 	}
 	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
