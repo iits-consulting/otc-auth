@@ -1,6 +1,7 @@
 package cce
 
 import (
+	"encoding/json"
 	"fmt"
 	. "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -20,9 +21,12 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster id: %s")
 	}
 
-	response := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterId, kubeConfigParams.DaysValid)
-
-	return string(common.GetBodyBytesFromResponse(response))
+	response, err := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterId, kubeConfigParams.DaysValid)
+	responseMarshalled, err := json.Marshal(response)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	return string(responseMarshalled)
 }
 
 func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {

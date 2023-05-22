@@ -3,16 +3,13 @@ package cce
 import (
 	"errors"
 	"fmt"
-	"github.com/go-http-utils/headers"
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
-	"net/http"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
-	"otc-auth/common/headervalues"
-	"otc-auth/common/xheaders"
 	"otc-auth/config"
+	"strconv"
 	"strings"
 )
 
@@ -21,17 +18,17 @@ func GetClusterNames(projectName string) config.Clusters {
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	var clusters config.Clusters
+	var c config.Clusters
 	for _, item := range clustersResult {
-		clusters = append(clusters, config.Cluster{
+		c = append(c, config.Cluster{
 			Name: item.Metadata.Name,
 			Id:   item.Metadata.Id,
 		})
 	}
 
-	config.UpdateClusters(clusters)
-	println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
-	return clusters
+	config.UpdateClusters(c)
+	println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(c.GetClusterNames(), ",\n")))
+	return c
 }
 
 func GetKubeConfig(configParams KubeConfigParams) {
@@ -60,19 +57,29 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	return clusters.List(client, clusters.ListOpts{})
 }
 
-func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (response *http.Response) {
-	body := fmt.Sprintf("{\"duration\": %s}", duration)
-	projectId := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName).Id
-
-	request := common.GetRequest(http.MethodPost, endpoints.ClusterCert(projectId, clusterId), strings.NewReader(body))
-	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-	request.Header.Add(headers.Accept, headervalues.ApplicationJson)
+func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (*clusters.Certificate, error) {
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
-	request.Header.Add(xheaders.XAuthToken, project.ScopedToken.Secret)
+	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		TokenID:          project.ScopedToken.Secret,
+		TenantID:         project.Id,
+	})
+	if err != nil {
+		return nil, err
+	}
+	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		return nil, err
+	}
 
-	response = common.HttpClientMakeRequest(request)
-
-	return response
+	var expOpts clusters.ExpirationOpts
+	expOpts.Duration, err = strconv.Atoi(duration)
+	if err != nil {
+		return nil, err
+	}
+	cert := clusters.GetCertWithExpiration(client, clusterId, expOpts)
+	return cert.Extract()
 }
 
 func getClusterId(clusterName string, projectName string) (clusterId string, err error) {
@@ -87,22 +94,22 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	var clusters config.Clusters
+	var c config.Clusters
 	for _, cluster := range clustersResult {
-		clusters = append(clusters, config.Cluster{
+		c = append(c, config.Cluster{
 			Name: cluster.Metadata.Name,
 			Id:   cluster.Metadata.Id,
 		})
 	}
-	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
+	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(c.GetClusterNames(), ",\n")))
 
-	config.UpdateClusters(clusters)
+	config.UpdateClusters(c)
 	cloud = config.GetActiveCloudConfig()
 
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
 		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
 	}
 
-	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(clusters.GetClusterNames(), ",\n"))
+	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(c.GetClusterNames(), ",\n"))
 	return clusterId, errors.New(errorMessage)
 }
