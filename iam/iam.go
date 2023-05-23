@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"github.com/avast/retry-go"
 	"github.com/go-http-utils/headers"
+	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 	"log"
 	"net/http"
 	"otc-auth/common"
@@ -16,15 +19,44 @@ import (
 	"time"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
-	requestBody := getRequestBodyForAuthenticationMethod(authInfo)
-	request := common.GetRequest(http.MethodPost, endpoints.IamTokens, strings.NewReader(requestBody))
-	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
+	authOpts := golangsdk.AuthOptions{
+		DomainName:       authInfo.DomainName,
+		Username:         authInfo.Username,
+		Password:         authInfo.Password,
+		IdentityEndpoint: endpoints.BaseUrlIam + "/v3"}
 
-	response := common.HttpClientMakeRequest(request)
-	defer response.Body.Close()
+	if authInfo.Otp != "" && authInfo.UserDomainId != "" {
+		// TODO
+	}
 
-	return common.GetCloudCredentialsFromResponseOrThrow(response)
+	provider, err := openstack.AuthenticatedClient(authOpts)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	token, err := tokens.Create(client, &authOpts).ExtractToken()
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	user, err := tokens.Create(client, &authOpts).ExtractUser()
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	tokenResponse.Token.Secret = token.ID
+	tokenResponse.Token.ExpiresAt = token.ExpiresAt.Format(time.RFC3339)
+	tokenResponse.Token.User.Domain.Id = user.Domain.ID
+	tokenResponse.Token.User.Domain.Name = user.Domain.Name
+	tokenResponse.Token.User.Name = user.Name
+	// TODO time issued?? Is this used?
+	return tokenResponse
 }
 
 func GetScopedToken(projectName string) config.Token {
