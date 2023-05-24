@@ -110,17 +110,3 @@ func getScopedTokenFromServiceProvider(projectName string) {
 	config.UpdateCloudConfig(cloud)
 	println("scoped token acquired successfully.")
 }
-
-func getRequestBodyForAuthenticationMethod(authInfo common.AuthInfo) (requestBody string) {
-	if authInfo.Otp != "" && authInfo.UserDomainId != "" {
-		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\", \"totp\"], "+
-			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}, "+
-			"\"totp\" : {\"user\": {\"id\": \"%s\", \"passcode\": \"%s\"}}}, \"scope\": {\"domain\": {\"name\": \"%s\"}}}}",
-			authInfo.Username, authInfo.Password, authInfo.DomainName, authInfo.UserDomainId, authInfo.Otp, authInfo.DomainName)
-	} else {
-		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\"], "+
-			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}}, "+
-			"\"scope\": {\"domain\": {\"name\": \"%s\"}}}}", authInfo.Username, authInfo.Password, authInfo.DomainName, authInfo.DomainName)
-	}
-	return requestBody
-}
