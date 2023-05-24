@@ -45,7 +45,9 @@ func getProjectsFromServiceProvider() common.ProjectsResponse {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
-
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 	projectsResponse, err := projects.List(client, projects.ListOpts{}).AllPages()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)

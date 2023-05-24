@@ -22,6 +22,9 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 	}
 
 	response, err := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterId, kubeConfigParams.DaysValid)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 	responseMarshalled, err := json.Marshal(response)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
