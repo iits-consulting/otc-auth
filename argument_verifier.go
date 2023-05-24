@@ -63,7 +63,7 @@ func checkIdpUrlIsSet(url string) string {
 		return url
 	}
 
-	return getEnvironmentVariableOrThrow(idpUrlArg, envIdpUrl)
+	return getEnvironmentVariableOrThrow(idpURLArg, envIdpUrl)
 }
 
 func getUsernameOrThrow(username string) string {
@@ -106,7 +106,7 @@ func getClientIdOrThrow(id string) string {
 		return id
 	}
 
-	return getEnvironmentVariableOrThrow(clientIdArg, envClientId)
+	return getEnvironmentVariableOrThrow(clientIDArg, envClientId)
 }
 
 func findClientSecretOrReturnEmpty(secret string) string {
