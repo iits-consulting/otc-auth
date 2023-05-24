@@ -37,13 +37,11 @@ func startAndListenHttpServer(channel chan common.OidcCredentialsResponse) {
 			http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
 			return
 		}
-
 		parts := strings.Split(rawAccessToken, " ")
 		if len(parts) != 2 {
 			w.WriteHeader(400)
 			return
 		}
-
 		_, err := idTokenVerifier.Verify(ctx, parts[1])
 		if err != nil {
 			http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)

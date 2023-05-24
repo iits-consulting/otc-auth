@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/akamensky/argparse"
+	"log"
 	"os"
 	"otc-auth/accesstoken"
 	"otc-auth/cce"
@@ -27,8 +28,8 @@ const (
 	osProjectName       = "os-project-name"
 	totpArg             = "totp"
 	idpName             = "idp-name"
-	idpUrlArg           = "idp-url"
-	clientIdArg         = "client-id"
+	idpURLArg           = "idp-url"
+	clientIDArg         = "client-id"
 	clientSecretArg     = "client-secret"
 	clusterArg          = "cluster"
 	isServiceAccountArg = "service-account"
@@ -47,10 +48,10 @@ func main() {
 		password             *string
 		overwriteToken       *bool
 		identityProvider     *string
-		identityProviderUrl  *string
+		identityProviderURL  *string
 		isServiceAccount     *bool
 		idpCommandHelp       = fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s", requiredForIdp, provideArgumentHelp, envIdpName)
-		idpUrlCommandHelp    = fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredForIdp, provideArgumentHelp, envIdpUrl)
+		idpURLCommandHelp    = fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s", requiredForIdp, provideArgumentHelp, envIdpUrl)
 		isServiceAccountHelp = "Flag to set if the account is a service account. The service account needs to be configured in your identity provider."
 		oidcScopesHelp       = "Flag to set the scopes which are expected from the OIDC request."
 	)
@@ -67,7 +68,7 @@ func main() {
 	domainName = loginCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 	overwriteToken = loginCommand.Flag("o", overwriteTokenArg, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
 	identityProvider = loginCommand.String("i", idpName, &argparse.Options{Required: false, Help: idpCommandHelp})
-	identityProviderUrl = loginCommand.String("", idpUrlArg, &argparse.Options{Required: false, Help: idpUrlCommandHelp})
+	identityProviderURL = loginCommand.String("", idpURLArg, &argparse.Options{Required: false, Help: idpURLCommandHelp})
 
 	// Remove Login information
 	removeLoginCommand := loginCommand.NewCommand("remove", "Removes login information for a cloud")
@@ -75,14 +76,14 @@ func main() {
 	// Login with IAM
 	loginIamCommand := loginCommand.NewCommand("iam", "Login to the Open Telekom Cloud through its Identity and Access Management system.")
 	totp := loginIamCommand.String("t", totpArg, &argparse.Options{Required: false, Help: "6-digit time-based one-time password (TOTP) used for the MFA login flow."})
-	userDomainId := loginIamCommand.String("", osUserDomainId, &argparse.Options{Required: false, Help: fmt.Sprintf("User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided. %s %s", provideArgumentHelp, envOsUserDomainId)})
+	userDomainID := loginIamCommand.String("", osUserDomainId, &argparse.Options{Required: false, Help: fmt.Sprintf("User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided. %s %s", provideArgumentHelp, envOsUserDomainId)})
 
 	// Login with IDP + SAML
 	loginIdpSamlCommand := loginCommand.NewCommand("idp-saml", "Login to the Open Telekom Cloud through an Identity Provider and SAML.")
 
 	// Login with IDP + OIDC
 	loginIdpOidcCommand := loginCommand.NewCommand("idp-oidc", "Login to the Open Telekom Cloud through an Identity Provider and OIDC.")
-	clientId := loginIdpOidcCommand.String("c", clientIdArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Client Id as set on the IdP. %s %s", provideArgumentHelp, envClientId)})
+	clientID := loginIdpOidcCommand.String("c", clientIDArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Client Id as set on the IdP. %s %s", provideArgumentHelp, envClientId)})
 	clientSecret := loginIdpOidcCommand.String("s", clientSecretArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Secret Id as set on the IdP. %s %s", provideArgumentHelp, envClientSecret)})
 	isServiceAccount = loginIdpOidcCommand.Flag("", isServiceAccountArg, &argparse.Options{Required: false, Help: isServiceAccountHelp})
 	oidcScopes := loginIdpOidcCommand.String("", oidcScopesArg, &argparse.Options{Required: false, Help: oidcScopesHelp})
@@ -131,14 +132,14 @@ func main() {
 	}
 
 	if loginIamCommand.Happened() {
-		totpToken, userId := checkMFAFlowIAM(*totp, *userDomainId)
+		totpToken, userID := checkMFAFlowIAM(*totp, *userDomainID)
 		authInfo := common.AuthInfo{
 			AuthType:      authTypeIAM,
 			Username:      getUsernameOrThrow(*username),
 			Password:      getPasswordOrThrow(*password),
 			DomainName:    getDomainNameOrThrow(*domainName),
 			Otp:           totpToken,
-			UserDomainId:  userId,
+			UserDomainId:  userID,
 			OverwriteFile: *overwriteToken,
 		}
 
@@ -146,7 +147,7 @@ func main() {
 	}
 
 	if loginIdpSamlCommand.Happened() {
-		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProvider, *identityProviderUrl)
+		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProvider, *identityProviderURL)
 		authInfo := common.AuthInfo{
 			AuthType:      authTypeIDP,
 			Username:      getUsernameOrThrow(*username),
@@ -162,14 +163,14 @@ func main() {
 	}
 
 	if loginIdpOidcCommand.Happened() {
-		identityProvider, identityProviderUrl := getIdpInfoOrThrow(*identityProvider, *identityProviderUrl)
+		identityProvider, identityProviderURL := getIdpInfoOrThrow(*identityProvider, *identityProviderURL)
 		authInfo := common.AuthInfo{
 			AuthType:         authTypeIDP,
 			IdpName:          identityProvider,
-			IdpUrl:           identityProviderUrl,
+			IdpUrl:           identityProviderURL,
 			AuthProtocol:     protocolOIDC,
 			DomainName:       getDomainNameOrThrow(*domainName),
-			ClientId:         getClientIdOrThrow(*clientId),
+			ClientId:         getClientIdOrThrow(*clientID),
 			ClientSecret:     findClientSecretOrReturnEmpty(*clientSecret),
 			OverwriteFile:    *overwriteToken,
 			IsServiceAccount: *isServiceAccount,
@@ -241,7 +242,7 @@ func main() {
 		if err != nil {
 			common.OutputErrorToConsoleAndExit(err)
 		}
-		fmt.Printf("%v", accessTokens)
+		log.Printf("%v", accessTokens)
 	}
 
 	if accessTokenCommandDelete.Happened() {

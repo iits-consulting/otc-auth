@@ -18,17 +18,20 @@ func GetClusterNames(projectName string) config.Clusters {
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	var c config.Clusters
+
+	var clustersArr config.Clusters
+
 	for _, item := range clustersResult {
-		c = append(c, config.Cluster{
+		clustersArr = append(clustersArr, config.Cluster{
 			Name: item.Metadata.Name,
 			Id:   item.Metadata.Id,
 		})
 	}
 
-	config.UpdateClusters(c)
-	println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(c.GetClusterNames(), ",\n")))
-	return c
+	config.UpdateClusters(clustersArr)
+	println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n")))
+
+	return clustersArr
 }
 
 func GetKubeConfig(configParams KubeConfigParams) {
@@ -94,22 +97,22 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	var c config.Clusters
+	var clusterArr config.Clusters
 	for _, cluster := range clustersResult {
-		c = append(c, config.Cluster{
+		clusterArr = append(clusterArr, config.Cluster{
 			Name: cluster.Metadata.Name,
 			Id:   cluster.Metadata.Id,
 		})
 	}
-	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(c.GetClusterNames(), ",\n")))
+	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n")))
 
-	config.UpdateClusters(c)
+	config.UpdateClusters(clusterArr)
 	cloud = config.GetActiveCloudConfig()
 
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
 		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
 	}
 
-	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(c.GetClusterNames(), ",\n"))
+	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(clusterArr.GetClusterNames(), ",\n"))
 	return clusterId, errors.New(errorMessage)
 }

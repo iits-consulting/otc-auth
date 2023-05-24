@@ -32,7 +32,6 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
 		common.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
-
 	}
 
 	if tokenResponse.Token.Secret == "" {

@@ -58,15 +58,6 @@ type ProjectsResponse struct {
 	} `json:"projects"`
 }
 
-type ClustersResponse struct {
-	Items []struct {
-		Metadata struct {
-			Name string `json:"name"`
-			UID  string `json:"uid"`
-		} `json:"metadata"`
-	} `json:"items"`
-}
-
 const SuccessPageHtml = `
 <!DOCTYPE html>
 <html lang="en">

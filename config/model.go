@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-const (
-	Unscoped = "unscoped"
-	Scoped   = "scoped"
-)
-
 type OtcConfigContent struct {
 	Clouds Clouds `json:"clouds"`
 }
@@ -25,15 +20,6 @@ func (clouds *Clouds) ContainsCloud(name string) bool {
 		}
 	}
 	return false
-}
-
-func (clouds *Clouds) GetCloudByName(name string) *Cloud {
-	for _, cloud := range *clouds {
-		if cloud.Domain.Name == name {
-			return &cloud
-		}
-	}
-	return nil
 }
 
 func (clouds *Clouds) RemoveCloudByNameIfExists(name string) {
@@ -67,15 +53,6 @@ func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, er
 	}
 
 	return nil, nil, errors.New("no active cloud")
-}
-
-func (clouds *Clouds) GetActiveCloud() *Cloud {
-	cloud, _, err := clouds.FindActiveCloudConfigOrNil()
-	if err != nil || cloud == nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: invalid state %s")
-	}
-
-	return cloud
 }
 
 func (clouds *Clouds) GetActiveCloudIndex() int {
@@ -192,8 +169,6 @@ type Token struct {
 	IssuedAt  string `json:"issued_at"`
 	ExpiresAt string `json:"expires_at"`
 }
-
-type Tokens []Token
 
 func (token *Token) IsTokenValid() bool {
 	if common.ParseTimeOrThrow(token.ExpiresAt).After(time.Now()) {

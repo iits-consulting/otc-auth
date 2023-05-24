@@ -85,9 +85,8 @@ func determineTargetLocation(targetLocation string) string {
 			common.OutputErrorMessageToConsoleAndExit(err.Error())
 		}
 		return targetLocation
-	} else {
-		return defaultKubeConfigLocation
 	}
+	return defaultKubeConfigLocation
 }
 
 func addContextInformationToKubeConfig(projectName string, clusterName string, kubeConfigData string) string {
