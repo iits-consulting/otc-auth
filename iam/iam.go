@@ -1,6 +1,7 @@
 package iam
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
@@ -12,15 +13,15 @@ import (
 	"time"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
 	authOpts := golangsdk.AuthOptions{
 		DomainName:       authInfo.DomainName,
 		Username:         authInfo.Username,
 		Password:         authInfo.Password,
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3"}
+		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
 
-	if authInfo.Otp != "" && authInfo.UserDomainId != "" {
-		// TODO
+		Passcode: authInfo.Otp,
+		UserID:   authInfo.UserDomainId,
 	}
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
@@ -33,23 +34,20 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse co
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	token, err := tokens.Create(client, &authOpts).ExtractToken()
+	tokenResult := tokens.Create(client, &authOpts)
+
+	var tokenMarshalledResult common.TokenResponse
+	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	user, err := tokens.Create(client, &authOpts).ExtractUser()
+	token, err := tokenResult.ExtractToken()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-
-	tokenResponse.Token.Secret = token.ID
-	tokenResponse.Token.ExpiresAt = token.ExpiresAt.Format(time.RFC3339)
-	tokenResponse.Token.User.Domain.Id = user.Domain.ID
-	tokenResponse.Token.User.Domain.Name = user.Domain.Name
-	tokenResponse.Token.User.Name = user.Name
-	// TODO time issued?? Is this used?
-	return tokenResponse
+	tokenMarshalledResult.Token.Secret = token.ID
+	return tokenMarshalledResult
 }
 
 func GetScopedToken(projectName string) config.Token {
