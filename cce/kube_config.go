@@ -73,8 +73,8 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	os.RemoveAll(filenameNewFile)
-	os.RemoveAll(filenameCurrentFile)
+	_ = os.RemoveAll(filenameNewFile)
+	_ = os.RemoveAll(filenameCurrentFile)
 }
 
 func determineTargetLocation(targetLocation string) string {

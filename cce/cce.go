@@ -1,6 +1,7 @@
 package cce
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
@@ -60,7 +61,7 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	return clusters.List(client, clusters.ListOpts{})
 }
 
-func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (*clusters.Certificate, error) {
+func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (KubeConfig, error) {
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
@@ -69,20 +70,22 @@ func getClusterCertFromServiceProvider(projectName string, clusterId string, dur
 		TenantID:         project.Id,
 	})
 	if err != nil {
-		return nil, err
+		common.OutputErrorToConsoleAndExit(err)
 	}
 	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		return nil, err
+		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	var expOpts clusters.ExpirationOpts
 	expOpts.Duration, err = strconv.Atoi(duration)
 	if err != nil {
-		return nil, err
+		common.OutputErrorToConsoleAndExit(err)
 	}
-	cert := clusters.GetCertWithExpiration(client, clusterId, expOpts)
-	return cert.Extract()
+	cert := clusters.GetCertWithExpiration(client, clusterId, expOpts).Body
+	var extractedCert KubeConfig
+	err = json.Unmarshal(cert, &extractedCert)
+	return extractedCert, err
 }
 
 func getClusterId(clusterName string, projectName string) (clusterId string, err error) {

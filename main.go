@@ -238,9 +238,9 @@ func main() {
 			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
 		}
 
-		accessTokens, err := accesstoken.ListAccessToken()
-		if err != nil {
-			common.OutputErrorToConsoleAndExit(err)
+		accessTokens, err2 := accesstoken.ListAccessToken()
+		if err2 != nil {
+			common.OutputErrorToConsoleAndExit(err2)
 		}
 		log.Printf("%v", accessTokens)
 	}

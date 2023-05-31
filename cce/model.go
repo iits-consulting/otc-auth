@@ -15,12 +15,9 @@ type KubeConfig struct {
 		Name    string `json:"name"`
 		Cluster struct {
 			Server                   string `json:"server"`
-			CertificateAuthorityData string `json:"certificate-authority-data"`
+			CertificateAuthorityData string `json:"certificate-authority-data,omitempty"`
+			InsecureSkipTLSVerify    bool   `json:"insecure-skip-tls-verify,omitempty"`
 		} `json:"cluster,omitempty"`
-		Cluster0 struct {
-			Server                string `json:"server"`
-			InsecureSkipTLSVerify bool   `json:"insecure-skip-tls-verify"`
-		} `json:"cluster0,omitempty"`
 	} `json:"clusters"`
 	Users []struct {
 		Name string `json:"name"`
