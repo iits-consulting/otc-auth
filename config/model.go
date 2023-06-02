@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"otc-auth/common"
 	"time"
@@ -43,7 +42,7 @@ func (clouds *Clouds) SetActiveByName(name string) {
 
 func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, err error) {
 	if clouds.NumberOfActiveCloudConfigs() > 1 {
-		return nil, nil, errors.New("more than one cloud active")
+		return nil, nil, fmt.Errorf("more than one cloud active")
 	}
 
 	for index, cloud := range *clouds {
@@ -52,7 +51,7 @@ func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, er
 		}
 	}
 
-	return nil, nil, errors.New("no active cloud")
+	return nil, nil, fmt.Errorf("no active cloud")
 }
 
 func (clouds *Clouds) GetActiveCloudIndex() int {
@@ -101,8 +100,7 @@ func (projects Projects) FindProjectByName(name string) *Project {
 func (projects Projects) GetProjectByNameOrThrow(name string) Project {
 	project := projects.FindProjectByName(name)
 	if project == nil {
-		errorMessage := fmt.Sprintf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", name)
-		common.OutputErrorToConsoleAndExit(errors.New(errorMessage))
+		common.OutputErrorToConsoleAndExit(fmt.Errorf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", name))
 	}
 	return *project
 }
@@ -136,8 +134,7 @@ func (clusters Clusters) GetClusterNames() (names []string) {
 func (clusters Clusters) GetClusterByNameOrThrow(name string) Cluster {
 	cluster := clusters.FindClusterByName(name)
 	if cluster == nil {
-		errorMessage := fmt.Sprintf("fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve a list of clusters.", name)
-		common.OutputErrorToConsoleAndExit(errors.New(errorMessage))
+		common.OutputErrorToConsoleAndExit(fmt.Errorf("fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve a list of clusters.", name))
 	}
 	return *cluster
 }

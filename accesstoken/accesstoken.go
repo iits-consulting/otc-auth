@@ -40,7 +40,7 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	}
 	user, err := tokens.Get(client, config.GetActiveCloudConfig().UnscopedToken.Secret).ExtractUser()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
 	return credentials.List(client, credentials.ListOpts{UserID: user.ID}).Extract()
 }
@@ -52,7 +52,7 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 	}
 	user, err := tokens.Get(client, config.GetActiveCloudConfig().UnscopedToken.Secret).ExtractUser()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
 	return credentials.Create(client, credentials.CreateOpts{
 		UserID:      user.ID,
@@ -75,7 +75,7 @@ func getIdentityServiceClient() (*golangsdk.ServiceClient, error) {
 		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't get provider: %w", err)
 	}
 	return openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 }

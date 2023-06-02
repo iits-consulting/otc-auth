@@ -2,7 +2,6 @@ package iam
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
@@ -101,8 +100,7 @@ func getScopedTokenFromServiceProvider(projectName string) {
 	}
 	index := cloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
-		errorMessage := fmt.Sprintf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", projectName)
-		common.OutputErrorToConsoleAndExit(errors.New(errorMessage))
+		common.OutputErrorToConsoleAndExit(fmt.Errorf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", projectName))
 	}
 	cloud.Projects[*index].ScopedToken = token
 	config.UpdateCloudConfig(cloud)

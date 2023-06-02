@@ -52,11 +52,11 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 		TenantID:         project.Id,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't get provider: %w", err)
 	}
 	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't get clusters for project: %w", err)
 	}
 	return clusters.List(client, clusters.ListOpts{})
 }

@@ -39,7 +39,7 @@ func startAndListenHttpServer(channel chan common.OidcCredentialsResponse) {
 		}
 		parts := strings.Split(rawAccessToken, " ")
 		if len(parts) != 2 {
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		_, err := idTokenVerifier.Verify(ctx, parts[1])
