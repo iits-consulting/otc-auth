@@ -73,7 +73,7 @@ func GetScopedToken(projectName string) config.Token {
 
 func getScopedTokenFromServiceProvider(projectName string) {
 	cloud := config.GetActiveCloudConfig()
-	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).Id
+	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).ID
 
 	authOpts := golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
@@ -103,7 +103,8 @@ func getScopedTokenFromServiceProvider(projectName string) {
 	index := cloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
 		common.OutputErrorToConsoleAndExit(
-			fmt.Errorf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.",
+			fmt.Errorf("fatal: project with name %s not found.\n"+
+				"\nUse the cce list-projects command to get a list of projects",
 				projectName))
 	}
 	cloud.Projects[*index].ScopedToken = token

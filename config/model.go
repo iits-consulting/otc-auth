@@ -74,7 +74,7 @@ func (clouds *Clouds) NumberOfActiveCloudConfigs() int {
 }
 
 type Cloud struct {
-	Domain        NameAndIdResource `json:"domain"`
+	Domain        NameAndIDResource `json:"domain"`
 	UnscopedToken Token             `json:"unscopedToken"`
 	Projects      Projects          `json:"projects"`
 	Clusters      Clusters          `json:"clusters"`
@@ -83,7 +83,7 @@ type Cloud struct {
 }
 
 type Project struct {
-	NameAndIdResource
+	NameAndIDResource
 	ScopedToken Token `json:"scopedToken"`
 }
 type Projects []Project
@@ -100,7 +100,9 @@ func (projects Projects) FindProjectByName(name string) *Project {
 func (projects Projects) GetProjectByNameOrThrow(name string) Project {
 	project := projects.FindProjectByName(name)
 	if project == nil {
-		common.OutputErrorToConsoleAndExit(fmt.Errorf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", name))
+		common.OutputErrorToConsoleAndExit(fmt.Errorf(
+			"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
+				"get a list of projects", name))
 	}
 	return *project
 }
@@ -114,7 +116,8 @@ func (projects Projects) FindProjectIndexByName(name string) *int {
 	return nil
 }
 
-func (projects Projects) GetProjectNames() (names []string) {
+func (projects Projects) GetProjectNames() []string {
+	var names []string
 	for _, project := range projects {
 		names = append(names, project.Name)
 	}
@@ -122,11 +125,12 @@ func (projects Projects) GetProjectNames() (names []string) {
 }
 
 type (
-	Cluster  NameAndIdResource
+	Cluster  NameAndIDResource
 	Clusters []Cluster
 )
 
-func (clusters Clusters) GetClusterNames() (names []string) {
+func (clusters Clusters) GetClusterNames() []string {
+	var names []string
 	for _, cluster := range clusters {
 		names = append(names, cluster.Name)
 	}
@@ -136,7 +140,9 @@ func (clusters Clusters) GetClusterNames() (names []string) {
 func (clusters Clusters) GetClusterByNameOrThrow(name string) Cluster {
 	cluster := clusters.FindClusterByName(name)
 	if cluster == nil {
-		common.OutputErrorToConsoleAndExit(fmt.Errorf("fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve a list of clusters.", name))
+		common.OutputErrorToConsoleAndExit(fmt.Errorf(
+			"fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve "+
+				"a list of clusters", name))
 	}
 	return *cluster
 }
@@ -151,16 +157,12 @@ func (clusters Clusters) FindClusterByName(name string) *Cluster {
 }
 
 func (clusters Clusters) ContainsClusterByName(name string) bool {
-	if clusters.FindClusterByName(name) == nil {
-		return false
-	} else {
-		return true
-	}
+	return clusters.FindClusterByName(name) != nil
 }
 
-type NameAndIdResource struct {
+type NameAndIDResource struct {
 	Name string `json:"name"`
-	Id   string `json:"id"`
+	ID   string `json:"id"`
 }
 
 type Token struct {
@@ -170,11 +172,7 @@ type Token struct {
 }
 
 func (token *Token) IsTokenValid() bool {
-	if common.ParseTimeOrThrow(token.ExpiresAt).After(time.Now()) {
-		return true
-	} else {
-		return false
-	}
+	return common.ParseTimeOrThrow(token.ExpiresAt).After(time.Now())
 }
 
 func (token *Token) UpdateToken(updatedToken Token) Token {

@@ -19,7 +19,7 @@ func GetProjectsInActiveCloud() config.Projects {
 	var cloudProjects config.Projects
 	for _, project := range projectsResponse.Projects {
 		cloudProjects = append(cloudProjects, config.Project{
-			NameAndIdResource: config.NameAndIdResource{Name: project.Name, Id: project.Id},
+			NameAndIDResource: config.NameAndIDResource{Name: project.Name, ID: project.ID},
 		})
 	}
 
@@ -40,7 +40,7 @@ func getProjectsFromServiceProvider() common.ProjectsResponse {
 
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
-		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		DomainID:         config.GetActiveCloudConfig().Domain.ID,
 		TokenID:          cloud.UnscopedToken.Secret,
 	})
 	if err != nil {

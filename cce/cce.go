@@ -28,12 +28,12 @@ func GetClusterNames(projectName string) config.Clusters {
 	for _, item := range clustersResult {
 		clustersArr = append(clustersArr, config.Cluster{
 			Name: item.Metadata.Name,
-			Id:   item.Metadata.Id,
+			ID:   item.Metadata.Id,
 		})
 	}
 
 	config.UpdateClusters(clustersArr)
-	log.Println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n")))
+	log.Printf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
 
 	return clustersArr
 }
@@ -50,9 +50,9 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
-		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		DomainID:         config.GetActiveCloudConfig().Domain.ID,
 		TokenID:          project.ScopedToken.Secret,
-		TenantID:         project.Id,
+		TenantID:         project.ID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get provider: %w", err)
@@ -64,13 +64,13 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	return clusters.List(client, clusters.ListOpts{})
 }
 
-func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (KubeConfig, error) {
+func getClusterCertFromServiceProvider(projectName string, clusterID string, duration string) (KubeConfig, error) {
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
-		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		DomainID:         config.GetActiveCloudConfig().Domain.ID,
 		TokenID:          project.ScopedToken.Secret,
-		TenantID:         project.Id,
+		TenantID:         project.ID,
 	})
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
@@ -85,17 +85,17 @@ func getClusterCertFromServiceProvider(projectName string, clusterId string, dur
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	cert := clusters.GetCertWithExpiration(client, clusterId, expOpts).Body
+	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
 	var extractedCert KubeConfig
 	err = json.Unmarshal(cert, &extractedCert)
 	return extractedCert, err
 }
 
-func getClusterID(clusterName string, projectName string) (clusterId string, err error) {
+func getClusterID(clusterName string, projectName string) (clusterID string, err error) {
 	cloud := config.GetActiveCloudConfig()
 
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
-		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
+		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
 	}
 
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
@@ -107,18 +107,19 @@ func getClusterID(clusterName string, projectName string) (clusterId string, err
 	for _, cluster := range clustersResult {
 		clusterArr = append(clusterArr, config.Cluster{
 			Name: cluster.Metadata.Name,
-			Id:   cluster.Metadata.Id,
+			ID:   cluster.Metadata.Id,
 		})
 	}
-	log.Println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n")))
+	log.Printf("Clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
 
 	config.UpdateClusters(clusterArr)
 	cloud = config.GetActiveCloudConfig()
 
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
-		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
+		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
 	}
 
-	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(clusterArr.GetClusterNames(), ",\n"))
-	return clusterId, errors.New(errorMessage)
+	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s",
+		strings.Join(clusterArr.GetClusterNames(), ",\n"))
+	return clusterID, errors.New(errorMessage)
 }

@@ -15,7 +15,7 @@ import (
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
-	spInitiatedRequest := getServiceProviderInitiatedRequest(authInfo)
+	spInitiatedRequest := getServiceProviderInitiatedRequest(authInfo) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 
 	bodyBytes := authenticateWithIdp(authInfo, spInitiatedRequest)
 
@@ -26,7 +26,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse co
 		common.OutputErrorToConsoleAndExit(err, "fatal: error deserializing xml.\ntrace: %s")
 	}
 
-	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes)
+	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
 
 	defer func(Body io.ReadCloser) {
@@ -52,10 +52,11 @@ func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response) []
 	request.Header.Add(headers.ContentType, headervalues.TextXML)
 	request.SetBasicAuth(params.Username, params.Password)
 
-	response := common.HTTPClientMakeRequest(request)
+	response := common.HTTPClientMakeRequest(request) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 	return common.GetBodyBytesFromResponse(response)
 }
 
+//nolint:lll // This function will be removed soon
 func validateAuthenticationWithServiceProvider(assertionResult common.SamlAssertionResponse, responseBodyBytes []byte) *http.Response {
 	request := common.GetRequest(http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL,
 		bytes.NewReader(responseBodyBytes))

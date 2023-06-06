@@ -54,12 +54,12 @@ type TokenResponse struct {
 type ProjectsResponse struct {
 	Projects []struct {
 		Name string `json:"name"`
-		Id   string `json:"id"`
+		ID   string `json:"id"`
 	} `json:"projects"`
 }
 
-//nolint:lll
-const SuccessPageHtml = `
+//nolint:lll // This should probably be moved to its own file sometime
+const SuccessPageHTML = `
 <!DOCTYPE html>
 <html lang="en">
 <head>

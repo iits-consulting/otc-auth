@@ -74,7 +74,7 @@ func DeleteAccessToken(token string) error {
 func getIdentityServiceClient() (*golangsdk.ServiceClient, error) {
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
-		DomainID:         config.GetActiveCloudConfig().Domain.Id,
+		DomainID:         config.GetActiveCloudConfig().Domain.ID,
 		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
 	})
 	if err != nil {

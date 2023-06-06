@@ -18,27 +18,27 @@ func TestCloudsSlice_RemoveCloudByNameIfExists(t *testing.T) {
 		{
 			desc: "cloud to be removed exists",
 			actual: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIdResource{Name: "cloud-2"}},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-2"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
 			},
 			expected: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
 			},
 			input: "cloud-2",
 		},
 		{
 			desc: "cloud to be removed does not exist",
 			actual: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIdResource{Name: "cloud-2"}},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-2"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
 			},
 			expected: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIdResource{Name: "cloud-2"}},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-2"}},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
 			},
 			input: "cloud-4",
 		},
@@ -82,28 +82,28 @@ func TestCloudsSlice_SetActiveByName(t *testing.T) {
 		{
 			desc: "set active makes all others inactive",
 			expected: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}, Active: false},
-				{Domain: config.NameAndIdResource{Name: "cloud-2"}, Active: true},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}, Active: false},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: false},
+				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: true},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: false},
 			},
 			actual: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}, Active: true},
-				{Domain: config.NameAndIdResource{Name: "cloud-2"}, Active: true},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}, Active: true},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: true},
+				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: true},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: true},
 			},
 			input: "cloud-2",
 		},
 		{
 			desc: "set active with unknown name sets all inactive",
 			expected: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}, Active: false},
-				{Domain: config.NameAndIdResource{Name: "cloud-2"}, Active: false},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}, Active: false},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: false},
+				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: false},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: false},
 			},
 			actual: config.Clouds{
-				{Domain: config.NameAndIdResource{Name: "cloud-1"}, Active: true},
-				{Domain: config.NameAndIdResource{Name: "cloud-2"}, Active: true},
-				{Domain: config.NameAndIdResource{Name: "cloud-3"}, Active: true},
+				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: true},
+				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: true},
+				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: true},
 			},
 			input: "cloud-4",
 		},
@@ -112,7 +112,9 @@ func TestCloudsSlice_SetActiveByName(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			tc.actual.SetActiveByName(tc.input)
 			if tc.actual.NumberOfActiveCloudConfigs() != tc.expected.NumberOfActiveCloudConfigs() {
-				t.Errorf("(%s): expected %d, actual %d", tc.desc, tc.expected.NumberOfActiveCloudConfigs(), tc.actual.NumberOfActiveCloudConfigs())
+				t.Errorf("(%s): expected %d, actual %d",
+					tc.desc, tc.expected.NumberOfActiveCloudConfigs(),
+					tc.actual.NumberOfActiveCloudConfigs())
 			}
 		})
 	}

@@ -23,7 +23,9 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	return authenticateWithServiceProvider(oidcCredentials, authInfo)
 }
 
-func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
+//nolint:lll // This function will be removed soon
+func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo) common.TokenResponse {
+	var tokenResponse common.TokenResponse
 	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol)
 
 	request := common.GetRequest(http.MethodPost, url, nil)
@@ -35,7 +37,7 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 		headers.Authorization, oidcCredentials.BearerToken,
 	)
 
-	response := common.HTTPClientMakeRequest(request)
+	response := common.HTTPClientMakeRequest(request) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
 	tokenResponse.Token.User.Name = oidcCredentials.Claims.PreferredUsername
@@ -45,5 +47,5 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 			common.OutputErrorToConsoleAndExit(err)
 		}
 	}(response.Body)
-	return
+	return tokenResponse
 }

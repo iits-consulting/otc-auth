@@ -14,7 +14,9 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	config.LoadCloudConfig(authInfo.DomainName)
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
-		log.Println("info: will not retrieve unscoped token, because the current one is still valid.\n\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
+		log.Println(
+			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
+				"\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
 		return
 	}
 
@@ -60,7 +62,7 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse) {
 		// Sanity check: we're in the same cloud as the active cloud
 		common.OutputErrorMessageToConsoleAndExit("fatal: authorization made for wrong cloud configuration")
 	}
-	cloud.Domain.Id = tokenResponse.Token.User.Domain.ID
+	cloud.Domain.ID = tokenResponse.Token.User.Domain.ID
 	if cloud.Username != tokenResponse.Token.User.Name {
 		for i, project := range cloud.Projects {
 			cloud.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{

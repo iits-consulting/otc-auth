@@ -38,7 +38,7 @@ const (
 	oidcScopesArg       = "oidc-scopes"
 )
 
-//nolint:funlen
+//nolint:funlen,gocognit
 func main() {
 	const (
 		provideArgumentHelp = "Either provide this argument or set the environment variable"
@@ -53,7 +53,8 @@ func main() {
 		identityProvider    *string
 		identityProviderURL *string
 		isServiceAccount    *bool
-		idpCommandHelp      = fmt.Sprintf("The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s",
+		idpCommandHelp      = fmt.Sprintf(
+			"The name of the identity provider. Allowed values in the iam section of the OTC UI. %s %s %s",
 			requiredForIdp, provideArgumentHelp, envIdpName)
 		idpURLCommandHelp = fmt.Sprintf("Url from the identity provider (e.g. ...realms/myrealm/protocol/saml). %s %s %s",
 			requiredForIdp, provideArgumentHelp, envIdpURL)
@@ -70,11 +71,19 @@ func main() {
 	// Login & common commands
 	loginCommand := parser.NewCommand("login", "Login to the Open Telekom Cloud and receive an unscoped token.")
 	username = loginCommand.String(
-		"u", osUsername, &argparse.Options{Required: false, Help: fmt.Sprintf("Username for the OTC IAM system. %s %s", provideArgumentHelp, envOsUsername)})
+		"u", osUsername,
+		&argparse.Options{Required: false, Help: fmt.Sprintf(
+			"Username for the OTC IAM system. %s %s", provideArgumentHelp, envOsUsername)})
 	password = loginCommand.String(
-		"p", osPassword, &argparse.Options{Required: false, Help: fmt.Sprintf("Password for the OTC IAM system. %s %s", provideArgumentHelp, envOsPassword)})
+		"p", osPassword,
+		&argparse.Options{Required: false, Help: fmt.Sprintf(
+			"Password for the OTC IAM system. %s %s", provideArgumentHelp, envOsPassword)})
 	domainName = loginCommand.String(
-		"d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
+		"d", osDomainName,
+		&argparse.Options{
+			Required: false,
+			Help:     fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName),
+		})
 	overwriteToken = loginCommand.Flag(
 		"o", overwriteTokenArg, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
 	identityProvider = loginCommand.String("i", idpName, &argparse.Options{Required: false, Help: idpCommandHelp})
@@ -84,11 +93,16 @@ func main() {
 	removeLoginCommand := loginCommand.NewCommand("remove", "Removes login information for a cloud")
 
 	// Login with IAM
-	loginIamCommand := loginCommand.NewCommand("iam", "Login to the Open Telekom Cloud through its Identity and Access Management system.")
+	loginIamCommand := loginCommand.NewCommand(
+		"iam", "Login to the Open Telekom Cloud through its Identity and Access Management system.")
 	totp := loginIamCommand.String(
-		"t", totpArg, &argparse.Options{Required: false, Help: "6-digit time-based one-time password (TOTP) used for the MFA login flow."})
+		"t", totpArg,
+		&argparse.Options{Required: false, Help: "6-digit time-based one-time password (TOTP) used for the MFA login flow."})
 	userDomainID := loginIamCommand.String(
-		"", osUserDomainID, &argparse.Options{Required: false, Help: fmt.Sprintf("User ID number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided. %s %s", provideArgumentHelp, envOsUserDomainID)})
+		"", osUserDomainID,
+		&argparse.Options{Required: false, Help: fmt.Sprintf(
+			"User ID number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp"+
+				" is provided. %s %s", provideArgumentHelp, envOsUserDomainID)})
 
 	// Login with IDP + SAML
 	loginIdpSamlCommand := loginCommand.NewCommand(
@@ -98,9 +112,13 @@ func main() {
 	loginIdpOidcCommand := loginCommand.NewCommand(
 		"idp-oidc", "Login to the Open Telekom Cloud through an Identity Provider and OIDC.")
 	clientID := loginIdpOidcCommand.String(
-		"c", clientIDArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Client ID as set on the IdP. %s %s", provideArgumentHelp, envClientID)})
+		"c", clientIDArg,
+		&argparse.Options{Required: false, Help: fmt.Sprintf("Client ID as set on the IdP. %s %s",
+			provideArgumentHelp, envClientID)})
 	clientSecret := loginIdpOidcCommand.String(
-		"s", clientSecretArg, &argparse.Options{Required: false, Help: fmt.Sprintf("Secret ID as set on the IdP. %s %s", provideArgumentHelp, envClientSecret)})
+		"s", clientSecretArg,
+		&argparse.Options{Required: false, Help: fmt.Sprintf("Secret ID as set on the IdP. %s %s",
+			provideArgumentHelp, envClientSecret)})
 	isServiceAccount = loginIdpOidcCommand.Flag(
 		"", isServiceAccountArg, &argparse.Options{Required: false, Help: isServiceAccountHelp})
 	oidcScopes := loginIdpOidcCommand.String("", oidcScopesArg, &argparse.Options{Required: false, Help: oidcScopesHelp})
@@ -111,9 +129,12 @@ func main() {
 	// Manage Cloud Container Engine
 	cceCommand := parser.NewCommand("cce", "Manage Cloud Container Engine.")
 	projectName := cceCommand.String(
-		"p", osProjectName, &argparse.Options{Required: false, Help: fmt.Sprintf("Name of the project you want to access. %s %s.", provideArgumentHelp, envOsProjectName)})
+		"p", osProjectName,
+		&argparse.Options{Required: false, Help: fmt.Sprintf("Name of the project you want to access. %s %s.",
+			provideArgumentHelp, envOsProjectName)})
 	cceDomainName := cceCommand.String(
-		"d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
+		"d", osDomainName,
+		&argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 
 	// List clusters
 	getClustersCommand := cceCommand.NewCommand("list", "Lists Project Clusters in CCE.")
@@ -127,15 +148,18 @@ func main() {
 			Help:     fmt.Sprintf("Name of the clusterArg you want to access %s %s.", provideArgumentHelp, envClusterName),
 		})
 	daysValid := getKubeConfigCommand.String(
-		"v", "days-valid", &argparse.Options{Required: false, Help: "Period (in days) that the config will be valid", Default: "7"})
+		"v", "days-valid",
+		&argparse.Options{Required: false, Help: "Period (in days) that the config will be valid", Default: "7"})
 	targetLocation := getKubeConfigCommand.String(
-		"l", "target-location", &argparse.Options{Required: false, Help: "Where the kube config should be saved, Default: ~/.kube/config"})
+		"l", "target-location",
+		&argparse.Options{Required: false, Help: "Where the kube config should be saved, Default: ~/.kube/config"})
 
 	// AK/SK Management
 	accessTokenCommand := parser.NewCommand("access-token", "Manage AK/SK.")
 	accessTokenCommandCreate := accessTokenCommand.NewCommand("create", "Create new AK/SK.")
 	tokenDescription := accessTokenCommandCreate.String(
-		"s", "description", &argparse.Options{Required: false, Help: "Description of the token.", Default: "Token by otc-auth"})
+		"s", "description",
+		&argparse.Options{Required: false, Help: "Description of the token.", Default: "Token by otc-auth"})
 	accessTokenCommandList := accessTokenCommand.NewCommand("list", "List existing AK/SKs.")
 	accessTokenCommandDelete := accessTokenCommand.NewCommand("delete", "Delete existing AK/SK.")
 	token := accessTokenCommandDelete.String(
@@ -149,7 +173,11 @@ func main() {
 	openStackCommand := parser.NewCommand("openstack", "Manage Openstack Integration")
 	openStackCommandCreateConfigFile := openStackCommand.NewCommand("config-create", "Creates new clouds.yaml")
 	openStackConfigLocation := openStackCommand.String(
-		"l", "config-location", &argparse.Options{Required: false, Help: "Where the config should be saved, Default: ~/.config/openstack/clouds.yaml"})
+		"l", "config-location",
+		&argparse.Options{
+			Required: false,
+			Help:     "Where the config should be saved, Default: ~/.config/openstack/clouds.yaml",
+		})
 
 	err := parser.Parse(os.Args)
 	if err != nil {

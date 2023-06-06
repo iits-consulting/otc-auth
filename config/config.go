@@ -35,7 +35,7 @@ func registerNewCloud(domainName string) Clouds {
 	clouds := otcConfig.Clouds
 
 	newCloud := Cloud{
-		Domain: NameAndIdResource{
+		Domain: NameAndIDResource{
 			Name: domainName,
 		},
 	}
@@ -62,7 +62,7 @@ func IsAuthenticationValid() bool {
 	tokenExpirationDate := common.ParseTimeOrThrow(unscopedToken.ExpiresAt)
 	if tokenExpirationDate.After(time.Now()) {
 		// token still valid
-		log.Println(fmt.Sprintf("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
+		log.Printf("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat))
 
 		return true
 	}
@@ -74,7 +74,8 @@ func IsAuthenticationValid() bool {
 func RemoveCloudConfig(domainName string) {
 	otcConfig := getOtcConfig()
 	if !otcConfig.Clouds.ContainsCloud(domainName) {
-		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: cloud with name %s does not exist in the config file.", domainName))
+		common.OutputErrorMessageToConsoleAndExit(
+			fmt.Sprintf("fatal: cloud with name %s does not exist in the config file.", domainName))
 	}
 
 	removeCloudConfig(domainName)
@@ -112,7 +113,9 @@ func GetActiveCloudConfig() Cloud {
 	clouds := otcConfig.Clouds
 	cloud, _, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: %s.\n\nPlease use the cloud-config register or the cloud-config load command to set an active cloud configuration.")
+		common.OutputErrorToConsoleAndExit(err,
+			"fatal: %s.\n\nPlease use the cloud-config register or the cloud-config load command "+
+				"to set an active cloud configuration.")
 	}
 	return *cloud
 }
@@ -161,7 +164,7 @@ func writeOtcConfigContentToFile(content OtcConfigContent) {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error encoding json.\ntrace: %s")
 	}
 
-	WriteConfigFile(common.ByteSliceToIndentedJsonFormat(contentAsBytes), otcConfigPath)
+	WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), otcConfigPath)
 }
 
 func readFileContent() string {
@@ -170,9 +173,9 @@ func readFileContent() string {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error opening config file.\ntrace: %s")
 	}
 	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			common.OutputErrorToConsoleAndExit(err, "fatal: error saving config file.\ntrace: %s")
+		errClose := file.Close()
+		if errClose != nil {
+			common.OutputErrorToConsoleAndExit(errClose, "fatal: error saving config file.\ntrace: %s")
 		}
 	}(file)
 
@@ -181,8 +184,8 @@ func readFileContent() string {
 	for fileScanner.Scan() {
 		content += fileScanner.Text()
 	}
-	if err := fileScanner.Err(); err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error reading config file.\ntrace: %s")
+	if errScanner := fileScanner.Err(); errScanner != nil {
+		common.OutputErrorToConsoleAndExit(errScanner, "fatal: error reading config file.\ntrace: %s")
 	}
 
 	return content

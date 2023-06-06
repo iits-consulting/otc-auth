@@ -20,9 +20,11 @@ func HTTPClientMakeRequest(request *http.Request) *http.Response {
 }
 
 func GetRequest(method string, url string, body io.Reader) *http.Request {
-	request, err := http.NewRequest(method, url, body)
+	request, err := http.NewRequest(method, url, body) //nolint:noctx // This method will be removed soon anyway
 	if err != nil {
-		OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: error building %s request for url %s\ntrace: %s", method, url, err.Error()))
+		OutputErrorMessageToConsoleAndExit(fmt.Sprintf(
+			"fatal: error building %s request for url %s\ntrace: %s",
+			method, url, err.Error()))
 	}
 
 	return request
@@ -43,7 +45,7 @@ func GetBodyBytesFromResponse(response *http.Response) []byte {
 
 	statusCodeStartsWith2 := regexp.MustCompile(`2\d{2}`)
 	if !statusCodeStartsWith2.MatchString(strconv.Itoa(response.StatusCode)) {
-		errorMessage := fmt.Sprintf("error: status %s, body:\n%s", response.Status, ByteSliceToIndentedJsonFormat(bodyBytes))
+		errorMessage := fmt.Sprintf("error: status %s, body:\n%s", response.Status, ByteSliceToIndentedJSONFormat(bodyBytes))
 		OutputErrorMessageToConsoleAndExit(errorMessage)
 	}
 

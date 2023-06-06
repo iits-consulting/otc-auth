@@ -11,21 +11,26 @@ import (
 
 const PrintTimeFormat = time.RFC1123
 
-func GetCloudCredentialsFromResponseOrThrow(response *http.Response) (tokenResponse TokenResponse) {
+func GetCloudCredentialsFromResponseOrThrow(response *http.Response) TokenResponse {
+	var tokenResponse TokenResponse
 	unscopedToken := response.Header.Get(xheaders.XSubjectToken)
 	if unscopedToken == "" {
 		bodyBytes := GetBodyBytesFromResponse(response)
 		responseString := string(bodyBytes)
 		if strings.Contains(responseString, "mfa totp code verify fail") {
-			OutputErrorMessageToConsoleAndExit("fatal: invalid otp unscopedToken.\n\nPlease try it again with a new otp unscopedToken.")
+			OutputErrorMessageToConsoleAndExit(
+				"fatal: invalid otp unscopedToken.\n" +
+					"\nPlease try it again with a new otp unscopedToken.")
 		} else {
-			formattedError := ByteSliceToIndentedJsonFormat(bodyBytes)
-			OutputErrorMessageToConsoleAndExit(fmt.Sprintf("fatal: response failed with status %s. Body:\n%s", response.Status, formattedError))
+			formattedError := ByteSliceToIndentedJSONFormat(bodyBytes)
+			OutputErrorMessageToConsoleAndExit(fmt.Sprintf(
+				"fatal: response failed with status %s. Body:\n%s",
+				response.Status, formattedError))
 		}
 	}
 
 	bodyBytes := GetBodyBytesFromResponse(response)
-	tokenResponse = *DeserializeJsonForType[TokenResponse](bodyBytes)
+	tokenResponse = *DeserializeJSONForType[TokenResponse](bodyBytes)
 	tokenResponse.Token.Secret = unscopedToken
 
 	return tokenResponse
