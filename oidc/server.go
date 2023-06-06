@@ -6,12 +6,13 @@ import (
 	"net/http"
 	"strings"
 
+	"otc-auth/common"
+
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
-	"otc-auth/common"
 )
 
 var (
@@ -103,20 +104,20 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 	channel := make(chan common.OidcCredentialsResponse)
 	go startAndListenHttpServer(channel)
 	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, params.IdpUrl)
+	provider, err := oidc.NewProvider(ctx, params.IdpURL)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	oAuth2Config = oauth2.Config{
-		ClientID:     params.ClientId,
+		ClientID:     params.ClientID,
 		ClientSecret: params.ClientSecret,
 		RedirectURL:  redirectURL,
 		Endpoint:     provider.Endpoint(),
 		Scopes:       params.OidcScopes,
 	}
 
-	idTokenVerifier = provider.Verifier(&oidc.Config{ClientID: params.ClientId})
+	idTokenVerifier = provider.Verifier(&oidc.Config{ClientID: params.ClientID})
 	state = uuid.New().String()
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))

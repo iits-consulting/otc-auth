@@ -6,11 +6,12 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/go-http-utils/headers"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/common/headervalues"
 	header "otc-auth/common/xheaders"
+
+	"github.com/go-http-utils/headers"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
@@ -19,6 +20,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse co
 	bodyBytes := authenticateWithIdp(authInfo, spInitiatedRequest)
 
 	assertionResult := common.SamlAssertionResponse{}
+
 	err := xml.Unmarshal(bodyBytes, &assertionResult)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error deserializing xml.\ntrace: %s")
@@ -26,13 +28,15 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse co
 
 	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes)
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
+
 	defer func(Body io.ReadCloser) {
 		errClose := Body.Close()
 		if errClose != nil {
 			common.OutputErrorToConsoleAndExit(errClose)
 		}
 	}(response.Body)
-	return
+
+	return tokenResponse
 }
 
 func getServiceProviderInitiatedRequest(params common.AuthInfo) *http.Response {
@@ -40,15 +44,15 @@ func getServiceProviderInitiatedRequest(params common.AuthInfo) *http.Response {
 	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
 	request.Header.Add(header.Paos, headervalues.Paos)
 
-	return common.HttpClientMakeRequest(request)
+	return common.HTTPClientMakeRequest(request)
 }
 
 func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response) []byte {
-	request := common.GetRequest(http.MethodPost, params.IdpUrl, samlResponse.Body)
+	request := common.GetRequest(http.MethodPost, params.IdpURL, samlResponse.Body)
 	request.Header.Add(headers.ContentType, headervalues.TextXML)
 	request.SetBasicAuth(params.Username, params.Password)
 
-	response := common.HttpClientMakeRequest(request)
+	response := common.HTTPClientMakeRequest(request)
 	return common.GetBodyBytesFromResponse(response)
 }
 
@@ -57,5 +61,5 @@ func validateAuthenticationWithServiceProvider(assertionResult common.SamlAssert
 		bytes.NewReader(responseBodyBytes))
 	request.Header.Add(headers.ContentType, headervalues.ApplicationPaos)
 
-	return common.HttpClientMakeRequest(request)
+	return common.HTTPClientMakeRequest(request)
 }

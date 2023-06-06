@@ -2,18 +2,20 @@ package accesstoken
 
 import (
 	"fmt"
+	"log"
+
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
+	"otc-auth/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/credentials"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
-	"otc-auth/common"
-	"otc-auth/common/endpoints"
-	"otc-auth/config"
 )
 
 func CreateAccessToken(tokenDescription string) {
-	println("Creating access token file with GTC...")
+	log.Println("Creating access token file with GTC...")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err) // TODO - make error more specific when logged in with oidc
@@ -30,8 +32,8 @@ func CreateAccessToken(tokenDescription string) {
 		resp.SecretKey)
 
 	common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
-	println("Access token file created successfully.")
-	println("Please source the ak-sk-env.sh file in the current directory manually")
+	log.Println("Access token file created successfully.")
+	log.Println("Please source the ak-sk-env.sh file in the current directory manually")
 }
 
 func ListAccessToken() ([]credentials.Credential, error) {
@@ -71,7 +73,7 @@ func DeleteAccessToken(token string) error {
 
 func getIdentityServiceClient() (*golangsdk.ServiceClient, error) {
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.Id,
 		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
 	})

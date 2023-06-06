@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func HttpClientMakeRequest(request *http.Request) *http.Response {
+func HTTPClientMakeRequest(request *http.Request) *http.Response {
 	httpClient := http.Client{}
 	response, err := httpClient.Do(request)
 	if err != nil {

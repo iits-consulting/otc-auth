@@ -1,15 +1,17 @@
 package openstack
 
 import (
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 
-	"github.com/gophercloud/utils/openstack/clientconfig"
-	"gopkg.in/yaml.v2"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
+
+	"github.com/gophercloud/utils/openstack/clientconfig"
+	"gopkg.in/yaml.v2"
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
@@ -29,7 +31,7 @@ func createOpenstackCloudConfig(project config.Project, domainName string) clien
 	cloudName := domainName + "_" + projectName
 
 	authInfo := clientconfig.AuthInfo{
-		AuthURL:           endpoints.BaseUrlIam + "/v3",
+		AuthURL:           endpoints.BaseURLIam + "/v3",
 		Token:             project.ScopedToken.Secret,
 		ProjectDomainName: projectName,
 	}
@@ -60,5 +62,5 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 	}
 	config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
 
-	println("info: openstack clouds.yaml was updated")
+	log.Println("info: openstack clouds.yaml was updated")
 }

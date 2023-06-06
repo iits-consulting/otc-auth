@@ -4,15 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
+
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
+	"otc-auth/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
-	"otc-auth/common"
-	"otc-auth/common/endpoints"
-	"otc-auth/config"
 )
 
 func GetClusterNames(projectName string) config.Clusters {
@@ -31,7 +33,7 @@ func GetClusterNames(projectName string) config.Clusters {
 	}
 
 	config.UpdateClusters(clustersArr)
-	println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n")))
+	log.Println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n")))
 
 	return clustersArr
 }
@@ -41,13 +43,13 @@ func GetKubeConfig(configParams KubeConfigParams) {
 
 	mergeKubeConfig(configParams, kubeConfig)
 
-	println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", configParams.ClusterName))
+	log.Printf("Successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
 }
 
 func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.Id,
 		TokenID:          project.ScopedToken.Secret,
 		TenantID:         project.Id,
@@ -65,7 +67,7 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (KubeConfig, error) {
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.Id,
 		TokenID:          project.ScopedToken.Secret,
 		TenantID:         project.Id,
@@ -89,7 +91,7 @@ func getClusterCertFromServiceProvider(projectName string, clusterId string, dur
 	return extractedCert, err
 }
 
-func getClusterId(clusterName string, projectName string) (clusterId string, err error) {
+func getClusterID(clusterName string, projectName string) (clusterId string, err error) {
 	cloud := config.GetActiveCloudConfig()
 
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
@@ -108,7 +110,7 @@ func getClusterId(clusterName string, projectName string) (clusterId string, err
 			Id:   cluster.Metadata.Id,
 		})
 	}
-	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n")))
+	log.Println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n")))
 
 	config.UpdateClusters(clusterArr)
 	cloud = config.GetActiveCloudConfig()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -45,7 +46,7 @@ func OutputErrorToConsoleAndExit(err error, errorMessage ...string) {
 }
 
 func OutputErrorMessageToConsoleAndExit(errorMessage string) {
-	fmt.Println(errorMessage)
+	log.Println(errorMessage)
 	os.Exit(1)
 }
 

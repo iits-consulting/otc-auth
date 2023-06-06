@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"otc-auth/common"
 	"otc-auth/config"
 	"otc-auth/iam"
@@ -12,11 +14,11 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	config.LoadCloudConfig(authInfo.DomainName)
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
-		println("info: will not retrieve unscoped token, because the current one is still valid.\n\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
+		log.Println("info: will not retrieve unscoped token, because the current one is still valid.\n\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
 		return
 	}
 
-	println("Retrieving unscoped token for active cloud...")
+	log.Println("Retrieving unscoped token for active cloud...")
 
 	var tokenResponse common.TokenResponse
 	switch authInfo.AuthType {
@@ -27,12 +29,16 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 		case protocolOIDC:
 			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo)
 		default:
-			common.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". Please provide a valid argument and try again.")
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
+					"Please provide a valid argument and try again.")
 		}
 	case "iam":
 		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
-		common.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
+		common.OutputErrorMessageToConsoleAndExit(
+			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
+				"Please provide a valid argument and try again.")
 	}
 
 	if tokenResponse.Token.Secret == "" {
@@ -40,7 +46,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	}
 	updateOTCInfoFile(tokenResponse)
 	createScopedTokenForEveryProject()
-	println("Successfully obtained unscoped token!")
+	log.Println("Successfully obtained unscoped token!")
 }
 
 func createScopedTokenForEveryProject() {
@@ -54,7 +60,7 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse) {
 		// Sanity check: we're in the same cloud as the active cloud
 		common.OutputErrorMessageToConsoleAndExit("fatal: authorization made for wrong cloud configuration")
 	}
-	cloud.Domain.Id = tokenResponse.Token.User.Domain.Id
+	cloud.Domain.Id = tokenResponse.Token.User.Domain.ID
 	if cloud.Username != tokenResponse.Token.User.Name {
 		for i, project := range cloud.Projects {
 			cloud.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{

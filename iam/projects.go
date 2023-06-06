@@ -2,15 +2,16 @@ package iam
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"strings"
+
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
+	"otc-auth/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/projects"
-	"otc-auth/common"
-	"otc-auth/common/endpoints"
-	"otc-auth/config"
 )
 
 func GetProjectsInActiveCloud() config.Projects {
@@ -23,7 +24,7 @@ func GetProjectsInActiveCloud() config.Projects {
 	}
 
 	config.UpdateProjects(cloudProjects)
-	println(fmt.Sprintf("Projects for active cloud:\n%s", strings.Join(cloudProjects.GetProjectNames(), ",\n")))
+	log.Printf("Projects for active cloud:\n%s \n", strings.Join(cloudProjects.GetProjectNames(), ",\n"))
 	return cloudProjects
 }
 
@@ -35,10 +36,10 @@ func CreateScopedTokenForEveryProject(projectNames []string) {
 
 func getProjectsFromServiceProvider() common.ProjectsResponse {
 	cloud := config.GetActiveCloudConfig()
-	println(fmt.Sprintf("info: fetching projects for cloud %s", cloud.Domain.Name))
+	log.Printf("info: fetching projects for cloud %s \n", cloud.Domain.Name)
 
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.Id,
 		TokenID:          cloud.UnscopedToken.Secret,
 	})

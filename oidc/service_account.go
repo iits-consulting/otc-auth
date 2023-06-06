@@ -6,8 +6,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/go-http-utils/headers"
 	"otc-auth/common"
+
+	"github.com/go-http-utils/headers"
 )
 
 func createServiceAccountAuthenticateRequest(requestUrl string, clientId string, clientSecret string) *http.Request {
@@ -33,12 +34,12 @@ type ServiceAccountResponse struct {
 }
 
 func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCredentialsResponse {
-	idpTokenUrl, err := url.JoinPath(params.IdpUrl, "protocol/openid-connect/token")
+	idpTokenUrl, err := url.JoinPath(params.IdpURL, "protocol/openid-connect/token")
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	request := createServiceAccountAuthenticateRequest(idpTokenUrl, params.ClientId, params.ClientSecret)
-	response := common.HttpClientMakeRequest(request)
+	request := createServiceAccountAuthenticateRequest(idpTokenUrl, params.ClientID, params.ClientSecret)
+	response := common.HTTPClientMakeRequest(request)
 	bodyBytes := common.GetBodyBytesFromResponse(response)
 
 	var result ServiceAccountResponse

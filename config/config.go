@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"time"
@@ -39,7 +40,9 @@ func registerNewCloud(domainName string) Clouds {
 		},
 	}
 	if otcConfig.Clouds.ContainsCloud(newCloud.Domain.Name) {
-		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command.", newCloud.Domain.Name))
+		common.OutputErrorMessageToConsoleAndExit(
+			fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command.",
+				newCloud.Domain.Name))
 
 		return nil
 	}
@@ -59,7 +62,7 @@ func IsAuthenticationValid() bool {
 	tokenExpirationDate := common.ParseTimeOrThrow(unscopedToken.ExpiresAt)
 	if tokenExpirationDate.After(time.Now()) {
 		// token still valid
-		println(fmt.Sprintf("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
+		log.Println(fmt.Sprintf("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
 
 		return true
 	}
@@ -126,7 +129,7 @@ func OtcConfigFileExists() bool {
 func getOtcConfig() OtcConfigContent {
 	if !OtcConfigFileExists() {
 		createConfigFileWithCloudConfig(OtcConfigContent{})
-		println("info: cloud config created.")
+		log.Println("info: cloud config created.")
 	}
 
 	var otcConfig OtcConfigContent

@@ -63,7 +63,10 @@ func TestCloudsSlice_RemoveCloudByNameIfExists(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(actualCloudNames, expectedCloudNames) {
-				t.Errorf("(%s): actual %s, expected %s", tc.desc, strings.Join(actualCloudNames, ", "), strings.Join(expectedCloudNames, ", "))
+				t.Errorf("(%s): actual %s, expected %s",
+					tc.desc,
+					strings.Join(actualCloudNames, ", "),
+					strings.Join(expectedCloudNames, ", "))
 			}
 		})
 	}

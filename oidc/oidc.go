@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-http-utils/headers"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
+
+	"github.com/go-http-utils/headers"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
@@ -34,7 +35,7 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 		headers.Authorization, oidcCredentials.BearerToken,
 	)
 
-	response := common.HttpClientMakeRequest(request)
+	response := common.HTTPClientMakeRequest(request)
 
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
 	tokenResponse.Token.User.Name = oidcCredentials.Claims.PreferredUsername

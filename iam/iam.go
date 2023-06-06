@@ -3,14 +3,16 @@ package iam
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
+
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
+	"otc-auth/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
-	"otc-auth/common"
-	"otc-auth/common/endpoints"
-	"otc-auth/config"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
@@ -18,10 +20,10 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 		DomainName:       authInfo.DomainName,
 		Username:         authInfo.Username,
 		Password:         authInfo.Password,
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
 
 		Passcode: authInfo.Otp,
-		UserID:   authInfo.UserDomainId,
+		UserID:   authInfo.UserDomainID,
 	}
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
@@ -58,12 +60,12 @@ func GetScopedToken(projectName string) config.Token {
 
 		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
 		if tokenExpirationDate.After(time.Now()) {
-			println(fmt.Sprintf("info: scoped token is valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
+			log.Printf("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
 			return token
 		}
 	}
 
-	println("attempting to request a scoped token.")
+	log.Println("attempting to request a scoped token.")
 	getScopedTokenFromServiceProvider(projectName) // TODO - Seems a little dirty, might want to actually return a value and not have the cloud config updated as a side-effect
 	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	return project.ScopedToken
@@ -71,12 +73,12 @@ func GetScopedToken(projectName string) config.Token {
 
 func getScopedTokenFromServiceProvider(projectName string) {
 	cloud := config.GetActiveCloudConfig()
-	projectId := cloud.Projects.GetProjectByNameOrThrow(projectName).Id
+	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).Id
 
 	authOpts := golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseUrlIam + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
 		TokenID:          cloud.UnscopedToken.Secret,
-		TenantID:         projectId,
+		TenantID:         projectID,
 		DomainName:       cloud.Domain.Name,
 	}
 
@@ -95,15 +97,16 @@ func getScopedTokenFromServiceProvider(projectName string) {
 	}
 
 	token := config.Token{
-		Secret: scopedToken.ID,
-		// TODO IssuedAt:  tokenResponse.Token.IssuedAt,
+		Secret:    scopedToken.ID,
 		ExpiresAt: scopedToken.ExpiresAt.Format(time.RFC3339),
 	}
 	index := cloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
-		common.OutputErrorToConsoleAndExit(fmt.Errorf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", projectName))
+		common.OutputErrorToConsoleAndExit(
+			fmt.Errorf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.",
+				projectName))
 	}
 	cloud.Projects[*index].ScopedToken = token
 	config.UpdateCloudConfig(cloud)
-	println("scoped token acquired successfully.")
+	log.Println("scoped token acquired successfully.")
 }

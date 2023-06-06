@@ -3,21 +3,23 @@ package cce
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	. "k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 	"otc-auth/common"
 	"otc-auth/config"
+
+	. "k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 )
 
 func getKubeConfig(kubeConfigParams KubeConfigParams) string {
-	println("Getting kube config...")
+	log.Println("Getting kube config...")
 
-	clusterId, err := getClusterId(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
+	clusterId, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster id: %s")
 	}

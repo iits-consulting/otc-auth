@@ -7,14 +7,14 @@ import (
 type AuthInfo struct {
 	AuthType         string
 	IdpName          string
-	IdpUrl           string
+	IdpURL           string
 	Username         string
 	Password         string
 	AuthProtocol     string
 	DomainName       string
 	Otp              string
-	UserDomainId     string
-	ClientId         string
+	UserDomainID     string
+	ClientID         string
 	ClientSecret     string
 	OverwriteFile    bool
 	IsServiceAccount bool
@@ -43,7 +43,7 @@ type TokenResponse struct {
 		IssuedAt  string `json:"issued_at"`
 		User      struct {
 			Domain struct {
-				Id   string `json:"id"`
+				ID   string `json:"id"`
 				Name string `json:"name"`
 			} `json:"domain"`
 			Name string `json:"name"`
@@ -58,6 +58,7 @@ type ProjectsResponse struct {
 	} `json:"projects"`
 }
 
+//nolint:lll
 const SuccessPageHtml = `
 <!DOCTYPE html>
 <html lang="en">

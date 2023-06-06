@@ -1,1 +1,8 @@
-reset && gofmt -w . && gofumpt -l -w . && gci write . && go vet . && $HOME/go/bin/golangci-lint run --enable-all -v
+#!/bin/zsh
+reset                       && \
+gci write .                 && \
+go vet .                    && \
+goimports -w .              && \
+gofmt -w .                  && \
+gofumpt  -w .               && \
+$HOME/go/bin/golangci-lint run -v
