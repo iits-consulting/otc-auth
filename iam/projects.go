@@ -3,13 +3,14 @@ package iam
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/projects"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
-	"strings"
 )
 
 func GetProjectsInActiveCloud() config.Projects {

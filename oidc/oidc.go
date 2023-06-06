@@ -2,12 +2,13 @@ package oidc
 
 import (
 	"fmt"
+	"io"
 	"net/http"
-	"otc-auth/common"
-	"otc-auth/common/endpoints"
 	"strings"
 
 	"github.com/go-http-utils/headers"
+	"otc-auth/common"
+	"otc-auth/common/endpoints"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
@@ -37,6 +38,11 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
 	tokenResponse.Token.User.Name = oidcCredentials.Claims.PreferredUsername
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			common.OutputErrorToConsoleAndExit(err)
+		}
+	}(response.Body)
 	return
 }

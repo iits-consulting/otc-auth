@@ -3,14 +3,15 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
-	"net/http"
 	"otc-auth/common"
-	"strings"
 )
 
 var (
@@ -30,24 +31,26 @@ const (
 	idTokenField = "id_token"
 )
 
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	rawAccessToken := r.Header.Get(headers.Authorization)
+	if rawAccessToken == "" {
+		http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
+		return
+	}
+	parts := strings.Split(rawAccessToken, " ")
+	if len(parts) != 2 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	_, err := idTokenVerifier.Verify(ctx, parts[1])
+	if err != nil {
+		http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
+		return
+	}
+}
+
 func startAndListenHttpServer(channel chan common.OidcCredentialsResponse) {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		rawAccessToken := r.Header.Get(headers.Authorization)
-		if rawAccessToken == "" {
-			http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
-			return
-		}
-		parts := strings.Split(rawAccessToken, " ")
-		if len(parts) != 2 {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		_, err := idTokenVerifier.Verify(ctx, parts[1])
-		if err != nil {
-			http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
-			return
-		}
-	})
+	http.HandleFunc("/", handleRoot)
 
 	http.HandleFunc("/oidc/auth", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get(queryState) != state {

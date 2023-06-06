@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
-	"strconv"
-	"strings"
 )
 
 func GetClusterNames(projectName string) config.Clusters {

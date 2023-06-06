@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/akamensky/argparse"
 	"log"
 	"os"
+
+	"github.com/akamensky/argparse"
 	"otc-auth/accesstoken"
 	"otc-auth/cce"
 	"otc-auth/common"
@@ -13,7 +14,7 @@ import (
 	"otc-auth/openstack"
 )
 
-// GoReleaser will set the following 2 ldflags by default
+// GoReleaser will set the following 2 ldflags by default.
 var (
 	version = "dev"
 	date    = "unknown"
@@ -114,7 +115,7 @@ func main() {
 	token := accessTokenCommandDelete.String("t", "token", &argparse.Options{Required: true, Help: "The AK/SK token to delete."})
 	atDomainName := accessTokenCommand.String("d", osDomainName, &argparse.Options{Required: false, Help: fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName)})
 
-	//Openstack Management
+	// Openstack Management
 	openStackCommand := parser.NewCommand("openstack", "Manage Openstack Integration")
 	openStackCommandCreateConfigFile := openStackCommand.NewCommand("config-create", "Creates new clouds.yaml")
 	openStackConfigLocation := openStackCommand.String("l", "config-location", &argparse.Options{Required: false, Help: "Where the config should be saved, Default: ~/.config/openstack/clouds.yaml"})
@@ -265,5 +266,4 @@ func main() {
 	if openStackCommandCreateConfigFile.Happened() {
 		openstack.WriteOpenStackCloudsYaml(*openStackConfigLocation)
 	}
-
 }

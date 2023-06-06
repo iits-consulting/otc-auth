@@ -2,11 +2,12 @@ package oidc
 
 import (
 	"encoding/json"
-	"github.com/go-http-utils/headers"
 	"net/http"
 	"net/url"
-	"otc-auth/common"
 	"strings"
+
+	"github.com/go-http-utils/headers"
+	"otc-auth/common"
 )
 
 func createServiceAccountAuthenticateRequest(requestUrl string, clientId string, clientSecret string) *http.Request {

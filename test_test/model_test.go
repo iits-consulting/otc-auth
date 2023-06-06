@@ -1,10 +1,11 @@
-package test
+package test_test
 
 import (
-	"otc-auth/config"
 	"reflect"
 	"strings"
 	"testing"
+
+	"otc-auth/config"
 )
 
 func TestCloudsSlice_RemoveCloudByNameIfExists(t *testing.T) {

@@ -3,8 +3,10 @@ package saml
 import (
 	"bytes"
 	"encoding/xml"
-	"github.com/go-http-utils/headers"
+	"io"
 	"net/http"
+
+	"github.com/go-http-utils/headers"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/common/headervalues"
@@ -24,7 +26,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse co
 
 	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes)
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		errClose := Body.Close()
+		if errClose != nil {
+			common.OutputErrorToConsoleAndExit(errClose)
+		}
+	}(response.Body)
 	return
 }
 
@@ -38,7 +45,7 @@ func getServiceProviderInitiatedRequest(params common.AuthInfo) *http.Response {
 
 func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response) []byte {
 	request := common.GetRequest(http.MethodPost, params.IdpUrl, samlResponse.Body)
-	request.Header.Add(headers.ContentType, headervalues.TextXml)
+	request.Header.Add(headers.ContentType, headervalues.TextXML)
 	request.SetBasicAuth(params.Username, params.Password)
 
 	response := common.HttpClientMakeRequest(request)
@@ -46,7 +53,8 @@ func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response) []
 }
 
 func validateAuthenticationWithServiceProvider(assertionResult common.SamlAssertionResponse, responseBodyBytes []byte) *http.Response {
-	request := common.GetRequest(http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL, bytes.NewReader(responseBodyBytes))
+	request := common.GetRequest(http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL,
+		bytes.NewReader(responseBodyBytes))
 	request.Header.Add(headers.ContentType, headervalues.ApplicationPaos)
 
 	return common.HttpClientMakeRequest(request)

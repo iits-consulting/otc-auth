@@ -1,14 +1,15 @@
 package openstack
 
 import (
+	"os"
+	"path"
+	"path/filepath"
+
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"gopkg.in/yaml.v2"
-	"os"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
-	"path"
-	"path/filepath"
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
@@ -19,6 +20,7 @@ func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
 		cloudName := domainName + "_" + project.Name
 		clouds[cloudName] = createOpenstackCloudConfig(project, domainName)
 	}
+
 	createOpenstackCloudsYAML(clientconfig.Clouds{Clouds: clouds}, openStackConfigFileLocation)
 }
 

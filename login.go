@@ -21,11 +21,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	var tokenResponse common.TokenResponse
 	switch authInfo.AuthType {
 	case "idp":
-		if authInfo.AuthProtocol == protocolSAML {
+		switch authInfo.AuthProtocol {
+		case protocolSAML:
 			tokenResponse = saml.AuthenticateAndGetUnscopedToken(authInfo)
-		} else if authInfo.AuthProtocol == protocolOIDC {
+		case protocolOIDC:
 			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo)
-		} else {
+		default:
 			common.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". Please provide a valid argument and try again.")
 		}
 	case "iam":

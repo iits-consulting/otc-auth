@@ -10,9 +10,7 @@ const (
 	auth       = "auth"
 )
 
-var (
-	identityProviders = fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers", BaseUrlIam)
-)
+var identityProviders = fmt.Sprintf("%s/v3/OS-FEDERATION/identity_providers", BaseUrlIam)
 
 func IdentityProviders(identityProvider string, protocol string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s", identityProviders, identityProvider, protocols, protocol, auth)

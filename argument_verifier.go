@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"otc-auth/common"
 	"strings"
+
+	"otc-auth/common"
 )
 
 const (

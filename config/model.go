@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"otc-auth/common"
 	"time"
+
+	"otc-auth/common"
 )
 
 type OtcConfigContent struct {
@@ -36,7 +37,6 @@ func (clouds *Clouds) SetActiveByName(name string) {
 		} else {
 			(*clouds)[index].Active = false
 		}
-
 	}
 }
 
@@ -121,8 +121,10 @@ func (projects Projects) GetProjectNames() (names []string) {
 	return names
 }
 
-type Cluster NameAndIdResource
-type Clusters []Cluster
+type (
+	Cluster  NameAndIdResource
+	Clusters []Cluster
+)
 
 func (clusters Clusters) GetClusterNames() (names []string) {
 	for _, cluster := range clusters {

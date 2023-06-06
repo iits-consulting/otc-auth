@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"otc-auth/common"
 	"path"
 	"time"
+
+	"otc-auth/common"
 )
 
 var otcConfigPath = path.Join(GetHomeFolder(), ".otc-auth-config")
@@ -39,6 +40,7 @@ func registerNewCloud(domainName string) Clouds {
 	}
 	if otcConfig.Clouds.ContainsCloud(newCloud.Domain.Name) {
 		common.OutputErrorMessageToConsoleAndExit(fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command.", newCloud.Domain.Name))
+
 		return nil
 	}
 
@@ -58,6 +60,7 @@ func IsAuthenticationValid() bool {
 	if tokenExpirationDate.After(time.Now()) {
 		// token still valid
 		println(fmt.Sprintf("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
+
 		return true
 	}
 

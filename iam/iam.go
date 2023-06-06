@@ -3,13 +3,14 @@ package iam
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
-	"time"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {

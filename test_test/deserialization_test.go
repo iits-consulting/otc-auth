@@ -1,10 +1,11 @@
-package test
+package test_test
 
 import (
-	"otc-auth/common"
-	"otc-auth/config"
 	"reflect"
 	"testing"
+
+	"otc-auth/common"
+	"otc-auth/config"
 )
 
 func TestDeserializeJsonForType__TokenResponse(t *testing.T) {

@@ -1,8 +1,9 @@
-package test
+package test_test
 
 import (
-	"otc-auth/config"
 	"testing"
+
+	"otc-auth/config"
 )
 
 func TestLoadCloudConfig_init(t *testing.T) {
@@ -14,7 +15,6 @@ func TestLoadCloudConfig_init(t *testing.T) {
 	if result.Name != domainName {
 		t.Errorf("Expected result to contain cloud: %s, but result contains: %s ", domainName, result.Name)
 	}
-
 }
 
 func TestLoadCloudConfig_two_domains(t *testing.T) {

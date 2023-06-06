@@ -3,9 +3,10 @@ package common
 import (
 	"fmt"
 	"net/http"
-	"otc-auth/common/xheaders"
 	"strings"
 	"time"
+
+	"otc-auth/common/xheaders"
 )
 
 const PrintTimeFormat = time.RFC1123

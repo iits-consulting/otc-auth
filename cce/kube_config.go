@@ -3,14 +3,15 @@ package cce
 import (
 	"encoding/json"
 	"fmt"
-	. "k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 	"os"
-	"otc-auth/common"
-	"otc-auth/config"
 	"path"
 	"path/filepath"
 	"strings"
+
+	. "k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"otc-auth/common"
+	"otc-auth/config"
 )
 
 func getKubeConfig(kubeConfigParams KubeConfigParams) string {
