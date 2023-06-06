@@ -34,7 +34,7 @@ func CreateScopedTokenForEveryProject(projectNames []string) {
 	}
 }
 
-func getProjectsFromServiceProvider() common.ProjectsResponse {
+func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
 	cloud := config.GetActiveCloudConfig()
 	log.Printf("info: fetching projects for cloud %s \n", cloud.Domain.Name)
 
@@ -50,18 +50,17 @@ func getProjectsFromServiceProvider() common.ProjectsResponse {
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	projectsResponse, err := projects.List(client, projects.ListOpts{}).AllPages()
+	projectsList, err := projects.List(client, projects.ListOpts{}).AllPages()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	projectsResponseMap := projectsResponse.GetBody()
-	// forgive me
-	var out common.ProjectsResponse
-	err = json.Unmarshal(projectsResponseMap, &out)
+	projectsResponseMap := projectsList.GetBody()
+
+	err = json.Unmarshal(projectsResponseMap, &projectsResponse)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	return out
+	return projectsResponse
 }

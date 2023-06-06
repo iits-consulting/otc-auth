@@ -12,8 +12,6 @@ import (
 	"otc-auth/common"
 )
 
-var otcConfigPath = path.Join(GetHomeFolder(), ".otc-auth-config")
-
 func LoadCloudConfig(domainName string) {
 	otcConfig := getOtcConfig()
 	clouds := otcConfig.Clouds
@@ -24,10 +22,7 @@ func LoadCloudConfig(domainName string) {
 	otcConfig.Clouds = clouds
 	writeOtcConfigContentToFile(otcConfig)
 
-	_, err := fmt.Fprintf(os.Stdout, "Cloud %s loaded successfully and set to active.\n", domainName)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
+	log.Printf("Cloud %s loaded successfully and set to active.\n", domainName)
 }
 
 func registerNewCloud(domainName string) Clouds {
@@ -121,7 +116,7 @@ func GetActiveCloudConfig() Cloud {
 }
 
 func OtcConfigFileExists() bool {
-	fileInfo, err := os.Stat(otcConfigPath)
+	fileInfo, err := os.Stat(path.Join(GetHomeFolder(), ".otc-auth-config"))
 	if err != nil && os.IsNotExist(err) {
 		return false
 	}
@@ -164,11 +159,11 @@ func writeOtcConfigContentToFile(content OtcConfigContent) {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error encoding json.\ntrace: %s")
 	}
 
-	WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), otcConfigPath)
+	WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), path.Join(GetHomeFolder(), ".otc-auth-config"))
 }
 
 func readFileContent() string {
-	file, err := os.Open(otcConfigPath)
+	file, err := os.Open(path.Join(GetHomeFolder(), ".otc-auth-config"))
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error opening config file.\ntrace: %s")
 	}

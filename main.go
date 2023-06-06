@@ -40,6 +40,7 @@ const (
 
 //nolint:funlen,gocognit
 func main() {
+	log.SetFlags(0) // Remove timestamps from printed messages
 	const (
 		provideArgumentHelp = "Either provide this argument or set the environment variable"
 		overwriteTokenHelp  = "Overrides .otc-info file" //nolint:gosec // gosec thinks these are hardcoded credentials
