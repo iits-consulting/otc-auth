@@ -1,6 +1,7 @@
-package main
+package login
 
 import (
+	"otc-auth"
 	"otc-auth/common"
 	"otc-auth/config"
 	"otc-auth/iam"
@@ -21,9 +22,9 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	var tokenResponse common.TokenResponse
 	switch authInfo.AuthType {
 	case "idp":
-		if authInfo.AuthProtocol == protocolSAML {
+		if authInfo.AuthProtocol == main.protocolSAML {
 			tokenResponse = saml.AuthenticateAndGetUnscopedToken(authInfo)
-		} else if authInfo.AuthProtocol == protocolOIDC {
+		} else if authInfo.AuthProtocol == main.protocolOIDC {
 			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo)
 		} else {
 			common.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". Please provide a valid argument and try again.")
