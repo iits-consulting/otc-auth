@@ -76,44 +76,43 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 
 	var badRequest golangsdk.ErrDefault400
 	if errors.As(err, &badRequest) {
-		return replaceAccessTokens(user, client, tokenDescription, badRequest)
+		accessTokens, listErr := ListAccessToken()
+		if listErr != nil {
+			return nil, listErr
+		}
+
+		//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
+		if len(accessTokens) == 2 {
+			log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
+			return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)
+		}
+		return nil, err
 	}
 	return credential, err
 }
 
-func replaceAccessTokens(user *tokens.User, client *golangsdk.ServiceClient,
-	tokenDescription string, originalErr error,
+// Replaces AK/SKs made by otc-auth if their descriptions match the default..
+func conditionallyReplaceAccessTokens(user *tokens.User, client *golangsdk.ServiceClient,
+	tokenDescription string, accessTokens []credentials.Credential,
 ) (*credentials.Credential, error) {
-	// Prolly hit the AK/SK limit
-	accessTokens, listErr := ListAccessToken()
-	if listErr != nil {
-		return nil, listErr
-	}
-
-	//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
-	if len(accessTokens) == 2 {
-		// Definitely hit the AK/SK limit
-		log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
-		changed := false
-		for _, token := range accessTokens {
-			if token.Description == "Token by otc-auth" {
-				err := DeleteAccessToken(token.AccessKey)
-				changed = true
-				if err != nil {
-					return nil, err
-				}
+	changed := false
+	for _, token := range accessTokens {
+		if token.Description == "Token by otc-auth" {
+			err := DeleteAccessToken(token.AccessKey)
+			changed = true
+			if err != nil {
+				return nil, err
 			}
 		}
-
-		if changed {
-			return credentials.Create(client, credentials.CreateOpts{
-				UserID:      user.ID,
-				Description: tokenDescription,
-			}).Extract()
-		}
-		return nil, errors.New("fatal: couldn't find a token created by this tool to replace")
 	}
-	return nil, originalErr
+
+	if changed {
+		return credentials.Create(client, credentials.CreateOpts{
+			UserID:      user.ID,
+			Description: tokenDescription,
+		}).Extract()
+	}
+	return nil, errors.New("fatal: couldn't find a token created by this tool to replace")
 }
 
 func DeleteAccessToken(token string) error {
