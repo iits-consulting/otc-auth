@@ -1,6 +1,7 @@
 package accesstoken
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -20,10 +21,13 @@ func CreateAccessToken(tokenDescription string) {
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
 		// Handle error currently thrown when logged in by OIDC
-		convErr, ok := err.(golangsdk.ErrDefault404)
-		if ok {
-			if convErr.ErrUnexpectedResponseCode.Actual == 404 && strings.Contains(convErr.ErrUnexpectedResponseCode.URL, "OS-CREDENTIAL/credentials") {
-				common.OutputErrorMessageToConsoleAndExit("Cannot generate AK/SK if logged in via OIDC")
+		var convErr golangsdk.ErrDefault404
+		if errors.As(err, &convErr) {
+			if convErr.ErrUnexpectedResponseCode.Actual == 404 &&
+				strings.Contains(convErr.ErrUnexpectedResponseCode.URL,
+					"OS-CREDENTIAL/credentials") {
+				common.OutputErrorMessageToConsoleAndExit(
+					"Cannot generate AK/SK if logged in via OIDC")
 			}
 		}
 		common.OutputErrorToConsoleAndExit(err)
@@ -81,7 +85,7 @@ func DeleteAccessToken(token string) error {
 
 func getIdentityServiceClient() (*golangsdk.ServiceClient, error) {
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam(config.GetActiveCloudConfig().Region) + "/v3",
 		DomainID:         config.GetActiveCloudConfig().Domain.ID,
 		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
 	})

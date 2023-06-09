@@ -26,7 +26,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 //nolint:lll // This function will be removed soon
 func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo) common.TokenResponse {
 	var tokenResponse common.TokenResponse
-	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol)
+	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol, authInfo.Region)
 
 	request := common.GetRequest(http.MethodPost, url, nil)
 

@@ -13,6 +13,7 @@ const (
 	envOsUsername        = "OS_USERNAME"
 	envOsPassword        = "OS_PASSWORD"
 	envOsDomainName      = "OS_DOMAIN_NAME"
+	envRegion            = "REGION"
 	envOsUserDomainID    = "OS_USER_DOMAIN_ID"
 	envOsProjectName     = "OS_PROJECT_NAME"
 	envIdpName           = "IDP_NAME"
@@ -90,6 +91,14 @@ func getDomainNameOrThrow(domainName string) string {
 	}
 
 	return getEnvironmentVariableOrThrow(osDomainName, envOsDomainName)
+}
+
+func getRegionCodeOrThrow(regionCode string) string {
+	if regionCode != "" {
+		return regionCode
+	}
+
+	return getEnvironmentVariableOrThrow(region, envRegion)
 }
 
 func checkMFAFlowIAM(otp string, userID string) (string, string) {

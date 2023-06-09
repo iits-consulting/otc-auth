@@ -40,7 +40,8 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse co
 }
 
 func getServiceProviderInitiatedRequest(params common.AuthInfo) *http.Response {
-	request := common.GetRequest(http.MethodGet, endpoints.IdentityProviders(params.IdpName, params.AuthProtocol), nil)
+	request := common.GetRequest(http.MethodGet,
+		endpoints.IdentityProviders(params.IdpName, params.AuthProtocol, params.Region), nil)
 	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
 	request.Header.Add(header.Paos, headervalues.Paos)
 

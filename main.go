@@ -26,6 +26,7 @@ const (
 	osPassword          = "os-password"
 	overwriteTokenArg   = "overwrite-token"
 	osDomainName        = "os-domain-name"
+	region              = "region"
 	osUserDomainID      = "os-user-domain-id"
 	osProjectName       = "os-project-name"
 	totpArg             = "totp"
@@ -48,6 +49,7 @@ func main() {
 	)
 	var (
 		domainName          *string
+		regionCode          *string
 		username            *string
 		password            *string
 		overwriteToken      *bool
@@ -84,6 +86,11 @@ func main() {
 		&argparse.Options{
 			Required: false,
 			Help:     fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName),
+		})
+	regionCode = loginCommand.String(
+		"r", region, &argparse.Options{
+			Required: false,
+			Help:     fmt.Sprintf("OTC region code. %s %s", provideArgumentHelp, envRegion),
 		})
 	overwriteToken = loginCommand.Flag(
 		"o", overwriteTokenArg, &argparse.Options{Required: false, Help: overwriteTokenHelp, Default: false})
@@ -194,11 +201,13 @@ func main() {
 
 	if loginIamCommand.Happened() {
 		totpToken, userID := checkMFAFlowIAM(*totp, *userDomainID)
+
 		authInfo := common.AuthInfo{
 			AuthType:      authTypeIAM,
 			Username:      getUsernameOrThrow(*username),
 			Password:      getPasswordOrThrow(*password),
 			DomainName:    getDomainNameOrThrow(*domainName),
+			Region:        getRegionCodeOrThrow(*regionCode),
 			Otp:           totpToken,
 			UserDomainID:  userID,
 			OverwriteFile: *overwriteToken,
@@ -236,6 +245,7 @@ func main() {
 			OverwriteFile:    *overwriteToken,
 			IsServiceAccount: *isServiceAccount,
 			OidcScopes:       getOidcScopes(*oidcScopes),
+			Region:           getRegionCodeOrThrow(*regionCode),
 		}
 
 		AuthenticateAndGetUnscopedToken(authInfo)
@@ -328,6 +338,6 @@ func main() {
 	}
 
 	if openStackCommandCreateConfigFile.Happened() {
-		openstack.WriteOpenStackCloudsYaml(*openStackConfigLocation)
+		openstack.WriteOpenStackCloudsYaml(*openStackConfigLocation, getRegionCodeOrThrow(*regionCode))
 	}
 }

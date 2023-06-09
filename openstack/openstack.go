@@ -14,24 +14,24 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
+func WriteOpenStackCloudsYaml(openStackConfigFileLocation string, regionCode string) {
 	cloudConfig := config.GetActiveCloudConfig()
 	domainName := cloudConfig.Domain.Name
 	clouds := make(map[string]clientconfig.Cloud)
 	for _, project := range cloudConfig.Projects {
 		cloudName := domainName + "_" + project.Name
-		clouds[cloudName] = createOpenstackCloudConfig(project, domainName)
+		clouds[cloudName] = createOpenstackCloudConfig(project, domainName, regionCode)
 	}
 
 	createOpenstackCloudsYAML(clientconfig.Clouds{Clouds: clouds}, openStackConfigFileLocation)
 }
 
-func createOpenstackCloudConfig(project config.Project, domainName string) clientconfig.Cloud {
+func createOpenstackCloudConfig(project config.Project, domainName string, regionCode string) clientconfig.Cloud {
 	projectName := project.Name
 	cloudName := domainName + "_" + projectName
 
 	authInfo := clientconfig.AuthInfo{
-		AuthURL:           endpoints.BaseURLIam + "/v3",
+		AuthURL:           endpoints.BaseURLIam(regionCode) + "/v3",
 		Token:             project.ScopedToken.Secret,
 		ProjectDomainName: projectName,
 	}

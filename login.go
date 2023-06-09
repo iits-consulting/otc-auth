@@ -46,7 +46,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	if tokenResponse.Token.Secret == "" {
 		common.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
 	}
-	updateOTCInfoFile(tokenResponse)
+	updateOTCInfoFile(tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()
 	log.Println("Successfully obtained unscoped token!")
 }
@@ -56,7 +56,7 @@ func createScopedTokenForEveryProject() {
 	iam.CreateScopedTokenForEveryProject(projectsInActiveCloud.GetProjectNames())
 }
 
-func updateOTCInfoFile(tokenResponse common.TokenResponse) {
+func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
 	cloud := config.GetActiveCloudConfig()
 	if cloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
 		// Sanity check: we're in the same cloud as the active cloud
@@ -78,7 +78,7 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse) {
 		IssuedAt:  tokenResponse.Token.IssuedAt,
 		ExpiresAt: tokenResponse.Token.ExpiresAt,
 	}
-
+	cloud.Region = regionCode
 	cloud.UnscopedToken = token
 	config.UpdateCloudConfig(cloud)
 }

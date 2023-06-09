@@ -5,6 +5,7 @@ import (
 )
 
 type AuthInfo struct {
+	Region           string
 	AuthType         string
 	IdpName          string
 	IdpURL           string

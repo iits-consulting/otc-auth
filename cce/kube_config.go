@@ -102,7 +102,8 @@ func addContextInformationToKubeConfig(projectName string, clusterName string, k
 	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internal", fmt.Sprintf("%s/%s-intranet", projectName,
 		clusterName))
 	kubeConfigData = strings.ReplaceAll(kubeConfigData, "external", fmt.Sprintf("%s/%s", projectName, clusterName))
-	kubeConfigData = strings.ReplaceAll(kubeConfigData, ":\"user\"", fmt.Sprintf(":\"%s-%s-%s\"", projectName, clusterName, cloud.Username))
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, ":\"user\"",
+		fmt.Sprintf(":\"%s-%s-%s\"", projectName, clusterName, cloud.Username))
 
 	return kubeConfigData
 }
