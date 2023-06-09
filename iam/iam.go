@@ -66,12 +66,14 @@ func GetScopedToken(projectName string) config.Token {
 	}
 
 	log.Println("attempting to request a scoped token.")
-	getScopedTokenFromServiceProvider(projectName) // TODO - Seems a little dirty, might want to actually return a value and not have the cloud config updated as a side-effect
+	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
+	config.UpdateCloudConfig(cloud)
+	log.Println("scoped token acquired successfully.")
 	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	return project.ScopedToken
 }
 
-func getScopedTokenFromServiceProvider(projectName string) {
+func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud {
 	cloud := config.GetActiveCloudConfig()
 	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).ID
 
@@ -108,6 +110,5 @@ func getScopedTokenFromServiceProvider(projectName string) {
 				projectName))
 	}
 	cloud.Projects[*index].ScopedToken = token
-	config.UpdateCloudConfig(cloud)
-	log.Println("scoped token acquired successfully.")
+	return cloud
 }

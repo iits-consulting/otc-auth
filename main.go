@@ -319,7 +319,12 @@ func main() {
 		if len(accessTokens) > 0 {
 			log.Println("\nAccess Tokens:")
 			for _, aT := range accessTokens {
-				log.Printf("\nToken: \t\t%s\nDescription: \t%s\nCreated by: \t%s\nLast Used: \t%s\nActive: \t%s\n \n", aT.AccessKey, aT.Description, aT.UserID, aT.LastUseTime, aT.Status)
+				log.Printf("\nToken: \t\t%s\n"+
+					"Description: \t%s\n"+
+					"Created by: \t%s\n"+
+					"Last Used: \t%s\n"+
+					"Active: \t%s\n \n",
+					aT.AccessKey, aT.Description, aT.UserID, aT.LastUseTime, aT.Status)
 			}
 		} else {
 			log.Println("No access-tokens found")
