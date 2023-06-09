@@ -99,10 +99,11 @@ func conditionallyReplaceAccessTokens(user *tokens.User, client *golangsdk.Servi
 	for _, token := range accessTokens {
 		if token.Description == "Token by otc-auth" {
 			err := DeleteAccessToken(token.AccessKey)
-			changed = true
 			if err != nil {
 				return nil, err
 			}
+			changed = true
+			break
 		}
 	}
 
