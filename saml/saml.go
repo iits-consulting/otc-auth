@@ -3,51 +3,65 @@ package saml
 import (
 	"bytes"
 	"encoding/xml"
-	"github.com/go-http-utils/headers"
+	"io"
 	"net/http"
+
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/common/headervalues"
 	header "otc-auth/common/xheaders"
+
+	"github.com/go-http-utils/headers"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (tokenResponse common.TokenResponse) {
-	spInitiatedRequest := getServiceProviderInitiatedRequest(authInfo)
+	spInitiatedRequest := getServiceProviderInitiatedRequest(authInfo) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 
 	bodyBytes := authenticateWithIdp(authInfo, spInitiatedRequest)
 
 	assertionResult := common.SamlAssertionResponse{}
+
 	err := xml.Unmarshal(bodyBytes, &assertionResult)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error deserializing xml.\ntrace: %s")
 	}
 
-	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes)
+	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
-	defer response.Body.Close()
-	return
+
+	defer func(Body io.ReadCloser) {
+		errClose := Body.Close()
+		if errClose != nil {
+			common.OutputErrorToConsoleAndExit(errClose)
+		}
+	}(response.Body)
+
+	return tokenResponse
 }
 
 func getServiceProviderInitiatedRequest(params common.AuthInfo) *http.Response {
-	request := common.GetRequest(http.MethodGet, endpoints.IdentityProviders(params.IdpName, params.AuthProtocol), nil)
+	request := common.GetRequest(http.MethodGet,
+		endpoints.IdentityProviders(params.IdpName, params.AuthProtocol, params.Region), nil)
 	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
 	request.Header.Add(header.Paos, headervalues.Paos)
 
-	return common.HttpClientMakeRequest(request)
+	return common.HTTPClientMakeRequest(request)
 }
 
 func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response) []byte {
-	request := common.GetRequest(http.MethodPost, params.IdpUrl, samlResponse.Body)
-	request.Header.Add(headers.ContentType, headervalues.TextXml)
+	request := common.GetRequest(http.MethodPost, params.IdpURL, samlResponse.Body)
+	request.Header.Add(headers.ContentType, headervalues.TextXML)
 	request.SetBasicAuth(params.Username, params.Password)
 
-	response := common.HttpClientMakeRequest(request)
+	response := common.HTTPClientMakeRequest(request) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 	return common.GetBodyBytesFromResponse(response)
 }
 
+//nolint:lll // This function will be removed soon
 func validateAuthenticationWithServiceProvider(assertionResult common.SamlAssertionResponse, responseBodyBytes []byte) *http.Response {
-	request := common.GetRequest(http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL, bytes.NewReader(responseBodyBytes))
+	request := common.GetRequest(http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL,
+		bytes.NewReader(responseBodyBytes))
 	request.Header.Add(headers.ContentType, headervalues.ApplicationPaos)
 
-	return common.HttpClientMakeRequest(request)
+	return common.HTTPClientMakeRequest(request)
 }

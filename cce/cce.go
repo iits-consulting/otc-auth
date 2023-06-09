@@ -1,35 +1,41 @@
 package cce
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/go-http-utils/headers"
 	"log"
-	"net/http"
+	"strconv"
+	"strings"
+
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
-	"otc-auth/common/headervalues"
-	"otc-auth/common/xheaders"
 	"otc-auth/config"
-	"otc-auth/iam"
-	"strings"
-	"time"
+
+	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 )
 
 func GetClusterNames(projectName string) config.Clusters {
-	clustersResult := getClustersForProjectFromServiceProvider(projectName)
-	var clusters config.Clusters
-	for _, item := range clustersResult.Items {
-		clusters = append(clusters, config.Cluster{
+	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	var clustersArr config.Clusters
+
+	for _, item := range clustersResult {
+		clustersArr = append(clustersArr, config.Cluster{
 			Name: item.Metadata.Name,
-			Id:   item.Metadata.UID,
+			ID:   item.Metadata.Id,
 		})
 	}
 
-	config.UpdateClusters(clusters)
-	println(fmt.Sprintf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
-	return clusters
+	config.UpdateClusters(clustersArr)
+	log.Printf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
+
+	return clustersArr
 }
 
 func GetKubeConfig(configParams KubeConfigParams) {
@@ -37,80 +43,85 @@ func GetKubeConfig(configParams KubeConfigParams) {
 
 	mergeKubeConfig(configParams, kubeConfig)
 
-	println(fmt.Sprintf("Successfully fetched and merge kube config for cce cluster %s.", configParams.ClusterName))
+	log.Printf("Successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
 }
 
-func getClustersForProjectFromServiceProvider(projectName string) common.ClustersResponse {
-	clustersResponse := common.ClustersResponse{}
+func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	cloud := config.GetActiveCloudConfig()
+	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		DomainID:         cloud.Domain.ID,
+		TokenID:          project.ScopedToken.Secret,
+		TenantID:         project.ID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get provider: %w", err)
+	}
+	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get clusters for project: %w", err)
+	}
+	return clusters.List(client, clusters.ListOpts{})
+}
 
-	err := retry.Do(
-		func() error {
-			infoMessage := fmt.Sprintf("info: fetching clusters for project %s", projectName)
-			println(infoMessage)
-			request := common.GetRequest(http.MethodGet, endpoints.Clusters(project.Id), nil)
-			request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-			scopedToken := iam.GetScopedToken(projectName)
-			request.Header.Add(xheaders.XAuthToken, scopedToken.Secret)
-
-			response := common.HttpClientMakeRequest(request)
-			bodyBytes := common.GetBodyBytesFromResponse(response)
-
-			clustersResponse = *common.DeserializeJsonForType[common.ClustersResponse](bodyBytes)
-			return nil
-		}, retry.OnRetry(func(n uint, err error) {
-			log.Printf("#%d: %s\n", n, err)
-		}),
-		retry.DelayType(retry.FixedDelay),
-		retry.Delay(time.Second*2),
-	)
+func getClusterCertFromServiceProvider(projectName string, clusterID string, duration string) (KubeConfig, error) {
+	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	cloud := config.GetActiveCloudConfig()
+	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		DomainID:         cloud.Domain.ID,
+		TokenID:          project.ScopedToken.Secret,
+		TenantID:         project.ID,
+	})
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	return clustersResponse
+	var expOpts clusters.ExpirationOpts
+	expOpts.Duration, err = strconv.Atoi(duration)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
+	var extractedCert KubeConfig
+	err = json.Unmarshal(cert, &extractedCert)
+	return extractedCert, err
 }
 
-func getClusterCertFromServiceProvider(projectName string, clusterId string, duration string) (response *http.Response) {
-	body := fmt.Sprintf("{\"duration\": %s}", duration)
-	projectId := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName).Id
-
-	request := common.GetRequest(http.MethodPost, endpoints.ClusterCert(projectId, clusterId), strings.NewReader(body))
-	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-	request.Header.Add(headers.Accept, headervalues.ApplicationJson)
-	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
-	request.Header.Add(xheaders.XAuthToken, project.ScopedToken.Secret)
-
-	response = common.HttpClientMakeRequest(request)
-
-	return response
-}
-
-func getClusterId(clusterName string, projectName string) (clusterId string, err error) {
+func getClusterID(clusterName string, projectName string) (clusterID string, err error) {
 	cloud := config.GetActiveCloudConfig()
 
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
-		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
+		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
 	}
 
-	clustersResult := getClustersForProjectFromServiceProvider(projectName)
+	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 
-	var clusters config.Clusters
-	for _, cluster := range clustersResult.Items {
-		clusters = append(clusters, config.Cluster{
+	var clusterArr config.Clusters
+	for _, cluster := range clustersResult {
+		clusterArr = append(clusterArr, config.Cluster{
 			Name: cluster.Metadata.Name,
-			Id:   cluster.Metadata.UID,
+			ID:   cluster.Metadata.Id,
 		})
 	}
-	println(fmt.Sprintf("Clusters for project %s:\n%s", projectName, strings.Join(clusters.GetClusterNames(), ",\n")))
+	log.Printf("Clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
 
-	config.UpdateClusters(clusters)
+	config.UpdateClusters(clusterArr)
 	cloud = config.GetActiveCloudConfig()
 
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
-		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).Id, nil
+		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
 	}
 
-	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s", strings.Join(clusters.GetClusterNames(), ",\n"))
-	return clusterId, errors.New(errorMessage)
+	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s",
+		strings.Join(clusterArr.GetClusterNames(), ",\n"))
+	return clusterID, errors.New(errorMessage)
 }

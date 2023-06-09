@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -30,14 +31,14 @@ func WriteStringToFile(filepath string, content string) {
 
 func OutputErrorToConsoleAndExit(err error, errorMessage ...string) {
 	if errorMessage != nil {
-		_, err := fmt.Fprintf(os.Stderr, errorMessage[0], err)
-		if err != nil {
-			OutputErrorToConsoleAndExit(err)
+		_, errPrint := fmt.Fprintf(os.Stderr, errorMessage[0], err)
+		if errPrint != nil {
+			OutputErrorToConsoleAndExit(errPrint)
 		}
 	} else {
-		_, err := fmt.Fprintf(os.Stderr, "fatal: %s", err)
-		if err != nil {
-			OutputErrorToConsoleAndExit(err)
+		_, errPrint := fmt.Fprintf(os.Stderr, "fatal: %s", err)
+		if errPrint != nil {
+			OutputErrorToConsoleAndExit(errPrint)
 		}
 	}
 
@@ -45,20 +46,20 @@ func OutputErrorToConsoleAndExit(err error, errorMessage ...string) {
 }
 
 func OutputErrorMessageToConsoleAndExit(errorMessage string) {
-	fmt.Println(errorMessage)
+	log.Println(errorMessage)
 	os.Exit(1)
 }
 
-func ByteSliceToIndentedJsonFormat(biteSlice []byte) string {
-	var formattedJson bytes.Buffer
-	err := json.Indent(&formattedJson, biteSlice, "", "   ")
+func ByteSliceToIndentedJSONFormat(biteSlice []byte) string {
+	var formattedJSON bytes.Buffer
+	err := json.Indent(&formattedJSON, biteSlice, "", "   ")
 	if err != nil {
 		OutputErrorToConsoleAndExit(err)
 	}
-	return formattedJson.String()
+	return formattedJSON.String()
 }
 
-func DeserializeJsonForType[T any](data []byte) *T {
+func DeserializeJSONForType[T any](data []byte) *T {
 	var pointer T
 	err := json.Unmarshal(data, &pointer)
 	if err != nil {

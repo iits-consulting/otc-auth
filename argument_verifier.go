@@ -2,20 +2,23 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
-	"otc-auth/common"
 	"strings"
+
+	"otc-auth/common"
 )
 
 const (
 	envOsUsername        = "OS_USERNAME"
 	envOsPassword        = "OS_PASSWORD"
 	envOsDomainName      = "OS_DOMAIN_NAME"
-	envOsUserDomainId    = "OS_USER_DOMAIN_ID"
+	envRegion            = "REGION"
+	envOsUserDomainID    = "OS_USER_DOMAIN_ID"
 	envOsProjectName     = "OS_PROJECT_NAME"
 	envIdpName           = "IDP_NAME"
-	envIdpUrl            = "IDP_URL"
-	envClientId          = "CLIENT_ID"
+	envIdpURL            = "IDP_URL"
+	envClientID          = "CLIENT_ID"
 	envClientSecret      = "CLIENT_SECRET"
 	envClusterName       = "CLUSTER_NAME"
 	envOidScopes         = "OIDC_SCOPES"
@@ -46,7 +49,7 @@ func getClusterNameOrThrow(clusterName string) string {
 
 func getIdpInfoOrThrow(provider string, url string) (string, string) {
 	provider = checkIDPProviderIsSet(provider)
-	url = checkIdpUrlIsSet(url)
+	url = checkIdpURLIsSet(url)
 	return provider, url
 }
 
@@ -58,12 +61,12 @@ func checkIDPProviderIsSet(provider string) string {
 	return getEnvironmentVariableOrThrow(idpName, envIdpName)
 }
 
-func checkIdpUrlIsSet(url string) string {
+func checkIdpURLIsSet(url string) string {
 	if url != "" {
 		return url
 	}
 
-	return getEnvironmentVariableOrThrow(idpUrlArg, envIdpUrl)
+	return getEnvironmentVariableOrThrow(idpURLArg, envIdpURL)
 }
 
 func getUsernameOrThrow(username string) string {
@@ -90,23 +93,31 @@ func getDomainNameOrThrow(domainName string) string {
 	return getEnvironmentVariableOrThrow(osDomainName, envOsDomainName)
 }
 
-func checkMFAFlowIAM(otp string, userId string) (string, string) {
-	if otp != "" {
-		if userId != "" {
-			return otp, userId
-		}
-		userId = getEnvironmentVariableOrThrow(osUserDomainId, envOsUserDomainId)
+func getRegionCodeOrThrow(regionCode string) string {
+	if regionCode != "" {
+		return regionCode
 	}
 
-	return otp, userId
+	return getEnvironmentVariableOrThrow(region, envRegion)
 }
 
-func getClientIdOrThrow(id string) string {
+func checkMFAFlowIAM(otp string, userID string) (string, string) {
+	if otp != "" {
+		if userID != "" {
+			return otp, userID
+		}
+		userID = getEnvironmentVariableOrThrow(osUserDomainID, envOsUserDomainID)
+	}
+
+	return otp, userID
+}
+
+func getClientIDOrThrow(id string) string {
 	if id != "" {
 		return id
 	}
 
-	return getEnvironmentVariableOrThrow(clientIdArg, envClientId)
+	return getEnvironmentVariableOrThrow(clientIDArg, envClientID)
 }
 
 func findClientSecretOrReturnEmpty(secret string) string {
@@ -115,7 +126,7 @@ func findClientSecretOrReturnEmpty(secret string) string {
 	} else if secretEnvVar, ok := os.LookupEnv(envClientSecret); ok {
 		return secretEnvVar
 	} else {
-		println(fmt.Sprintf("info: argument --%s not set. Continuing...\n", clientSecretArg))
+		log.Printf("info: argument --%s not set. Continuing...\n", clientSecretArg)
 		return ""
 	}
 }
@@ -142,5 +153,7 @@ func getEnvironmentVariableOrThrow(argument string, envVarName string) string {
 }
 
 func noArgumentProvidedErrorMessage(argument string, environmentVariable string) string {
-	return fmt.Sprintf("fatal: %s not provided.\n\nPlease make sure the argument %s is provided or the environment variable %s is set.", argument, argument, environmentVariable)
+	return fmt.Sprintf(
+		"fatal: %s not provided.\n\nPlease make sure the argument %s is provided or the environment variable %s is set.",
+		argument, argument, environmentVariable)
 }

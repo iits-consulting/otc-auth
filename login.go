@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"otc-auth/common"
 	"otc-auth/config"
 	"otc-auth/iam"
@@ -12,35 +14,41 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	config.LoadCloudConfig(authInfo.DomainName)
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
-		println("info: will not retrieve unscoped token, because the current one is still valid.\n\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
+		log.Println(
+			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
+				"\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
 		return
 	}
 
-	println("Retrieving unscoped token for active cloud...")
+	log.Println("Retrieving unscoped token for active cloud...")
 
 	var tokenResponse common.TokenResponse
 	switch authInfo.AuthType {
 	case "idp":
-		if authInfo.AuthProtocol == protocolSAML {
+		switch authInfo.AuthProtocol {
+		case protocolSAML:
 			tokenResponse = saml.AuthenticateAndGetUnscopedToken(authInfo)
-		} else if authInfo.AuthProtocol == protocolOIDC {
+		case protocolOIDC:
 			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo)
-		} else {
-			common.OutputErrorMessageToConsoleAndExit("fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". Please provide a valid argument and try again.")
+		default:
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
+					"Please provide a valid argument and try again.")
 		}
 	case "iam":
 		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
-		common.OutputErrorMessageToConsoleAndExit("fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". Please provide a valid argument and try again.")
-
+		common.OutputErrorMessageToConsoleAndExit(
+			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
+				"Please provide a valid argument and try again.")
 	}
 
 	if tokenResponse.Token.Secret == "" {
 		common.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
 	}
-	updateOTCInfoFile(tokenResponse)
+	updateOTCInfoFile(tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()
-	println("Successfully obtained unscoped token!")
+	log.Println("Successfully obtained unscoped token!")
 }
 
 func createScopedTokenForEveryProject() {
@@ -48,13 +56,13 @@ func createScopedTokenForEveryProject() {
 	iam.CreateScopedTokenForEveryProject(projectsInActiveCloud.GetProjectNames())
 }
 
-func updateOTCInfoFile(tokenResponse common.TokenResponse) {
+func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
 	cloud := config.GetActiveCloudConfig()
 	if cloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
 		// Sanity check: we're in the same cloud as the active cloud
 		common.OutputErrorMessageToConsoleAndExit("fatal: authorization made for wrong cloud configuration")
 	}
-	cloud.Domain.Id = tokenResponse.Token.User.Domain.Id
+	cloud.Domain.ID = tokenResponse.Token.User.Domain.ID
 	if cloud.Username != tokenResponse.Token.User.Name {
 		for i, project := range cloud.Projects {
 			cloud.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{
@@ -70,7 +78,7 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse) {
 		IssuedAt:  tokenResponse.Token.IssuedAt,
 		ExpiresAt: tokenResponse.Token.ExpiresAt,
 	}
-
+	cloud.Region = regionCode
 	cloud.UnscopedToken = token
 	config.UpdateCloudConfig(cloud)
 }

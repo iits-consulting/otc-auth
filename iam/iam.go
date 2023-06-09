@@ -1,30 +1,55 @@
 package iam
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/go-http-utils/headers"
 	"log"
-	"net/http"
+	"time"
+
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
-	"otc-auth/common/headervalues"
-	"otc-auth/common/xheaders"
 	"otc-auth/config"
-	"strings"
-	"time"
+
+	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
-	requestBody := getRequestBodyForAuthenticationMethod(authInfo)
-	request := common.GetRequest(http.MethodPost, endpoints.IamTokens, strings.NewReader(requestBody))
-	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
+	authOpts := golangsdk.AuthOptions{
+		DomainName:       authInfo.DomainName,
+		Username:         authInfo.Username,
+		Password:         authInfo.Password,
+		IdentityEndpoint: endpoints.BaseURLIam(authInfo.Region) + "/v3",
 
-	response := common.HttpClientMakeRequest(request)
-	defer response.Body.Close()
+		Passcode: authInfo.Otp,
+		UserID:   authInfo.UserDomainID,
+	}
 
-	return common.GetCloudCredentialsFromResponseOrThrow(response)
+	provider, err := openstack.AuthenticatedClient(authOpts)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	tokenResult := tokens.Create(client, &authOpts)
+
+	var tokenMarshalledResult common.TokenResponse
+	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	token, err := tokenResult.ExtractToken()
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	tokenMarshalledResult.Token.Secret = token.ID
+	return tokenMarshalledResult
 }
 
 func GetScopedToken(projectName string) config.Token {
@@ -35,80 +60,55 @@ func GetScopedToken(projectName string) config.Token {
 
 		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
 		if tokenExpirationDate.After(time.Now()) {
-			println(fmt.Sprintf("info: scoped token is valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat)))
+			log.Printf("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
 			return token
 		}
 	}
 
-	println("attempting to request a scoped token.")
-	getScopedTokenFromServiceProvider(projectName)
+	log.Println("attempting to request a scoped token.")
+	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
+	config.UpdateCloudConfig(cloud)
+	log.Println("scoped token acquired successfully.")
 	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	return project.ScopedToken
 }
 
-func getScopedTokenFromServiceProvider(projectName string) {
+func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud {
 	cloud := config.GetActiveCloudConfig()
-	projectId := cloud.Projects.GetProjectByNameOrThrow(projectName).Id
+	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).ID
 
-	err := retry.Do(
-		func() error {
-			requestBody := fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"token\"], \"token\": {\"id\": \"%s\"}}, \"scope\": {\"project\": {\"id\": \"%s\"}}}}", cloud.UnscopedToken.Secret, projectId)
+	authOpts := golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		TokenID:          cloud.UnscopedToken.Secret,
+		TenantID:         projectID,
+		DomainName:       cloud.Domain.Name,
+	}
 
-			request := common.GetRequest(http.MethodPost, endpoints.IamTokens, strings.NewReader(requestBody))
-			request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-
-			response := common.HttpClientMakeRequest(request)
-
-			scopedToken := response.Header.Get(xheaders.XSubjectToken)
-
-			if scopedToken == "" {
-				bodyBytes := common.GetBodyBytesFromResponse(response)
-				formattedError := common.ByteSliceToIndentedJsonFormat(bodyBytes)
-				defer response.Body.Close()
-				println("error: an error occurred while polling a scoped token. Will try again")
-				return fmt.Errorf("http status code: %s\nresponse body:\n%s", response.Status, formattedError)
-			}
-
-			bodyBytes := common.GetBodyBytesFromResponse(response)
-			tokenResponse := common.DeserializeJsonForType[common.TokenResponse](bodyBytes)
-			defer response.Body.Close()
-
-			token := config.Token{
-				Secret:    scopedToken,
-				IssuedAt:  tokenResponse.Token.IssuedAt,
-				ExpiresAt: tokenResponse.Token.ExpiresAt,
-			}
-			index := cloud.Projects.FindProjectIndexByName(projectName)
-			if index == nil {
-				errorMessage := fmt.Sprintf("fatal: project with name %s not found.\n\nUse the cce list-projects command to get a list of projects.", projectName)
-				common.OutputErrorToConsoleAndExit(errors.New(errorMessage))
-			}
-			cloud.Projects[*index].ScopedToken = token
-			config.UpdateCloudConfig(cloud)
-			println("scoped token acquired successfully.")
-
-			return nil
-		}, retry.OnRetry(func(n uint, err error) {
-			log.Printf("#%d: %s\n", n, err)
-		}),
-		retry.DelayType(retry.FixedDelay),
-		retry.Delay(time.Second*5),
-	)
+	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-}
-
-func getRequestBodyForAuthenticationMethod(authInfo common.AuthInfo) (requestBody string) {
-	if authInfo.Otp != "" && authInfo.UserDomainId != "" {
-		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\", \"totp\"], "+
-			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}, "+
-			"\"totp\" : {\"user\": {\"id\": \"%s\", \"passcode\": \"%s\"}}}, \"scope\": {\"domain\": {\"name\": \"%s\"}}}}",
-			authInfo.Username, authInfo.Password, authInfo.DomainName, authInfo.UserDomainId, authInfo.Otp, authInfo.DomainName)
-	} else {
-		requestBody = fmt.Sprintf("{\"auth\": {\"identity\": {\"methods\": [\"password\"], "+
-			"\"password\": {\"user\": {\"name\": \"%s\", \"password\": \"%s\", \"domain\": {\"name\": \"%s\"}}}}, "+
-			"\"scope\": {\"domain\": {\"name\": \"%s\"}}}}", authInfo.Username, authInfo.Password, authInfo.DomainName, authInfo.DomainName)
+	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
 	}
-	return requestBody
+
+	scopedToken, err := tokens.Create(client, &authOpts).ExtractToken()
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	token := config.Token{
+		Secret:    scopedToken.ID,
+		ExpiresAt: scopedToken.ExpiresAt.Format(time.RFC3339),
+	}
+	index := cloud.Projects.FindProjectIndexByName(projectName)
+	if index == nil {
+		common.OutputErrorToConsoleAndExit(
+			fmt.Errorf("fatal: project with name %s not found.\n"+
+				"\nUse the cce list-projects command to get a list of projects",
+				projectName))
+	}
+	cloud.Projects[*index].ScopedToken = token
+	return cloud
 }
