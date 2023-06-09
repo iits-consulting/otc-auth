@@ -27,7 +27,7 @@ func CreateAccessToken(tokenDescription string) {
 				strings.Contains(convErr.ErrUnexpectedResponseCode.URL,
 					"OS-CREDENTIAL/credentials") {
 				common.OutputErrorMessageToConsoleAndExit(
-					"Cannot generate AK/SK if logged in via OIDC")
+					"fatal: cannot generate AK/SK if logged in via OIDC")
 			}
 		}
 		common.OutputErrorToConsoleAndExit(err)
@@ -69,10 +69,51 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
-	return credentials.Create(client, credentials.CreateOpts{
+	credential, err := credentials.Create(client, credentials.CreateOpts{
 		UserID:      user.ID,
 		Description: tokenDescription,
 	}).Extract()
+
+	var badRequest golangsdk.ErrDefault400
+	if errors.As(err, &badRequest) {
+		return replaceAccessTokens(user, client, tokenDescription, badRequest)
+	}
+	return credential, err
+}
+
+func replaceAccessTokens(user *tokens.User, client *golangsdk.ServiceClient,
+	tokenDescription string, originalErr error,
+) (*credentials.Credential, error) {
+	// Prolly hit the AK/SK limit
+	accessTokens, listErr := ListAccessToken()
+	if listErr != nil {
+		return nil, listErr
+	}
+
+	//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
+	if len(accessTokens) == 2 {
+		// Definitely hit the AK/SK limit
+		log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
+		changed := false
+		for _, token := range accessTokens {
+			if token.Description == "Token by otc-auth" {
+				err := DeleteAccessToken(token.AccessKey)
+				changed = true
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		if changed {
+			return credentials.Create(client, credentials.CreateOpts{
+				UserID:      user.ID,
+				Description: tokenDescription,
+			}).Extract()
+		}
+		return nil, errors.New("fatal: couldn't find a token created by this tool to replace")
+	}
+	return nil, originalErr
 }
 
 func DeleteAccessToken(token string) error {

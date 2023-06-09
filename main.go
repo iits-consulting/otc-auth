@@ -89,7 +89,7 @@ func main() {
 		})
 	regionCode = loginCommand.String(
 		"r", region, &argparse.Options{
-			Required: true,
+			Required: false,
 			Help:     fmt.Sprintf("OTC region code. %s %s", provideArgumentHelp, envRegion),
 		})
 	overwriteToken = loginCommand.Flag(
