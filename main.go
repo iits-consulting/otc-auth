@@ -316,7 +316,14 @@ func main() {
 		if err2 != nil {
 			common.OutputErrorToConsoleAndExit(err2)
 		}
-		log.Printf("%v", accessTokens)
+		if len(accessTokens) > 0 {
+			log.Println("\nAccess Tokens:")
+			for _, aT := range accessTokens {
+				log.Printf("\nToken: \t\t%s\nDescription: \t%s\nCreated by: \t%s\nLast Used: \t%s\nActive: \t%s\n \n", aT.AccessKey, aT.Description, aT.UserID, aT.LastUseTime, aT.Status)
+			}
+		} else {
+			log.Println("No access-tokens found")
+		}
 	}
 
 	if accessTokenCommandDelete.Happened() {
