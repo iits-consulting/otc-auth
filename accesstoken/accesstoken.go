@@ -3,6 +3,7 @@ package accesstoken
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
@@ -18,7 +19,14 @@ func CreateAccessToken(tokenDescription string) {
 	log.Println("Creating access token file with GTC...")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err) // TODO - make error more specific when logged in with oidc
+		// Handle error currently thrown when logged in by OIDC
+		convErr, ok := err.(golangsdk.ErrDefault404)
+		if ok {
+			if convErr.ErrUnexpectedResponseCode.Actual == 404 && strings.Contains(convErr.ErrUnexpectedResponseCode.URL, "OS-CREDENTIAL/credentials") {
+				common.OutputErrorMessageToConsoleAndExit("Cannot generate AK/SK if logged in via OIDC")
+			}
+		}
+		common.OutputErrorToConsoleAndExit(err)
 	}
 
 	accessKeyFileContent := fmt.Sprintf(

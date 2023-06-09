@@ -36,7 +36,6 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 }
 
 func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
-	// TODO - merge misses some lines
 	kubeConfigContextData := addContextInformationToKubeConfig(configParams.ProjectName,
 		configParams.ClusterName, kubeConfigData)
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
