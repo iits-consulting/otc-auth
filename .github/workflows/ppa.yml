@@ -1,0 +1,61 @@
+name: Push to PPA
+on: workflow_dispatch
+  
+jobs:
+  build:
+    name: Build .deb archive for release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Get latest release
+        uses: robinraju/release-downloader@v1.8
+        with:
+          latest: true
+          fileName: "*_linux_*"
+          extract: true
+        
+      - name: Create .deb folders and add control files to them
+        run: |
+          for d in */ ; 
+            do cd "$d" &&
+            rm LICENSE &&
+            rm README.md &&
+            mkdir -p usr/bin/ &&
+            mv ./otc-auth usr/bin/ &&
+            mkdir "DEBIAN" &&
+            cd "DEBIAN" &&
+            tmp=${d#*_};
+            tmp1=${tmp%_*};
+            version=${tmp1%_*};
+            tmpa=${tmp#*_};
+            tmpa2=${tmpa#*_};
+            arch=${tmpa2//"\/"/};
+            echo -e "Package: otc-auth\nVersion: $version\nMaintainer: Mweya Ruider <mweya.ruider@iits-consulting.de>\nDepends: \nArchitecture: $arch\nHomepage: https://github.com/iits-consulting/otc-auth \nDescription: Open Source CLI for the Open Telekom Cloud written in go." > "control" &&
+            cd ../.. &&
+            mv "$d" "${d/'_linux_'/-1_}";
+            done;
+            
+      - name: Where are we and what is in here?
+        run: pwd && ls -la
+            
+      - name: Build .deb archives and delete directories
+        run: |
+          for d in */ ; 
+          do dpkg --build $d && rm -rf $d;
+          done;
+      
+      
+  push:
+    name: Push .deb archive to ppa
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Pushes to another repository
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: 'debian'
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'ppa'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
