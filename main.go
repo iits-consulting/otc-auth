@@ -350,6 +350,6 @@ func main() {
 	}
 
 	if openStackCommandCreateConfigFile.Happened() {
-		openstack.WriteOpenStackCloudsYaml(*openStackConfigLocation, getRegionCodeOrThrow(*regionCode))
+		openstack.WriteOpenStackCloudsYaml(*openStackConfigLocation)
 	}
 }

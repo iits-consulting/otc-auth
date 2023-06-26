@@ -119,9 +119,9 @@ reuse the clouds.yaml with terraform.
 
 If you execute this command
 
-`otc-auth openstack config-create --region <region>`
+`otc-auth openstack config-create`
 
-It will create a cloud config for every project which you have access to and generate a scoped token. After that it overrides the
+It will create a cloud config for every project which you have access to and generate a scoped token. After that it overrides 
 the clouds.yaml (by default: ~/.config/openstack/clouds.yaml) file.
 
 ## Environment Variables
