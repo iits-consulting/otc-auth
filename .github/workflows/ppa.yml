@@ -12,10 +12,13 @@ jobs:
           latest: true
           fileName: "*_linux_*"
           
+      - name: Where are we and what is in here?
+        run: pwd && ls -la
+          
       - name: Decompress archives
         run: |
           for a in *;
-          do tar -zxvf $a -C ${a%???????} && rm $a;
+          do tar -zxvf ${a%???????} -C $a && rm $a;
           done;
           
       - name: Where are we and what is in here?
