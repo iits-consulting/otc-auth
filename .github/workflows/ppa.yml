@@ -18,7 +18,7 @@ jobs:
       - name: Decompress archives
         run: |
           for a in *;
-          do tar -zxvf $a -C ${a%???????};
+          do mkdir ${a%???????} && tar -zxvf $a -C ${a%???????} && rm $a;
           echo "a: $a, atrunc: ${a%???????}";
           pwd;
           ls -la;
