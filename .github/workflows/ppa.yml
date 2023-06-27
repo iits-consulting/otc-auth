@@ -73,6 +73,7 @@ jobs:
           export GPG_TTY=`tty`;
           echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
+          echo "Sanity check"
           gpg --batch --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
           gpg --batch --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
         env:
@@ -85,6 +86,7 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           source-directory: .
+          destination-directory: "debian"
           destination-github-username: 'iits-consulting'
           destination-repository-name: 'ppa'
           user-email: mweya.ruider@iits-consulting.de
