@@ -12,6 +12,9 @@ jobs:
           latest: true
           fileName: "*_linux_*"
           extract: true
+          
+      - name: Where are we and what is in here?
+        run: pwd && ls -la
         
       - name: Create .deb folders and add control files to them
         shell: bash
