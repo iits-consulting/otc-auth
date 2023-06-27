@@ -65,6 +65,7 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           source-directory: .
+          target-directory: "debian"
           destination-github-username: 'iits-consulting'
           destination-repository-name: 'ppa'
           user-email: mweya.ruider@iits-consulting.de
