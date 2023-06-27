@@ -19,6 +19,9 @@ jobs:
         run: |
           for a in *;
           do mkdir ${a%???????} && mv $a ${a%???????} && cd ${a%???????} && gunzip *.gz && rm $a && cd ..;
+          echo "a: $a, atrunc: ${a%???????}";
+          pwd;
+          ls -la;
           done;
           
       - name: Where are we and what is in here?
