@@ -37,7 +37,7 @@ jobs:
             version=${tmp1%_*};
             tmpa=${tmp#*_};
             tmpa2=${tmpa#*_};
-            arch=${tmpa2//"\/"/};
+            arch=${tmpa2//'/'/};
             echo -e "Package: otc-auth\nVersion: $version\nMaintainer: Mweya Ruider <mweya.ruider@iits-consulting.de>\nDepends: \nArchitecture: $arch\nHomepage: https://github.com/iits-consulting/otc-auth \nDescription: Open Source CLI for the Open Telekom Cloud written in go." > "control" &&
             cd ../.. &&
             mv "$d" "${d/'_linux_'/-1_}";
