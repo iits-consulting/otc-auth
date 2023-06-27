@@ -11,7 +11,12 @@ jobs:
         with:
           latest: true
           fileName: "*_linux_*"
-          extract: true
+          
+      - name: Decompress archives
+        run: |
+          for a in *;
+          do tar -zxvf $a -C ${a} && rm $a;
+          done;
           
       - name: Where are we and what is in here?
         run: pwd && ls -la
