@@ -12,9 +12,6 @@ jobs:
           latest: true
           fileName: "*_linux_*"
           
-      - name: Where are we and what is in here?
-        run: pwd && ls -la
-          
       - name: Decompress archives
         run: |
           for a in *;
@@ -23,9 +20,6 @@ jobs:
           pwd;
           ls -la;
           done;
-          
-      - name: Where are we and what is in here?
-        run: pwd && ls -la
         
       - name: Create .deb folders and add control files to them
         shell: bash
@@ -49,9 +43,6 @@ jobs:
             mv "$d" "${d/'_linux_'/-1_}";
             done;
             
-      - name: Where are we and what is in here?
-        run: pwd && ls -la
-            
       - name: Build .deb archives and delete directories
         run: |
           for d in */ ; 
@@ -63,10 +54,8 @@ jobs:
           apt-ftparchive release . > Release;
           dpkg-scanpackages --multiversion . > Packages;
           gzip -k -f Packages;
-          echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa ./" > my_list_file.list
-          
-      - name: Where are we and what is in here?
-        run: pwd && ls -la
+          echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa ./" > otc-auth.list
+          echo -e "#otc-auth PPA\nThis repo (based on the one [here](https://github.com/assafmo/ppa)) contains .deb files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n##Usage\n```bash\nsudo curl -SsL -o /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg https://iits-consulting.github.io/ppa/debian/KEY.gpg\nsudo curl -SsL -o /etc/apt/sources.list.d/otc-auth.list https://iits-consulting.github.io/ppa/debian/otc-auth.list\nsudo apt update\nsudo apt install otc-auth\n```" > README.md;
       
       - name: Generate keys
         run: |
