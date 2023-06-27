@@ -74,8 +74,8 @@ jobs:
           echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
           echo "Sanity Check: $(ls -la Release)"
-          echo "$GPG_PPA_PRIV_KEY_PASSPHRASE" | gpg --debug-all --batch --yes --passphrase-fd 0 --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
-          echo "$GPG_PPA_PRIV_KEY_PASSPHRASE" | gpg --debug-all --batch --yes --passphrase-fd 0 --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
+          gpg --pinentry-mode loopback --passphrase "${GPG_PPA_PRIV_KEY_PASSPHRASE}" --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
+          gpg --pinentry-mode loopback --passphrase "${GPG_PPA_PRIV_KEY_PASSPHRASE}" --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
         env:
           GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
           GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
