@@ -60,13 +60,14 @@ jobs:
       
       - name: Create PPA repo structure
         run: |
-          mkdir "debian";
-          mv *.deb "debian";
-          cd "debian";
-          # TODO: KEY.gpg, Release keys
+          echo -n "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import;
+          gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
+          apt-ftparchive release . > Release;
+          gpg --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
+          gpg --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
           dpkg-scanpackages --multiversion . > Packages;
           gzip -k -f Packages;
-          
+          echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa ./" > my_list_file.list
           
       - name: Push to PPA repo
         uses: cpina/github-action-push-to-another-repository@main
