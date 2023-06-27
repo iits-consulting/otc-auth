@@ -71,10 +71,11 @@ jobs:
           
       - name: Final cleanup
         run: |
-          mkdir debian
+          mkdir .debian
           mv README.md .README.md
-          mv * debian
+          mv * .debian
           mv .README.md README.md
+          mv .debian debian
           
       - name: Push to PPA repo
         uses: cpina/github-action-push-to-another-repository@main
