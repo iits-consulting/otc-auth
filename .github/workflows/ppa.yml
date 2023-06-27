@@ -14,6 +14,7 @@ jobs:
           extract: true
         
       - name: Create .deb folders and add control files to them
+        shell: bash
         run: |
           for d in */ ; 
             do cd "$d" &&
