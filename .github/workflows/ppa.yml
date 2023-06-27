@@ -57,18 +57,24 @@ jobs:
           for d in */ ; 
           do dpkg --build $d && rm -rf $d;
           done;
-      
+        
       - name: Create PPA repo structure
+        run: |
+          apt-ftparchive release . > Release;
+          dpkg-scanpackages --multiversion . > Packages;
+          gzip -k -f Packages;
+          echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa ./" > my_list_file.list
+          
+      - name: Where are we and what is in here?
+        run: pwd && ls -la
+      
+      - name: Generate keys
         run: |
           export GPG_TTY=$(tty);
           echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
-          apt-ftparchive release . > Release;
           gpg --batch --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
           gpg --batch --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
-          dpkg-scanpackages --multiversion . > Packages;
-          gzip -k -f Packages;
-          echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa ./" > my_list_file.list
         env:
           GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
           
