@@ -64,7 +64,7 @@ jobs:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
-          source-directory: ${{ GITHUB_WORKSPACE }}
+          source-directory: $GITHUB_WORKSPACE
           destination-github-username: 'iits-consulting'
           destination-repository-name: 'ppa'
           user-email: mweya.ruider@iits-consulting.de
