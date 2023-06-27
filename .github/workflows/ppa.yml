@@ -57,6 +57,16 @@ jobs:
           for d in */ ; 
           do dpkg --build $d && rm -rf $d;
           done;
+      
+      - name: Create PPA repo structure
+        run: |
+          mkdir "debian";
+          mv *.deb "debian";
+          cd "debian";
+          # TODO: KEY.gpg, Release keys
+          dpkg-scanpackages --multiversion . > Packages;
+          gzip -k -f Packages;
+          
           
       - name: Push to PPA repo
         uses: cpina/github-action-push-to-another-repository@main
@@ -65,7 +75,6 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           source-directory: .
-          target-directory: "debian"
           destination-github-username: 'iits-consulting'
           destination-repository-name: 'ppa'
           user-email: mweya.ruider@iits-consulting.de
