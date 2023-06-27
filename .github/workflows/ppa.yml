@@ -60,6 +60,7 @@ jobs:
       
       - name: Create PPA repo structure
         run: |
+          export GPG_TTY=$(tty);
           echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
           apt-ftparchive release . > Release;
