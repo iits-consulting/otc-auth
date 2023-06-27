@@ -69,7 +69,7 @@ jobs:
           gzip -k -f Packages;
           echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa ./" > my_list_file.list
         env:
-          GPG_SIGNING_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
+          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
           
       - name: Push to PPA repo
         uses: cpina/github-action-push-to-another-repository@main
