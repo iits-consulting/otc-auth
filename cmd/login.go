@@ -35,8 +35,8 @@ var loginCmd = &cobra.Command{
 var loginIamCmd = &cobra.Command{
 	Use:     "iam",
 	Short:   loginIamCmdHelp,
-	Long:    "Here we can put a longer description of this command", // TODO
-	Example: "Here comes an example usage of this command",          // TODO
+	Long:    loginIamCmdLongHelp,
+	Example: loginIamCmdExample,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		return initializeConfig(cmd, loginIamFlagToEnv)
 	},
@@ -219,6 +219,8 @@ func init() {
 const (
 	loginCmdHelp            = "Login to the Open Telekom Cloud and receive an unscoped token."
 	loginIamCmdHelp         = "Login to the Open Telekom Cloud through its Identity and Access Management system."
+	loginIamCmdLongHelp     = "Login to the Open Telekom Cloud and receive an unscoped token."
+	loginIamCmdExample      = "otc-auth login iam --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName"
 	loginIdpSamlCmdHelp     = "Login to the Open Telekom Cloud through an Identity Provider and SAML."
 	loginIdpOidcCmdHelp     = "Login to the Open Telekom Cloud through an Identity Provider and OIDC."
 	loginRemoveCmdHelp      = "Removes login information for a cloud"
