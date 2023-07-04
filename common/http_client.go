@@ -45,7 +45,7 @@ func GetBodyBytesFromResponse(response *http.Response) []byte {
 
 	statusCodeStartsWith2 := regexp.MustCompile(`2\d{2}`)
 	if !statusCodeStartsWith2.MatchString(strconv.Itoa(response.StatusCode)) {
-		errorMessage := fmt.Sprintf("error: status %s, body:\n%s", response.Status, ByteSliceToIndentedJSONFormat(bodyBytes))
+		errorMessage := fmt.Sprintf("error: status %s, body:\n%s", response.Status, bodyBytes)
 		OutputErrorMessageToConsoleAndExit(errorMessage)
 	}
 

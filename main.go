@@ -207,10 +207,10 @@ func main() {
 			Username:      getUsernameOrThrow(*username),
 			Password:      getPasswordOrThrow(*password),
 			DomainName:    getDomainNameOrThrow(*domainName),
-			Region:        getRegionCodeOrThrow(*regionCode),
 			Otp:           totpToken,
 			UserDomainID:  userID,
 			OverwriteFile: *overwriteToken,
+			Region:        getRegionCodeOrThrow(*regionCode),
 		}
 
 		AuthenticateAndGetUnscopedToken(authInfo)
@@ -227,6 +227,7 @@ func main() {
 			IdpURL:        identityProviderURL,
 			AuthProtocol:  protocolSAML,
 			OverwriteFile: *overwriteToken,
+			Region:        getRegionCodeOrThrow(*regionCode),
 		}
 
 		AuthenticateAndGetUnscopedToken(authInfo)
