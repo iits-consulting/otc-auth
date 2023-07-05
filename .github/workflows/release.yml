@@ -18,6 +18,7 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: 1.19
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3
         with:
@@ -46,6 +47,7 @@ jobs:
           tags: |
             ghcr.io/iits-consulting/otc-auth:latest
             ghcr.io/iits-consulting/otc-auth:${{ env.RELEASE_VERSION }}
+
   aur-publish:
     runs-on: ubuntu-latest
     depends-on: goreleaser
@@ -76,6 +78,7 @@ jobs:
         with:
             latest: true
             fileName: "*.deb"
+
       - name: Create PPA repo structure
         run: |
           dpkg-scanpackages --multiversion . > Packages;
@@ -90,11 +93,24 @@ jobs:
           echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
           echo "Sanity Check: $(ls -la Release)"
-          gpg --pinentry-mode loopback --passphrase "${GPG_PPA_PRIV_KEY_PASSPHRASE}" --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
-          gpg --pinentry-mode loopback --passphrase "${GPG_PPA_PRIV_KEY_PASSPHRASE}" --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
+          echo -n "pinentry-mode loopback \npassphrase ${GPG_PPA_PRIV_KEY_PASSPHRASE}" > ~/.gnupg/gpg.conf
+          gpg --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
+          gpg --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
+          
+          sudo apt-get install -y debsigs 
+          for package in *.deb; do
+            debsigs --sign=origin --default-key="mweya.ruider@iits-consulting.de" "$package"
+          done
+
         env:
           GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
           GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
+
+      - name: Verify sigs
+        run: |
+          for package in *.deb; do
+            debsigs --verify "$package"
+          done
 
       - name: Final cleanup
         run: |
@@ -103,6 +119,7 @@ jobs:
           mv * .debian
           mv .README.md README.md
           mv .debian debian
+          rm ~/.gnupg/gpg.conf
 
       - name: Push to PPA repo
         uses: cpina/github-action-push-to-another-repository@main
