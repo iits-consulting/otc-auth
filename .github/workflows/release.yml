@@ -48,6 +48,7 @@ jobs:
             ghcr.io/iits-consulting/otc-auth:${{ env.RELEASE_VERSION }}
   aur-publish:
     runs-on: ubuntu-latest
+    depends-on: goreleaser
     steps:
       - uses: actions/checkout@v2
 
@@ -65,3 +66,52 @@ jobs:
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Bump to ${{ github.github_ref_name }}"
           ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
+
+  deb-publish:
+    runs-on: ubuntu-latest
+    depends-on: goreleaser
+    steps:
+      - name: Get latest debs
+        uses: robinraju/release-downloader@v1.8
+        with:
+            latest: true
+            fileName: "*.deb"
+      - name: Create PPA repo structure
+        run: |
+          dpkg-scanpackages --multiversion . > Packages;
+          gzip -k -f Packages;
+          apt-ftparchive release . > Release;
+          echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa/debian ./" > otc-auth.list
+          echo -e " # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth PPA \n This repo (based on the one [here](https://github.com/assafmo/ppa)) contains .deb files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n sudo curl -SsL -o /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg https://iits-consulting.github.io/ppa/debian/KEY.gpg \n sudo curl -SsL -o /etc/apt/sources.list.d/otc-auth.list https://iits-consulting.github.io/ppa/debian/otc-auth.list \n cat /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg >/dev/null \n sudo apt update \n sudo apt install otc-auth \n \`\`\`" > README.md;
+
+      - name: Generate keys
+        run: |
+          export GPG_TTY=`tty`;
+          echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
+          gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
+          echo "Sanity Check: $(ls -la Release)"
+          gpg --pinentry-mode loopback --passphrase "${GPG_PPA_PRIV_KEY_PASSPHRASE}" --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
+          gpg --pinentry-mode loopback --passphrase "${GPG_PPA_PRIV_KEY_PASSPHRASE}" --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
+        env:
+          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
+          GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
+
+      - name: Final cleanup
+        run: |
+          mkdir .debian
+          mv README.md .README.md
+          mv * .debian
+          mv .README.md README.md
+          mv .debian debian
+
+      - name: Push to PPA repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: .
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'ppa'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
