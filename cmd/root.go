@@ -17,7 +17,15 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"k8s.io/client-go/util/homedir"
 	"os"
+	"otc-auth/cce"
+	"otc-auth/common"
+	"otc-auth/config"
+	"otc-auth/iam"
+	"otc-auth/login"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -25,23 +33,334 @@ import (
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "otc-auth",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Short: "OTC-Auth Command Line Interface for managing OTC clouds",
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the RootCmd.
+var loginCmd = &cobra.Command{
+	Use:   "login",
+	Short: loginCmdHelp,
+}
+
+var loginIamCmd = &cobra.Command{
+	Use:     "iam",
+	Short:   loginIamCmdHelp,
+	Example: loginIamCmdExample,
+	PreRunE: configureCmdFlagsAgainstEnvs(loginIamFlagToEnv),
+	Run: func(cmd *cobra.Command, args []string) {
+		authInfo := common.AuthInfo{
+			AuthType:      "iam",
+			Username:      username,
+			Password:      password,
+			DomainName:    domainName,
+			Otp:           totp,
+			UserDomainID:  userDomainId,
+			OverwriteFile: overwriteToken,
+			Region:        region,
+		}
+		login.AuthenticateAndGetUnscopedToken(authInfo)
+	},
+}
+
+var loginIdpSamlCmd = &cobra.Command{
+	Use:     "idp-saml",
+	Short:   loginIdpSamlCmdHelp,
+	Example: loginIdpSamlCmdExample,
+	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlOidcFlagToEnv),
+	Run: func(cmd *cobra.Command, args []string) {
+		authInfo := common.AuthInfo{
+			AuthType:      "idp",
+			Username:      username,
+			Password:      password,
+			DomainName:    domainName,
+			IdpName:       idpName,
+			IdpURL:        idpUrl,
+			AuthProtocol:  "saml",
+			OverwriteFile: overwriteToken,
+			Region:        region,
+		}
+		login.AuthenticateAndGetUnscopedToken(authInfo)
+	},
+}
+
+var loginIdpOidcCmd = &cobra.Command{
+	Use:     "idp-oidc",
+	Short:   loginIdpOidcCmdHelp,
+	Example: loginIdpOidcCmdExample,
+	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlOidcFlagToEnv),
+	Run: func(cmd *cobra.Command, args []string) {
+		authInfo := common.AuthInfo{
+			AuthType:      "idp",
+			Username:      username,
+			Password:      password,
+			DomainName:    domainName,
+			IdpName:       idpName,
+			IdpURL:        idpUrl,
+			AuthProtocol:  "oidc",
+			OverwriteFile: overwriteToken,
+			Region:        region,
+		}
+		login.AuthenticateAndGetUnscopedToken(authInfo)
+	},
+}
+
+var loginRemoveCmd = &cobra.Command{
+	Use:     "remove",
+	Short:   loginRemoveCmdHelp,
+	Long:    "Here we can put a longer description of this command", // TODO
+	Example: "Here comes an example usage of this command",          // TODO
+	PreRunE: configureCmdFlagsAgainstEnvs(loginRemoveFlagToEnv),
+	Run: func(cmd *cobra.Command, args []string) {
+		config.RemoveCloudConfig(domainName)
+	},
+}
+
+var projectsCmd = &cobra.Command{
+	Use:   "projects",
+	Short: projectsCmdHelp,
+}
+
+var projectsListCmd = &cobra.Command{
+	Use:     "list",
+	Short:   projectsListCmdHelp,
+	Example: projectsListCmdExample,
+	Run: func(cmd *cobra.Command, args []string) {
+		iam.GetProjectsInActiveCloud()
+	},
+}
+
+var cceCmd = &cobra.Command{
+	Use:               "cce",
+	Short:             cceCmdHelp,
+	PersistentPreRunE: configureCmdFlagsAgainstEnvs(cceListFlagToEnv),
+}
+
+var cceListCmd = &cobra.Command{
+	Use:     "list",
+	Short:   cceListHelp,
+	Example: "", // TODO
+	Run: func(cmd *cobra.Command, args []string) {
+		config.LoadCloudConfig(domainName)
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+		cce.GetClusterNames(projectName)
+	},
+}
+
+var cceGetKubeConfigCmd = &cobra.Command{
+	Use:     "get-kube-config",
+	Short:   cceGetKubeConfigHelp,
+	Example: "", // TODO
+	PreRunE: configureCmdFlagsAgainstEnvs(cceGetKubeConfigFlagToEnv),
+	Run: func(cmd *cobra.Command, args []string) {
+		config.LoadCloudConfig(domainName)
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		daysValidString := strconv.Itoa(daysValid)
+
+		if strings.HasPrefix(targetLocation, "~") {
+			targetLocation = strings.Replace(targetLocation, "~", homedir.HomeDir(), 1)
+		}
+
+		kubeConfigParams := cce.KubeConfigParams{
+			ProjectName:    projectName,
+			ClusterName:    clusterName,
+			DaysValid:      daysValidString,
+			TargetLocation: targetLocation,
+		}
+
+		cce.GetKubeConfig(kubeConfigParams)
+	},
+}
+
 func Execute() {
 	err := RootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
+
+func init() {
+	RootCmd.AddCommand(loginCmd)
+
+	loginCmd.AddCommand(loginIamCmd)
+	loginIamCmd.Flags().StringVarP(&username, usernameFlag, usernameShortFlag, "", usernameUsage)
+	loginIamCmd.MarkFlagRequired(usernameFlag)
+	loginIamCmd.Flags().StringVarP(&password, passwordFlag, passwordShortFlag, "", passwordUsage)
+	loginIamCmd.MarkFlagRequired(passwordFlag)
+	loginIamCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
+	loginIamCmd.MarkFlagRequired(domainNameFlag)
+	loginIamCmd.Flags().BoolVarP(&overwriteToken, overwriteTokenFlag, overwriteTokenShortFlag, false, overwriteTokenUsage)
+	loginIamCmd.Flags().StringVarP(&totp, totpFlag, totpShortFlag, "", totpUsage)
+	loginIamCmd.Flags().StringVarP(&userDomainId, userDomainIdFlag, "", "", userDomainIdUsage)
+	loginIamCmd.MarkFlagsRequiredTogether(totpFlag, userDomainIdFlag)
+	loginIamCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
+	loginIamCmd.MarkFlagRequired(regionFlag)
+
+	loginCmd.AddCommand(loginIdpSamlCmd)
+	loginIdpSamlCmd.Flags().StringVarP(&username, usernameFlag, usernameShortFlag, "", usernameUsage)
+	loginIdpSamlCmd.MarkFlagRequired(usernameFlag)
+	loginIdpSamlCmd.Flags().StringVarP(&password, passwordFlag, passwordShortFlag, "", passwordUsage)
+	loginIdpSamlCmd.MarkFlagRequired(passwordFlag)
+	loginIdpSamlCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
+	loginIdpSamlCmd.MarkFlagRequired(domainNameFlag)
+	loginIdpSamlCmd.Flags().BoolVarP(&overwriteToken, overwriteTokenFlag, overwriteTokenShortFlag, false, overwriteTokenUsage)
+	loginIdpSamlCmd.PersistentFlags().StringVarP(&idpName, idpNameFlag, idpNameShortFlag, "", idpNameUsage)
+	loginIdpSamlCmd.MarkPersistentFlagRequired(idpNameFlag)
+	loginIdpSamlCmd.PersistentFlags().StringVarP(&idpUrl, idpUrlFlag, "", "", idpUrlUsage)
+	loginIdpSamlCmd.MarkPersistentFlagRequired(idpUrlFlag)
+	loginIdpSamlCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
+	loginIdpSamlCmd.MarkFlagRequired(regionFlag)
+
+	loginCmd.AddCommand(loginIdpOidcCmd)
+	loginIdpOidcCmd.Flags().StringVarP(&username, usernameFlag, usernameShortFlag, "", usernameUsage)
+	loginIdpOidcCmd.MarkFlagRequired(usernameFlag)
+	loginIdpOidcCmd.Flags().StringVarP(&password, passwordFlag, passwordShortFlag, "", passwordUsage)
+	loginIdpOidcCmd.MarkFlagRequired(passwordFlag)
+	loginIdpOidcCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
+	loginIdpOidcCmd.MarkFlagRequired(domainNameFlag)
+	loginIdpOidcCmd.Flags().BoolVarP(&overwriteToken, overwriteTokenFlag, overwriteTokenShortFlag, false, overwriteTokenUsage)
+	loginIdpOidcCmd.PersistentFlags().StringVarP(&idpName, idpNameFlag, idpNameShortFlag, "", idpNameUsage)
+	loginIdpOidcCmd.MarkPersistentFlagRequired(idpNameFlag)
+	loginIdpOidcCmd.PersistentFlags().StringVarP(&idpUrl, idpUrlFlag, "", "", idpUrlUsage)
+	loginIdpOidcCmd.MarkPersistentFlagRequired(idpUrlFlag)
+	loginIdpOidcCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
+	loginIdpOidcCmd.MarkFlagRequired(regionFlag)
+
+	loginCmd.AddCommand(loginRemoveCmd)
+	loginRemoveCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
+	loginRemoveCmd.MarkFlagRequired(domainNameFlag)
+
+	RootCmd.AddCommand(projectsCmd)
+	projectsCmd.AddCommand(projectsListCmd)
+
+	RootCmd.AddCommand(cceCmd)
+	cceCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
+	cceCmd.MarkPersistentFlagRequired(domainNameFlag)
+	cceCmd.PersistentFlags().StringVarP(&projectName, projectNameFlag, projectNameShortFlag, "", projectNameUsage)
+	cceCmd.MarkPersistentFlagRequired(projectNameFlag)
+
+	cceCmd.AddCommand(cceListCmd)
+
+	cceCmd.AddCommand(cceGetKubeConfigCmd)
+	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
+	cceGetKubeConfigCmd.MarkFlagRequired(clusterNameFlag)
+	cceGetKubeConfigCmd.Flags().IntVarP(&daysValid, daysValidFlag, daysValidShortFlag, 7, daysValidUsage)
+	cceGetKubeConfigCmd.MarkFlagRequired(daysValidFlag)
+	cceGetKubeConfigCmd.Flags().StringVarP(&targetLocation, targetLocationFlag, targetLocationShortFlag, "~/.kube/config", targetLocationUsage)
+	cceGetKubeConfigCmd.MarkFlagRequired(targetLocationFlag)
+}
+
+var (
+	username       string
+	password       string
+	domainName     string
+	overwriteToken bool
+	idpName        string
+	idpUrl         string
+	totp           string
+	userDomainId   string
+	region         string
+	projectName    string
+	clusterName    string
+	daysValid      int
+	targetLocation string
+
+	loginIamFlagToEnv = map[string]string{
+		usernameFlag:     usernameEnv,
+		passwordFlag:     passwordEnv,
+		domainNameFlag:   domainNameEnv,
+		userDomainIdFlag: userDomainIdEnv,
+		idpNameFlag:      idpNameEnv,
+		idpUrlFlag:       idpUrlEnv,
+		regionFlag:       regionEnv,
+	}
+
+	loginIdpSamlOidcFlagToEnv = map[string]string{
+		usernameFlag:     usernameEnv,
+		passwordFlag:     passwordEnv,
+		domainNameFlag:   domainNameEnv,
+		userDomainIdFlag: userDomainIdEnv,
+		idpNameFlag:      idpNameEnv,
+		idpUrlFlag:       idpUrlEnv,
+		regionFlag:       regionEnv,
+	}
+
+	loginRemoveFlagToEnv = map[string]string{
+		userDomainIdFlag: userDomainIdEnv,
+	}
+
+	cceListFlagToEnv = map[string]string{
+		projectNameFlag: projectNameEnv,
+		domainNameFlag:  domainNameEnv,
+	}
+
+	cceGetKubeConfigFlagToEnv = map[string]string{
+		clusterNameFlag: clusterNameEnv,
+	}
+)
+
+const (
+	loginCmdHelp            = "Login to the Open Telekom Cloud and receive an unscoped token."
+	loginIamCmdHelp         = "Login to the Open Telekom Cloud through its Identity and Access Management system and receive an unscoped token."
+	loginIamCmdExample      = "otc-auth login iam --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName"
+	loginIdpSamlCmdHelp     = "Login to the Open Telekom Cloud through an Identity Provider and SAML and receive an unscoped token."
+	loginIdpSamlCmdExample  = "otc-auth login idp-saml --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName" // TODO: add some more examples here
+	loginIdpOidcCmdHelp     = "Login to the Open Telekom Cloud through an Identity Provider and OIDC and receive an unscoped token."
+	loginIdpOidcCmdExample  = "otc-auth login idp-oidc --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName" // TODO: add some more examples here
+	loginRemoveCmdHelp      = "Removes login information for a cloud"
+	projectsCmdHelp         = "Manage Project Information"
+	projectsListCmdHelp     = "List Projects in Active Cloud"
+	projectsListCmdExample  = "otc-auth projects list"
+	cceCmdHelp              = "Manage Cloud Container Engine."
+	cceListHelp             = "Lists Project Clusters in CCE."
+	cceGetKubeConfigHelp    = "Get remote kube config and merge it with existing local config file."
+	usernameFlag            = "os-username"
+	usernameShortFlag       = "u"
+	usernameEnv             = "OS_USERNAME"
+	usernameUsage           = "Username for the OTC IAM system. Either provide this argument or set the environment variable " + usernameEnv + "."
+	passwordFlag            = "os-password"
+	passwordShortFlag       = "p"
+	passwordEnv             = "OS_PASSWORD"
+	passwordUsage           = "Password for the OTC IAM system. Either provide this argument or set the environment variable " + passwordEnv + "."
+	domainNameFlag          = "os-domain-name"
+	domainNameShortFlag     = "d"
+	domainNameEnv           = "OS_DOMAIN_NAME"
+	domainNameUsage         = "OTC domain name. Either provide this argument or set the environment variable " + domainNameEnv + "."
+	overwriteTokenFlag      = "overwrite-token"
+	overwriteTokenShortFlag = "o"
+	overwriteTokenUsage     = "Overrides .otc-info file."
+	idpNameFlag             = "idp-name"
+	idpNameShortFlag        = "i"
+	idpNameEnv              = "IDP_NAME"
+	idpNameUsage            = "Required for authentication with IdP."
+	idpUrlFlag              = "idp-url"
+	idpUrlEnv               = "IDP_URL"
+	idpUrlUsage             = "Required for authentication with IdP."
+	totpFlag                = "totp"
+	totpShortFlag           = "t"
+	totpUsage               = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
+	userDomainIdFlag        = "os-user-domain-id"
+	userDomainIdEnv         = "OS_USER_DOMAIN_ID"
+	userDomainIdUsage       = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIdEnv + "."
+	regionFlag              = "region"
+	regionShortFlag         = "r"
+	regionEnv               = "REGION"
+	regionUsage             = "OTC region code. Either provide this argument or set the environment variable " + regionEnv + "." // TODO: fill out the region
+	projectNameFlag         = "os-project-name"
+	projectNameShortFlag    = "p"
+	projectNameEnv          = "OS_PROJECT_NAME"
+	projectNameUsage        = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv + "."
+	clusterNameFlag         = "cluster"
+	clusterNameShortFlag    = "c"
+	clusterNameEnv          = "CLUSTER_NAME"
+	clusterNameUsage        = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv + "."
+	daysValidFlag           = "days-valid"
+	daysValidShortFlag      = "v"
+	daysValidUsage          = "Period (in days) that the config will be valid."
+	targetLocationFlag      = "target-location"
+	targetLocationShortFlag = "l"
+	targetLocationUsage     = "Where the kube config should be saved"
+)
