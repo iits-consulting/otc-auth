@@ -10,6 +10,11 @@ import (
 	"otc-auth/saml"
 )
 
+const (
+	protocolSAML = "saml"
+	protocolOIDC = "oidc"
+)
+
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	config.LoadCloudConfig(authInfo.DomainName)
 
