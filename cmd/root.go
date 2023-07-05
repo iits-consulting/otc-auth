@@ -550,8 +550,9 @@ $ otc-auth access-token create
 
 $ export OS_DOMAIN_NAME=MyDomain
 $ otc-auth access-token create`
-	accessTokenListCmdHelp      = "List existing AK/SKs."
-	accessTokenDeleteCmdHelp    = "Delete existing AK/SKs."
+	accessTokenListCmdHelp   = "List existing AK/SKs."
+	accessTokenDeleteCmdHelp = "Delete existing AK/SKs."
+	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
 	accessTokenDeleteCmdExample = `$ otc-auth access-token delete --token YourToken
 
 $ export OS_DOMAIN_NAME=YourDomain
