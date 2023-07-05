@@ -18,7 +18,9 @@ package cmd
 
 import (
 	"k8s.io/client-go/util/homedir"
+	"log"
 	"os"
+	"otc-auth/accesstoken"
 	"otc-auth/cce"
 	"otc-auth/common"
 	"otc-auth/config"
@@ -175,6 +177,77 @@ var cceGetKubeConfigCmd = &cobra.Command{
 	},
 }
 
+var accessTokenCmd = &cobra.Command{
+	Use:               "access-token",
+	Short:             accessTokenCmdHelp,
+	PersistentPreRunE: configureCmdFlagsAgainstEnvs(accessTokenFlagToEnv),
+}
+
+var accessTokenCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: accessTokenCreateCmdHelp,
+	Run: func(cmd *cobra.Command, args []string) {
+		config.LoadCloudConfig(domainName)
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		accesstoken.CreateAccessToken(accessTokenCreateDescription)
+	},
+}
+
+var accessTokenListCmd = &cobra.Command{
+	Use:   "list",
+	Short: accessTokenListCmdHelp,
+	Run: func(cmd *cobra.Command, args []string) {
+		config.LoadCloudConfig(domainName)
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		accessTokens, err2 := accesstoken.ListAccessToken()
+		if err2 != nil {
+			common.OutputErrorToConsoleAndExit(err2)
+		}
+		if len(accessTokens) > 0 {
+			log.Println("\nAccess Tokens:")
+			for _, aT := range accessTokens {
+				log.Printf("\nToken: \t\t%s\n"+
+					"Description: \t%s\n"+
+					"Created by: \t%s\n"+
+					"Last Used: \t%s\n"+
+					"Active: \t%s\n \n",
+					aT.AccessKey, aT.Description, aT.UserID, aT.LastUseTime, aT.Status)
+			}
+		} else {
+			log.Println("No access-tokens found")
+		}
+	},
+}
+
+var accessTokenDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: accessTokenDeleteCmdHelp,
+	Run: func(cmd *cobra.Command, args []string) {
+		config.LoadCloudConfig(domainName)
+
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		if token == "" {
+			common.OutputErrorMessageToConsoleAndExit("fatal: argument token cannot be empty.")
+		}
+		errDelete := accesstoken.DeleteAccessToken(token)
+		if errDelete != nil {
+			common.OutputErrorToConsoleAndExit(errDelete)
+		}
+	},
+}
+
 func Execute() {
 	err := RootCmd.Execute()
 	if err != nil {
@@ -251,22 +324,38 @@ func init() {
 	cceGetKubeConfigCmd.MarkFlagRequired(daysValidFlag)
 	cceGetKubeConfigCmd.Flags().StringVarP(&targetLocation, targetLocationFlag, targetLocationShortFlag, "~/.kube/config", targetLocationUsage)
 	cceGetKubeConfigCmd.MarkFlagRequired(targetLocationFlag)
+
+	RootCmd.AddCommand(accessTokenCmd)
+	accessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
+	accessTokenCmd.MarkPersistentFlagRequired(domainNameFlag)
+
+	accessTokenCmd.AddCommand(accessTokenCreateCmd)
+	accessTokenCreateCmd.Flags().StringVarP(&accessTokenCreateDescription, accessTokenDescriptionFlag, accessTokenDescriptionShortFlag, "Token by otc-auth", accessTokenDescriptionUsage)
+	accessTokenCreateCmd.MarkFlagRequired(accessTokenDescriptionFlag)
+
+	accessTokenCmd.AddCommand(accessTokenListCmd)
+
+	accessTokenCmd.AddCommand(accessTokenDeleteCmd)
+	accessTokenDeleteCmd.Flags().StringVarP(&token, accessTokenTokenFlag, accessTokenTokenShortFlag, "", accessTokenTokenUsage)
+	accessTokenDeleteCmd.MarkFlagRequired(accessTokenTokenFlag)
 }
 
 var (
-	username       string
-	password       string
-	domainName     string
-	overwriteToken bool
-	idpName        string
-	idpUrl         string
-	totp           string
-	userDomainId   string
-	region         string
-	projectName    string
-	clusterName    string
-	daysValid      int
-	targetLocation string
+	username                     string
+	password                     string
+	domainName                   string
+	overwriteToken               bool
+	idpName                      string
+	idpUrl                       string
+	totp                         string
+	userDomainId                 string
+	region                       string
+	projectName                  string
+	clusterName                  string
+	daysValid                    int
+	targetLocation               string
+	accessTokenCreateDescription string
+	token                        string
 
 	loginIamFlagToEnv = map[string]string{
 		usernameFlag:     usernameEnv,
@@ -300,67 +389,81 @@ var (
 	cceGetKubeConfigFlagToEnv = map[string]string{
 		clusterNameFlag: clusterNameEnv,
 	}
+
+	accessTokenFlagToEnv = map[string]string{
+		domainNameFlag: domainNameEnv,
+	}
 )
 
 const (
-	loginCmdHelp            = "Login to the Open Telekom Cloud and receive an unscoped token."
-	loginIamCmdHelp         = "Login to the Open Telekom Cloud through its Identity and Access Management system and receive an unscoped token."
-	loginIamCmdExample      = "otc-auth login iam --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName"
-	loginIdpSamlCmdHelp     = "Login to the Open Telekom Cloud through an Identity Provider and SAML and receive an unscoped token."
-	loginIdpSamlCmdExample  = "otc-auth login idp-saml --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName" // TODO: add some more examples here
-	loginIdpOidcCmdHelp     = "Login to the Open Telekom Cloud through an Identity Provider and OIDC and receive an unscoped token."
-	loginIdpOidcCmdExample  = "otc-auth login idp-oidc --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName" // TODO: add some more examples here
-	loginRemoveCmdHelp      = "Removes login information for a cloud"
-	projectsCmdHelp         = "Manage Project Information"
-	projectsListCmdHelp     = "List Projects in Active Cloud"
-	projectsListCmdExample  = "otc-auth projects list"
-	cceCmdHelp              = "Manage Cloud Container Engine."
-	cceListHelp             = "Lists Project Clusters in CCE."
-	cceGetKubeConfigHelp    = "Get remote kube config and merge it with existing local config file."
-	usernameFlag            = "os-username"
-	usernameShortFlag       = "u"
-	usernameEnv             = "OS_USERNAME"
-	usernameUsage           = "Username for the OTC IAM system. Either provide this argument or set the environment variable " + usernameEnv + "."
-	passwordFlag            = "os-password"
-	passwordShortFlag       = "p"
-	passwordEnv             = "OS_PASSWORD"
-	passwordUsage           = "Password for the OTC IAM system. Either provide this argument or set the environment variable " + passwordEnv + "."
-	domainNameFlag          = "os-domain-name"
-	domainNameShortFlag     = "d"
-	domainNameEnv           = "OS_DOMAIN_NAME"
-	domainNameUsage         = "OTC domain name. Either provide this argument or set the environment variable " + domainNameEnv + "."
-	overwriteTokenFlag      = "overwrite-token"
-	overwriteTokenShortFlag = "o"
-	overwriteTokenUsage     = "Overrides .otc-info file."
-	idpNameFlag             = "idp-name"
-	idpNameShortFlag        = "i"
-	idpNameEnv              = "IDP_NAME"
-	idpNameUsage            = "Required for authentication with IdP."
-	idpUrlFlag              = "idp-url"
-	idpUrlEnv               = "IDP_URL"
-	idpUrlUsage             = "Required for authentication with IdP."
-	totpFlag                = "totp"
-	totpShortFlag           = "t"
-	totpUsage               = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
-	userDomainIdFlag        = "os-user-domain-id"
-	userDomainIdEnv         = "OS_USER_DOMAIN_ID"
-	userDomainIdUsage       = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIdEnv + "."
-	regionFlag              = "region"
-	regionShortFlag         = "r"
-	regionEnv               = "REGION"
-	regionUsage             = "OTC region code. Either provide this argument or set the environment variable " + regionEnv + "." // TODO: fill out the region
-	projectNameFlag         = "os-project-name"
-	projectNameShortFlag    = "p"
-	projectNameEnv          = "OS_PROJECT_NAME"
-	projectNameUsage        = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv + "."
-	clusterNameFlag         = "cluster"
-	clusterNameShortFlag    = "c"
-	clusterNameEnv          = "CLUSTER_NAME"
-	clusterNameUsage        = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv + "."
-	daysValidFlag           = "days-valid"
-	daysValidShortFlag      = "v"
-	daysValidUsage          = "Period (in days) that the config will be valid."
-	targetLocationFlag      = "target-location"
-	targetLocationShortFlag = "l"
-	targetLocationUsage     = "Where the kube config should be saved"
+	loginCmdHelp                    = "Login to the Open Telekom Cloud and receive an unscoped token."
+	loginIamCmdHelp                 = "Login to the Open Telekom Cloud through its Identity and Access Management system and receive an unscoped token."
+	loginIamCmdExample              = "otc-auth login iam --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName"
+	loginIdpSamlCmdHelp             = "Login to the Open Telekom Cloud through an Identity Provider and SAML and receive an unscoped token."
+	loginIdpSamlCmdExample          = "otc-auth login idp-saml --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName" // TODO: add some more examples here
+	loginIdpOidcCmdHelp             = "Login to the Open Telekom Cloud through an Identity Provider and OIDC and receive an unscoped token."
+	loginIdpOidcCmdExample          = "otc-auth login idp-oidc --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName" // TODO: add some more examples here
+	loginRemoveCmdHelp              = "Removes login information for a cloud"
+	projectsCmdHelp                 = "Manage Project Information"
+	projectsListCmdHelp             = "List Projects in Active Cloud"
+	projectsListCmdExample          = "otc-auth projects list"
+	cceCmdHelp                      = "Manage Cloud Container Engine."
+	cceListHelp                     = "Lists Project Clusters in CCE."
+	cceGetKubeConfigHelp            = "Get remote kube config and merge it with existing local config file."
+	accessTokenCmdHelp              = "Manage AK/SK."
+	accessTokenCreateCmdHelp        = "Create new AK/SK."
+	accessTokenListCmdHelp          = "List existing AK/SKs."
+	accessTokenDeleteCmdHelp        = "Delete existing AK/SKs."
+	usernameFlag                    = "os-username"
+	usernameShortFlag               = "u"
+	usernameEnv                     = "OS_USERNAME"
+	usernameUsage                   = "Username for the OTC IAM system. Either provide this argument or set the environment variable " + usernameEnv + "."
+	passwordFlag                    = "os-password"
+	passwordShortFlag               = "p"
+	passwordEnv                     = "OS_PASSWORD"
+	passwordUsage                   = "Password for the OTC IAM system. Either provide this argument or set the environment variable " + passwordEnv + "."
+	domainNameFlag                  = "os-domain-name"
+	domainNameShortFlag             = "d"
+	domainNameEnv                   = "OS_DOMAIN_NAME"
+	domainNameUsage                 = "OTC domain name. Either provide this argument or set the environment variable " + domainNameEnv + "."
+	overwriteTokenFlag              = "overwrite-token"
+	overwriteTokenShortFlag         = "o"
+	overwriteTokenUsage             = "Overrides .otc-info file."
+	idpNameFlag                     = "idp-name"
+	idpNameShortFlag                = "i"
+	idpNameEnv                      = "IDP_NAME"
+	idpNameUsage                    = "Required for authentication with IdP."
+	idpUrlFlag                      = "idp-url"
+	idpUrlEnv                       = "IDP_URL"
+	idpUrlUsage                     = "Required for authentication with IdP."
+	totpFlag                        = "totp"
+	totpShortFlag                   = "t"
+	totpUsage                       = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
+	userDomainIdFlag                = "os-user-domain-id"
+	userDomainIdEnv                 = "OS_USER_DOMAIN_ID"
+	userDomainIdUsage               = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIdEnv + "."
+	regionFlag                      = "region"
+	regionShortFlag                 = "r"
+	regionEnv                       = "REGION"
+	regionUsage                     = "OTC region code. Either provide this argument or set the environment variable " + regionEnv + "." // TODO: fill out the region
+	projectNameFlag                 = "os-project-name"
+	projectNameShortFlag            = "p"
+	projectNameEnv                  = "OS_PROJECT_NAME"
+	projectNameUsage                = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv + "."
+	clusterNameFlag                 = "cluster"
+	clusterNameShortFlag            = "c"
+	clusterNameEnv                  = "CLUSTER_NAME"
+	clusterNameUsage                = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv + "."
+	daysValidFlag                   = "days-valid"
+	daysValidShortFlag              = "v"
+	daysValidUsage                  = "Period (in days) that the config will be valid."
+	targetLocationFlag              = "target-location"
+	targetLocationShortFlag         = "l"
+	targetLocationUsage             = "Where the kube config should be saved"
+	accessTokenDescriptionFlag      = "description"
+	accessTokenDescriptionShortFlag = "s"
+	accessTokenDescriptionUsage     = "Description of the token"
+	accessTokenTokenFlag            = "token"
+	accessTokenTokenShortFlag       = "t"
+	accessTokenTokenUsage           = "The AK/SK token to delete."
 )
