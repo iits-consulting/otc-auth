@@ -1,29 +1,31 @@
 package iam
 
 import (
-	"fmt"
-	"github.com/go-http-utils/headers"
-	"net/http"
+	"encoding/json"
+	"log"
+	"strings"
+
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
-	"otc-auth/common/headervalues"
-	"otc-auth/common/xheaders"
 	"otc-auth/config"
-	"strings"
+
+	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/projects"
 )
 
 func GetProjectsInActiveCloud() config.Projects {
 	projectsResponse := getProjectsFromServiceProvider()
-	var projects config.Projects
+	var cloudProjects config.Projects
 	for _, project := range projectsResponse.Projects {
-		projects = append(projects, config.Project{
-			NameAndIdResource: config.NameAndIdResource{Name: project.Name, Id: project.Id},
+		cloudProjects = append(cloudProjects, config.Project{
+			NameAndIDResource: config.NameAndIDResource{Name: project.Name, ID: project.ID},
 		})
 	}
 
-	config.UpdateProjects(projects)
-	println(fmt.Sprintf("Projects for active cloud:\n%s", strings.Join(projects.GetProjectNames(), ",\n")))
-	return projects
+	config.UpdateProjects(cloudProjects)
+	log.Printf("Projects for active cloud:\n%s \n", strings.Join(cloudProjects.GetProjectNames(), ",\n"))
+	return cloudProjects
 }
 
 func CreateScopedTokenForEveryProject(projectNames []string) {
@@ -34,15 +36,31 @@ func CreateScopedTokenForEveryProject(projectNames []string) {
 
 func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
 	cloud := config.GetActiveCloudConfig()
-	println(fmt.Sprintf("info: fetching projects for cloud %s", cloud.Domain.Name))
+	log.Printf("info: fetching projects for cloud %s \n", cloud.Domain.Name)
 
-	request := common.GetRequest(http.MethodGet, endpoints.IamProjects, nil)
-	request.Header.Add(headers.ContentType, headervalues.ApplicationJson)
-	request.Header.Add(xheaders.XAuthToken, cloud.UnscopedToken.Secret)
+	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		DomainID:         cloud.Domain.ID,
+		TokenID:          cloud.UnscopedToken.Secret,
+	})
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	projectsList, err := projects.List(client, projects.ListOpts{}).AllPages()
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 
-	response := common.HttpClientMakeRequest(request)
-	bodyBytes := common.GetBodyBytesFromResponse(response)
-	projectsResponse = *common.DeserializeJsonForType[common.ProjectsResponse](bodyBytes)
+	projectsResponseMap := projectsList.GetBody()
+
+	err = json.Unmarshal(projectsResponseMap, &projectsResponse)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
 
 	return projectsResponse
 }

@@ -2,19 +2,21 @@ package oidc
 
 import (
 	"encoding/json"
-	"github.com/go-http-utils/headers"
 	"net/http"
 	"net/url"
-	"otc-auth/common"
 	"strings"
+
+	"otc-auth/common"
+
+	"github.com/go-http-utils/headers"
 )
 
-func createServiceAccountAuthenticateRequest(requestUrl string, clientId string, clientSecret string) *http.Request {
+func createServiceAccountAuthenticateRequest(requestURL string, clientID string, clientSecret string) *http.Request {
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
 	data.Set("scope", "openid")
-	request := common.GetRequest(http.MethodPost, requestUrl, strings.NewReader(data.Encode()))
-	request.SetBasicAuth(clientId, clientSecret)
+	request := common.GetRequest(http.MethodPost, requestURL, strings.NewReader(data.Encode()))
+	request.SetBasicAuth(clientID, clientSecret)
 	request.Header.Add(headers.ContentType, "application/x-www-form-urlencoded")
 	return request
 }
@@ -22,7 +24,7 @@ func createServiceAccountAuthenticateRequest(requestUrl string, clientId string,
 type ServiceAccountResponse struct {
 	RefreshExpiresIn int    `json:"refresh_expires_in"`
 	TokenType        string `json:"token_type"`
-	IdToken          string `json:"id_token"`
+	IDToken          string `json:"id_token"`
 	NotBeforePolicy  int    `json:"not-before-policy"`
 	SessionState     string `json:"session_state"`
 	AccessToken      string `json:"access_token"`
@@ -32,12 +34,12 @@ type ServiceAccountResponse struct {
 }
 
 func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCredentialsResponse {
-	idpTokenUrl, err := url.JoinPath(params.IdpUrl, "protocol/openid-connect/token")
+	idpTokenURL, err := url.JoinPath(params.IdpURL, "protocol/openid-connect/token")
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
-	request := createServiceAccountAuthenticateRequest(idpTokenUrl, params.ClientId, params.ClientSecret)
-	response := common.HttpClientMakeRequest(request)
+	request := createServiceAccountAuthenticateRequest(idpTokenURL, params.ClientID, params.ClientSecret)
+	response := common.HTTPClientMakeRequest(request) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 	bodyBytes := common.GetBodyBytesFromResponse(response)
 
 	var result ServiceAccountResponse
@@ -47,7 +49,7 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCreden
 	}
 
 	serviceAccountCreds := common.OidcCredentialsResponse{}
-	serviceAccountCreds.BearerToken = result.IdToken
+	serviceAccountCreds.BearerToken = result.IDToken
 	serviceAccountCreds.Claims.PreferredUsername = "ServiceAccount"
 
 	return serviceAccountCreds

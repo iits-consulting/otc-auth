@@ -1,24 +1,23 @@
-package test
+package test_test
 
 import (
-	"otc-auth/config"
 	"testing"
+
+	"otc-auth/config"
 )
 
-func TestLoadCloudConfig_init(t *testing.T) {
-	domainName := "first"
+const firstDomain = "firstDomain"
 
-	config.LoadCloudConfig(domainName)
+func TestLoadCloudConfig_init(t *testing.T) {
+	config.LoadCloudConfig(firstDomain)
 
 	result := config.GetActiveCloudConfig().Domain
-	if result.Name != domainName {
-		t.Errorf("Expected result to contain cloud: %s, but result contains: %s ", domainName, result.Name)
+	if result.Name != firstDomain {
+		t.Errorf("Expected result to contain cloud: %s, but result contains: %s ", firstDomain, result.Name)
 	}
-
 }
 
 func TestLoadCloudConfig_two_domains(t *testing.T) {
-	firstDomain := "first"
 	secondDomain := "second"
 
 	config.LoadCloudConfig(firstDomain)
@@ -31,8 +30,6 @@ func TestLoadCloudConfig_two_domains(t *testing.T) {
 }
 
 func TestLoadCloudConfig_make_domain_twice_active(t *testing.T) {
-	firstDomain := "first"
-
 	config.LoadCloudConfig(firstDomain)
 	config.LoadCloudConfig(firstDomain)
 

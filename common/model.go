@@ -5,16 +5,17 @@ import (
 )
 
 type AuthInfo struct {
+	Region           string
 	AuthType         string
 	IdpName          string
-	IdpUrl           string
+	IdpURL           string
 	Username         string
 	Password         string
 	AuthProtocol     string
 	DomainName       string
 	Otp              string
-	UserDomainId     string
-	ClientId         string
+	UserDomainID     string
+	ClientID         string
 	ClientSecret     string
 	OverwriteFile    bool
 	IsServiceAccount bool
@@ -43,7 +44,7 @@ type TokenResponse struct {
 		IssuedAt  string `json:"issued_at"`
 		User      struct {
 			Domain struct {
-				Id   string `json:"id"`
+				ID   string `json:"id"`
 				Name string `json:"name"`
 			} `json:"domain"`
 			Name string `json:"name"`
@@ -54,20 +55,12 @@ type TokenResponse struct {
 type ProjectsResponse struct {
 	Projects []struct {
 		Name string `json:"name"`
-		Id   string `json:"id"`
+		ID   string `json:"id"`
 	} `json:"projects"`
 }
 
-type ClustersResponse struct {
-	Items []struct {
-		Metadata struct {
-			Name string `json:"name"`
-			UID  string `json:"uid"`
-		} `json:"metadata"`
-	} `json:"items"`
-}
-
-const SuccessPageHtml = `
+//nolint:lll // This should probably be moved to its own file sometime
+const SuccessPageHTML = `
 <!DOCTYPE html>
 <html lang="en">
 <head>

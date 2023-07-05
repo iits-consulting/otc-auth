@@ -47,7 +47,7 @@ var loginIamCmd = &cobra.Command{
 			Password:      password,
 			DomainName:    domainName,
 			Otp:           totp,
-			UserDomainId:  userDomainId,
+			UserDomainID:  userDomainId,
 			OverwriteFile: overwriteToken,
 		}
 		login.AuthenticateAndGetUnscopedToken(authInfo)
@@ -69,7 +69,7 @@ var loginIdpSamlCmd = &cobra.Command{
 			Password:      password,
 			DomainName:    domainName,
 			IdpName:       idpName,
-			IdpUrl:        idpUrl,
+			IdpURL:        idpUrl,
 			AuthProtocol:  "saml",
 			OverwriteFile: overwriteToken,
 		}
@@ -92,7 +92,7 @@ var loginIdpOidcCmd = &cobra.Command{
 			Password:      password,
 			DomainName:    domainName,
 			IdpName:       idpName,
-			IdpUrl:        idpUrl,
+			IdpURL:        idpUrl,
 			AuthProtocol:  "oidc",
 			OverwriteFile: overwriteToken,
 		}
