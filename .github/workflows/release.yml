@@ -69,6 +69,59 @@ jobs:
           commit_message: "Bump to ${{ github.github_ref_name }}"
           ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
 
+  apk-publish:
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    container:
+      image: alpine:latest
+
+    steps:
+      - name: Get latest apks
+        uses: robinraju/release-downloader@v1.8
+        with:
+          latest: true
+          fileName: "*.apk"
+
+      - name: Install dependencies
+        run: |
+          apk add alpine-sdk openssl
+
+      - name: Import keys
+        run: |
+          mkdir ~/.abuild
+          echo "$APK_PACKAGE_RSA" > ~/.abuild/abuild.rsa
+          openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
+          echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
+          cp ~/.abuild/abuild.rsa.pub /etc/apk/keys/
+        env:
+          APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
+
+      - name: Make and sign apkindex
+        run: |
+          apk index -o APKINDEX.tar.gz *.apk
+          abuild-sign -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
+
+      - name: Create repo structure
+        run: |
+          cp ~/.abuild/abuild.rsa.pub otc-auth.rsa.pub
+          echo -e "  # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n apk add curl \n curl -SsL -o /etc/apk/keys/otc-auth.rsa.pub https://iits-consulting.github.io/apk-repo otc-auth.rsa.pub \n apk add otc-auth --repository='https://iits-consulting.github.io/apk-repo' \`\`\`" > README.md;
+
+      - name: Cleanup
+        run: |
+          rm -rf ~/.abuild
+
+      - name: Push to APK repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.APK_SSH_DEPLOY_KEY }}
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: .
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'apk-repo'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
+
   deb-publish:
     runs-on: ubuntu-latest
     needs: goreleaser
