@@ -19,6 +19,7 @@ jobs:
         run: |
           apk add alpine-sdk
           apk add gpg
+          apk add gpg-agent
 
       - name: Import keys
         run: |
