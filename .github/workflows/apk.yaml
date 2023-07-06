@@ -17,9 +17,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          apk add alpine-sdk
-          apk add gpg
-          apk add gpg-agent
+          apk add alpine-sdk gpg gpg-agent doas
 
       - name: Import keys
         run: |
