@@ -1,0 +1,50 @@
+name: Alpine Linux Test Workflow
+
+on: [push, workflow_dispatch, pull_request]
+
+jobs:
+  deb-publish:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+
+    steps:
+      - name: Get latest apks
+        uses: robinraju/release-downloader@v1.8
+        with:
+          latest: true
+          fileName: "*.apk"
+
+      - name: Install alpine-sdk
+        run: |
+          apk add alpine-sdk
+
+      - name: Import keys
+        run: |
+          export GPG_TTY=`tty`;
+          echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
+          abuild-keygen -a -i -n
+
+      - name: Make and sign apkindex
+        run: |
+          apk index -o APKINDEX.tar.gz *.apk
+          abuild-sign APKINDEX.tar.gz
+        env:
+          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
+          GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
+
+      - name: Create README.md
+        run: |
+          echo -e " # TODO" > README.md
+
+      - name: Push to APK repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.APK_SSH_DEPLOY_KEY }}
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: .
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'apk-repo'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
