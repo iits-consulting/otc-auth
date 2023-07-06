@@ -1,6 +1,6 @@
 name: Alpine Linux Test Workflow
 
-on: [push, workflow_dispatch, pull_request]
+on: [push, workflow_dispatch]
 
 jobs:
   apk-publish:
@@ -15,31 +15,31 @@ jobs:
           latest: true
           fileName: "*.apk"
 
-      - name: Install dependencies and set up doas config
+      - name: Install dependencies
         run: |
-          apk add alpine-sdk gpg gpg-agent doas
-          mkdir -p /usr/local/etc/
-          echo "permit nopass root" >> /usr/local/etc/doas.conf
+          apk add alpine-sdk openssl
 
       - name: Import keys
         run: |
-          export GPG_TTY=`tty`;
-          echo "$GPG_PPA_PRIV_KEY" | base64 -d | gpg --import --batch;
-          echo "Sanity check: $(id -un)"
-          echo "Sanity check: $(cat /usr/local/etc/doas.conf)"
-          abuild-keygen -a -i -n
+          echo $APK_PACKAGE_RSA > ~/.abuild/abuild.rsa
+          openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
+          echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
+          cp ~/.abuild/abuild.rsa.pub /etc/apk/keys/
         env:
-          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
-          GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
+          APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
 
       - name: Make and sign apkindex
         run: |
           apk index -o APKINDEX.tar.gz *.apk
-          abuild-sign APKINDEX.tar.gz
+          abuild-sign -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
 
       - name: Create README.md
         run: |
           echo -e " # TODO" > README.md
+
+      - name: Cleanup
+        run: |
+          rm -rf ~/.abuild
 
       - name: Push to APK repo
         uses: cpina/github-action-push-to-another-repository@main
