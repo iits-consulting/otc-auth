@@ -50,7 +50,7 @@ jobs:
 
   aur-publish:
     runs-on: ubuntu-latest
-    depends-on: goreleaser
+    needs: goreleaser
     steps:
       - uses: actions/checkout@v2
 
@@ -71,7 +71,7 @@ jobs:
 
   deb-publish:
     runs-on: ubuntu-latest
-    depends-on: goreleaser
+    needs: goreleaser
     steps:
       - name: Get latest debs
         uses: robinraju/release-downloader@v1.8
