@@ -15,14 +15,15 @@ jobs:
           latest: true
           fileName: "*.apk"
 
-      - name: Install alpine-sdk
+      - name: Install dependencies
         run: |
           apk add alpine-sdk
+          apk add gpg
 
       - name: Import keys
         run: |
           export GPG_TTY=`tty`;
-          echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
+          echo "$GPG_PPA_PRIV_KEY" | base64 -d | gpg --import --batch;
           abuild-keygen -a -i -n
 
       - name: Make and sign apkindex
