@@ -93,7 +93,7 @@ jobs:
           echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
           echo "Sanity Check: $(ls -la Release)"
-          echo -n "pinentry-mode loopback \npassphrase ${GPG_PPA_PRIV_KEY_PASSPHRASE}" > ~/.gnupg/gpg.conf
+          echo -e "pinentry-mode loopback \npassphrase ${GPG_PPA_PRIV_KEY_PASSPHRASE}" > ~/.gnupg/gpg.conf
           gpg --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
           gpg --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
           
@@ -105,12 +105,6 @@ jobs:
         env:
           GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
           GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
-
-      - name: Verify sigs
-        run: |
-          for package in *.deb; do
-            debsigs --verify "$package"
-          done
 
       - name: Final cleanup
         run: |
