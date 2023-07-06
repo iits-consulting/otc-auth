@@ -18,6 +18,7 @@ jobs:
       - name: Install dependencies and set up doas config
         run: |
           apk add alpine-sdk gpg gpg-agent doas
+          mkdir -p /usr/local/etc/
           echo "permit nopass $(id -un) as root" >> /usr/local/etc/doas.conf
 
       - name: Import keys
