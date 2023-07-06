@@ -25,14 +25,14 @@ jobs:
           export GPG_TTY=`tty`;
           echo "$GPG_PPA_PRIV_KEY" | base64 -d | gpg --import --batch;
           abuild-keygen -a -i -n
+        env:
+          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
+          GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
 
       - name: Make and sign apkindex
         run: |
           apk index -o APKINDEX.tar.gz *.apk
           abuild-sign APKINDEX.tar.gz
-        env:
-          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
-          GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
 
       - name: Create README.md
         run: |
