@@ -21,6 +21,7 @@ jobs:
 
       - name: Import keys
         run: |
+          mkdir ~/.abuild/
           echo $APK_PACKAGE_RSA > ~/.abuild/abuild.rsa
           openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
           echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
