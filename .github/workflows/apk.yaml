@@ -34,9 +34,10 @@ jobs:
           apk index -o APKINDEX.tar.gz *.apk
           abuild-sign -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
 
-      - name: Create README.md
+      - name: Create repo structure
         run: |
-          echo -e " # TODO" > README.md
+          cp ~/.abuild/abuild.rsa.pub otc-auth.rsa.pub
+          echo -e "  # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n  \`\`\`" > README.md;
 
       - name: Cleanup
         run: |
