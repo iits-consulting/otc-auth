@@ -13,6 +13,11 @@ jobs:
           latest: true
           fileName: "*.rpm"
 
+      - name: Get dependencies
+        run: |
+          dnf install rpm-sign
+          
+
       - name: Generate keys
         run: |
           export GPG_TTY=`tty`;
