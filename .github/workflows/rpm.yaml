@@ -7,7 +7,7 @@ jobs:
       image: fedora:latest
 
     steps:
-      - name: Get latest apks
+      - name: Get latest rpms
         uses: robinraju/release-downloader@v1.8
         with:
           latest: true
@@ -24,7 +24,7 @@ jobs:
           echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
           echo -e "pinentry-mode loopback \npassphrase ${GPG_PPA_PRIV_KEY_PASSPHRASE}" > ~/.gnupg/gpg.conf
           echo -e "%_signature gpg \n%_gpg_name mweya.ruider@iits-consulting.de" > /root/.rpmmacros
-          echo "Sanity check: $cat /root/.rpmmacros"
+          echo "Sanity check: $(cat /root/.rpmmacros)"
           rpm --addsign *.rpm
           mkdir -p otc\-auth/packages
           mv *.rpm otc\-auth/packages
