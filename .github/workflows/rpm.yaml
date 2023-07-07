@@ -15,7 +15,7 @@ jobs:
 
       - name: Get dependencies
         run: |
-          dnf install rpm-sign
+          dnf install rpm-sign -y
           
 
       - name: Generate keys
