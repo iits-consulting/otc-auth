@@ -52,7 +52,7 @@ nfpms:
     vendor: "iits-consulting"
     homepage: "https://github.com/iits-consulting/otc-auth"
     maintainer: "kontakt@iits-consulting.de"
-    description: "Test"
+    description: "Open Source CLI for the Open Telekom Cloud written in go"
     license: GPL3.0
     formats:
       - apk
