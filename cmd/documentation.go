@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
@@ -28,6 +29,7 @@ var documentationCmd = &cobra.Command{
 	Use:   "documentation",
 	Short: "Generates markdown documentation",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		os.Mkdir("./generated-docs", 0700)
 		err := doc.GenMarkdownTree(cmd.Root(), "./generated-docs/")
 		log.Println("documentation generated")
 		return err
