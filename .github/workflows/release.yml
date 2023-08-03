@@ -65,3 +65,31 @@ jobs:
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Bump to ${{ github.github_ref_name }}"
           ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
+
+  wikiupdate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go environment
+        uses: actions/setup-go@v3
+        with:
+          go-version: ^1.20
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Get dependencies
+        run: go mod download
+      - name: Build
+        run: go run main.go documentation
+      - name: Checkout wiki code
+        uses: actions/checkout@v2
+        with:
+          repository: ${{github.repository}}.wiki
+          path: markdown
+      - name: Push to wiki
+        run: |
+          cp -r generated_docs markdown/docs
+          cd markdown
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git diff-index --quiet HEAD || git commit -m "Updated docs" && git push
+
