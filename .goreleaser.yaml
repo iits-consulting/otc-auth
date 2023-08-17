@@ -2,4 +2,4 @@ builds:
   - id: otc-auth
     hooks:
       post:
-        - cmd: ./signOSX.sh {{ .Path }} {{ .Os }}
+        - cmd: ./signOSX.sh {{ .Path }} {{ .Os }} {{ .Version }} {{ .Arch }}
