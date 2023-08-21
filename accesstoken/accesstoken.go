@@ -26,9 +26,9 @@ func CreateAccessToken(tokenDescription string) {
 		if errors.As(err, &notFound) &&
 			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
 			strings.Contains(string(notFound.Body), "Could not find user:") {
-			tempCredResp, temperr := getTempAccessTokenFromServiceProvider()
-			if temperr != nil {
-				common.OutputErrorToConsoleAndExit(temperr)
+			tempCredResp, tempErr := getTempAccessTokenFromServiceProvider()
+			if tempErr != nil {
+				common.OutputErrorToConsoleAndExit(tempErr)
 			}
 			tempResp = tempCredResp
 		} else {
@@ -144,7 +144,7 @@ func handlePotentialLimitError(err error,
 	return nil, err
 }
 
-// Replaces AK/SKs made by otc-auth if their descriptions match the default..
+// Replaces AK/SKs made by otc-auth if their descriptions match the default.
 func conditionallyReplaceAccessTokens(user *tokens.User, client *golangsdk.ServiceClient,
 	tokenDescription string, accessTokens []credentials.Credential,
 ) (*credentials.Credential, error) {
