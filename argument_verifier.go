@@ -22,7 +22,7 @@ const (
 	envClientSecret      = "CLIENT_SECRET"
 	envClusterName       = "CLUSTER_NAME"
 	envOidScopes         = "OIDC_SCOPES"
-	envOidcScopesDefault = "openid,profile,roles,name,groups,email"
+	envOidcScopesDefault = "openid"
 
 	authTypeIDP = "idp"
 	authTypeIAM = "iam"
