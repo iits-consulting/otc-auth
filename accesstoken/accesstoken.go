@@ -117,24 +117,31 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 	})
 	credential, err := credResp.Extract()
 	if err != nil {
-		var badRequest golangsdk.ErrDefault400
-		if errors.As(err, &badRequest) {
-			accessTokens, listErr := ListAccessToken()
-			if listErr != nil {
-				return nil, listErr
-			}
-
-			//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
-			if len(accessTokens) == 2 {
-				log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
-				return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)
-			}
-			return nil, err
-		}
-		common.OutputErrorToConsoleAndExit(err)
+		credential, err = handlePotentialLimitError(err, user, client, tokenDescription)
 	}
-
 	return credential, err
+}
+
+func handlePotentialLimitError(err error,
+	user *tokens.User,
+	client *golangsdk.ServiceClient,
+	tokenDescription string,
+) (*credentials.Credential, error) {
+	var badRequest golangsdk.ErrDefault400
+	if errors.As(err, &badRequest) {
+		accessTokens, listErr := ListAccessToken()
+		if listErr != nil {
+			return nil, listErr
+		}
+
+		//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
+		if len(accessTokens) == 2 {
+			log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
+			return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)
+		}
+		return nil, err
+	}
+	return nil, err
 }
 
 // Replaces AK/SKs made by otc-auth if their descriptions match the default..
