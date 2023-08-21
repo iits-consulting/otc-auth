@@ -18,30 +18,56 @@ import (
 
 func CreateAccessToken(tokenDescription string) {
 	log.Println("Creating access token file with GTC...")
+	var tempResp *credentials.TemporaryCredential
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
-		// Handle error currently thrown when logged in by OIDC
-		var convErr golangsdk.ErrDefault404
-		if errors.As(err, &convErr) {
-			if convErr.ErrUnexpectedResponseCode.Actual == 404 &&
-				strings.Contains(convErr.ErrUnexpectedResponseCode.URL,
-					"OS-CREDENTIAL/credentials") {
-				common.OutputErrorMessageToConsoleAndExit(
-					"fatal: cannot generate AK/SK if logged in via OIDC")
+		// A 404 error is thrown when trying to get a permanent AK/SK when logged in with OIDC
+		var notFound golangsdk.ErrDefault404
+		if errors.As(err, &notFound) &&
+			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
+			strings.Contains(string(notFound.Body), "Could not find user:") {
+			tempCredResp, temperr := getTempAccessTokenFromServiceProvider()
+			if temperr != nil {
+				common.OutputErrorToConsoleAndExit(temperr)
 			}
+			tempResp = tempCredResp
+		} else {
+			common.OutputErrorToConsoleAndExit(err)
 		}
-		common.OutputErrorToConsoleAndExit(err)
 	}
+	makeAccessFile(resp, tempResp)
+}
 
-	accessKeyFileContent := fmt.Sprintf(
-		"export OS_ACCESS_KEY=%s\n"+
-			"export AWS_ACCESS_KEY_ID=%s\n"+
-			"export OS_SECRET_KEY=%s\n"+
-			"export AWS_SECRET_ACCESS_KEY=%s",
-		resp.AccessKey,
-		resp.AccessKey,
-		resp.SecretKey,
-		resp.SecretKey)
+func makeAccessFile(resp *credentials.Credential, tempResp *credentials.TemporaryCredential) {
+	if resp == nil && tempResp == nil {
+		common.OutputErrorMessageToConsoleAndExit("no temporary or permanent access keys to write")
+	}
+	var accessKeyFileContent string
+	if resp != nil {
+		accessKeyFileContent = fmt.Sprintf(
+			"export OS_ACCESS_KEY=%s\n"+
+				"export AWS_ACCESS_KEY_ID=%s\n"+
+				"export OS_SECRET_KEY=%s\n"+
+				"export AWS_SECRET_ACCESS_KEY=%s",
+			resp.AccessKey,
+			resp.AccessKey,
+			resp.SecretKey,
+			resp.SecretKey)
+	} else {
+		accessKeyFileContent = fmt.Sprintf(
+			"export OS_ACCESS_KEY=%s\n"+
+				"export AWS_ACCESS_KEY_ID=%s\n"+
+				"export OS_SECRET_KEY=%s\n"+
+				"export AWS_SECRET_ACCESS_KEY=%s\n"+
+				"export OS_SESSION_TOKEN=%s\n"+
+				"export AWS_SESSION_TOKEN=%s",
+			tempResp.AccessKey,
+			tempResp.AccessKey,
+			tempResp.SecretKey,
+			tempResp.SecretKey,
+			tempResp.SecurityToken,
+			tempResp.SecurityToken)
+	}
 
 	common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
 	log.Println("Access token file created successfully.")
@@ -60,6 +86,22 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	return credentials.List(client, credentials.ListOpts{UserID: user.ID}).Extract()
 }
 
+func getTempAccessTokenFromServiceProvider() (*credentials.TemporaryCredential, error) {
+	client, err := getIdentityServiceClient()
+	if err != nil {
+		return nil, err
+	}
+	credResponse := credentials.CreateTemporary(client, credentials.CreateTemporaryOpts{
+		Methods: []string{"token"},
+	})
+	tempCreds, err := credResponse.Extract()
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("warning: access key will only be valid until: %v (UTC)", tempCreds.ExpiresAt)
+	return tempCreds, err
+}
+
 func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Credential, error) {
 	client, err := getIdentityServiceClient()
 	if err != nil {
@@ -69,25 +111,29 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
-	credential, err := credentials.Create(client, credentials.CreateOpts{
+	credResp := credentials.Create(client, credentials.CreateOpts{
 		UserID:      user.ID,
 		Description: tokenDescription,
-	}).Extract()
+	})
+	credential, err := credResp.Extract()
+	if err != nil {
+		var badRequest golangsdk.ErrDefault400
+		if errors.As(err, &badRequest) {
+			accessTokens, listErr := ListAccessToken()
+			if listErr != nil {
+				return nil, listErr
+			}
 
-	var badRequest golangsdk.ErrDefault400
-	if errors.As(err, &badRequest) {
-		accessTokens, listErr := ListAccessToken()
-		if listErr != nil {
-			return nil, listErr
+			//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
+			if len(accessTokens) == 2 {
+				log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
+				return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)
+			}
+			return nil, err
 		}
-
-		//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
-		if len(accessTokens) == 2 {
-			log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
-			return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)
-		}
-		return nil, err
+		common.OutputErrorToConsoleAndExit(err)
 	}
+
 	return credential, err
 }
 
