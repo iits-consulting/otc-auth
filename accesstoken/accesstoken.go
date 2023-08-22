@@ -18,29 +18,24 @@ import (
 
 func CreateAccessToken(tokenDescription string) {
 	log.Println("Creating access token file with GTC...")
-	var tempResp *credentials.TemporaryCredential
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
-		// A 404 error is thrown when trying to get a permanent AK/SK when logged in with OIDC
+		// A 404 error is thrown when trying to create a permanent AK/SK when logged in with OIDC or SAML
 		var notFound golangsdk.ErrDefault404
 		if errors.As(err, &notFound) &&
 			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
 			strings.Contains(string(notFound.Body), "Could not find user:") {
-			tempCredResp, tempErr := getTempAccessTokenFromServiceProvider()
-			if tempErr != nil {
-				common.OutputErrorToConsoleAndExit(tempErr)
-			}
-			tempResp = tempCredResp
+			common.OutputErrorMessageToConsoleAndExit("fatal: cannot create permanent access token when logged in via OIDC or SAML.")
 		} else {
 			common.OutputErrorToConsoleAndExit(err)
 		}
 	}
-	makeAccessFile(resp, tempResp)
+	makeAccessFile(resp, nil)
 }
 
 func makeAccessFile(resp *credentials.Credential, tempResp *credentials.TemporaryCredential) {
 	if resp == nil && tempResp == nil {
-		common.OutputErrorMessageToConsoleAndExit("no temporary or permanent access keys to write")
+		common.OutputErrorMessageToConsoleAndExit("fatal: no temporary or permanent access keys to write")
 	}
 	var accessKeyFileContent string
 	if resp != nil {
@@ -74,6 +69,16 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 	log.Println("Please source the ak-sk-env.sh file in the current directory manually")
 }
 
+func CreateTemporaryAccessToken(durationSeconds int) {
+	log.Println("Creating temporary access token file with GTC...")
+	resp, err := getTempAccessTokenFromServiceProvider(durationSeconds)
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	makeAccessFile(nil, resp)
+}
+
 func ListAccessToken() ([]credentials.Credential, error) {
 	client, err := getIdentityServiceClient()
 	if err != nil {
@@ -86,15 +91,15 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	return credentials.List(client, credentials.ListOpts{UserID: user.ID}).Extract()
 }
 
-func getTempAccessTokenFromServiceProvider() (*credentials.TemporaryCredential, error) {
+func getTempAccessTokenFromServiceProvider(durationSeconds int) (*credentials.TemporaryCredential, error) {
 	client, err := getIdentityServiceClient()
 	if err != nil {
 		return nil, err
 	}
-	credResponse := credentials.CreateTemporary(client, credentials.CreateTemporaryOpts{
-		Methods: []string{"token"},
-	})
-	tempCreds, err := credResponse.Extract()
+	tempCreds, err := credentials.CreateTemporary(client, credentials.CreateTemporaryOpts{
+		Methods:  []string{"token"},
+		Duration: durationSeconds,
+	}).Extract()
 	if err != nil {
 		return nil, err
 	}

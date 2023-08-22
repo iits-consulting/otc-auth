@@ -93,6 +93,15 @@ func getDomainNameOrThrow(domainName string) string {
 	return getEnvironmentVariableOrThrow(osDomainName, envOsDomainName)
 }
 
+func getDurationSecondsOrThrow(durationSeconds int) int {
+	if durationSeconds < 900 || durationSeconds > 86400 {
+		common.OutputErrorMessageToConsoleAndExit(
+			"fatal: token duration must be between 900 and 86400 seconds (15m and 24h).")
+	}
+
+	return durationSeconds
+}
+
 func getRegionCodeOrThrow(regionCode string) string {
 	if regionCode != "" {
 		return regionCode
@@ -146,7 +155,9 @@ func getOidcScopes(scopesFromFlag string) []string {
 func getEnvironmentVariableOrThrow(argument string, envVarName string) string {
 	environmentVariable, ok := os.LookupEnv(envVarName)
 	if !ok || environmentVariable == "" {
-		common.OutputErrorMessageToConsoleAndExit(noArgumentProvidedErrorMessage(fmt.Sprintf("--%s", argument), envVarName))
+		common.OutputErrorMessageToConsoleAndExit(
+			noArgumentProvidedErrorMessage(
+				fmt.Sprintf("--%s", argument), envVarName))
 	}
 
 	return environmentVariable
