@@ -25,7 +25,8 @@ func CreateAccessToken(tokenDescription string) {
 		if errors.As(err, &notFound) &&
 			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
 			strings.Contains(string(notFound.Body), "Could not find user:") {
-			common.OutputErrorMessageToConsoleAndExit("fatal: cannot create permanent access token when logged in via OIDC or SAML.")
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: cannot create permanent access token when logged in via OIDC or SAML.")
 		} else {
 			common.OutputErrorToConsoleAndExit(err)
 		}
