@@ -1,0 +1,6 @@
+.idea
+dist
+static
+wiki
+.cobra.yaml
+signOSX.sh

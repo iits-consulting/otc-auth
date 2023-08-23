@@ -1,12 +1,7 @@
-FROM alpine:3.16
-ARG VERSION
-ARG GITHUB_REPOSITORY
-WORKDIR /opt
-USER root
-ENV DOWNLOAD_LINK="https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/otc-auth_${VERSION}_linux_amd64.tar.gz"
-RUN apk update && \
-    apk add --no-cache "curl" && \
-    rm -rf /var/cache/apk/*echo $DOWNLOAD_LINK && \
-    curl -LO $DOWNLOAD_LINK && \
-    tar -zxvf otc-auth* && \
-    mv otc-auth * /usr/local/bin/
+FROM golang:1.20-alpine as builder
+WORKDIR /otc-auth
+COPY . .
+RUN CGO_ENABLED=0 go build .
+
+FROM alpine:3.18
+COPY --from=builder /otc-auth/otc-auth /usr/local/bin/otc-auth

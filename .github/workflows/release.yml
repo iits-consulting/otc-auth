@@ -4,6 +4,7 @@ on:
     tags:
       - "*"
 jobs:
+
   goreleaser:
     runs-on: macos-13
     steps:
@@ -59,8 +60,6 @@ jobs:
 
   dockerrelease:
     runs-on: ubuntu-latest
-    needs:
-      - goreleaser
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -84,9 +83,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          build-args: |
-            VERSION=${{ env.RELEASE_VERSION }}
-            GITHUB_REPOSITORY=${{ github.repository }}
           tags: |
             ghcr.io/iits-consulting/otc-auth:latest
             ghcr.io/iits-consulting/otc-auth:${{ env.RELEASE_VERSION }}
