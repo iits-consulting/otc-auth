@@ -1,4 +1,5 @@
 # OTC-Auth
+
 Open Source CLI for the Authorization with the Open Telekom Cloud.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/iits-consulting/otc-auth/blob/main/LICENSE)
@@ -14,9 +15,11 @@ After you have retrieved an unscoped token, you can use it to get a list of the 
 This tool can also be used to manage (create) a pair of Access Key/ Secret Key in order to make requests more secure.
 
 ## Demo
+
 https://user-images.githubusercontent.com/19291722/208880256-b0da924e-254e-4bc4-b9ee-396c43234a5b.mp4
 
 ## Install
+
 You can download the binary for your system in the [releases page](https://github.com/iits-consulting/otc-auth/releases).
 Unpack the binary and add it to your PATH and you are good to go!
 
@@ -25,9 +28,11 @@ Unpack the binary and add it to your PATH and you are good to go!
 Users of Arch Linux may use the package published in the [AUR](https://aur.archlinux.org/packages/otc-auth)
 
 ## Login
+
 Use the `login` command to retrieve an unscoped token either by logging in directly with the Service Provider or through an IdP. You can see the help page by entering `login --help` or `login -h`. There are three log in options (`iam`, `idp-saml`, and `idp-oidc`) and one of them must be provided.
 
 ### Service Provider Login (IAM)
+
 To log in directly with the Open Telekom Cloud's IAM, you will have to supply the domain name you're attempting to log in to (usually starting with "OTC-EU", following the region and a longer identifier), your username and password.
 
 `otc-auth login iam --os-username <username> --os-password <password> --os-domain-name <domain_name> --region <region>`
@@ -41,26 +46,28 @@ otc-auth login iam --os-username <username> --os-password <password> --os-domain
 The OTP Token is 6-digit long and refreshes every 30 seconds. For more information on MFA please refer to the [OTC's documentation](https://docs.otc.t-systems.com/en-us/usermanual/iam/iam_10_0002.html).
 
 ### Identity Provider Login (IdP)
+
 You can log in with an external IdP using either the `saml` or the `oidc` protocols. In both cases you will need to specify the authorization URL, the name of the Identity Provider (as set on the OTC), as well as username and password for the SAML login and client id (and optionally client secret) for the OIDC login flow.
 
 #### External IdP and SAML
+
 The SAML login flow is SP initiated and requires you to send username and password to the SP. The SP then authorizes you with the configured IdP and returns either an unscoped token or an error, if the user is not allowed to log in.
 
-```otc-auth login idp-saml --os-username <username> --os-password <password> --idp-name <idp_name> --idp-url <authorization_url> --os-domain-name <os_domain_name> --region <region>```
+`otc-auth login idp-saml --os-username <username> --os-password <password> --idp-name <idp_name> --idp-url <authorization_url> --os-domain-name <os_domain_name> --region <region>`
 
 At the moment, no MFA is supported for this login flow.
 
 #### External IdP and OIDC
+
 The OIDC login flow is user initiated and will open a browser window with the IdP's authorization URL for the user to log in as desired. This flow does support MFA (this requires it to be configured on the IdP). After being successfully authenticated with the IdP, the SP will be contacted with the corresponding credentials and will return either an unscoped token or an error, if the user is not allowed to log in.
 
-```otc-auth login idp-oidc --idp-name <idp_name> --idp-url <authorization_url> --client-id <client_id> --os-domain-name <os_domain_name> --region <region> [--client-secret <client_secret>]```
+`otc-auth login idp-oidc --idp-name <idp_name> --idp-url <authorization_url> --client-id <client_id> --os-domain-name <os_domain_name> --region <region> [--client-secret <client_secret>]`
 
 The argument `--client-id` is required, but the argument `--client-secret` is only needed if configured on the IdP.
 
 #### Service Account via external IdP and OIDC
 
 If you have set up your IdP to provide service accounts then you can utilize service account with `otc-auth` too. Make also sure that the IdP is correctly configured in the OTC Identity and Access Management. Then run the `otc-auth` as follows:
-
 
 ```shell
 otc-auth login idp-oidc \
@@ -77,22 +84,25 @@ otc-auth login idp-oidc \
 
 The OIDC scopes can be configured if required. To do so simply provide one of the following two when logging in with `idp-oidc`:
 
-- provide the flag `--oidc-scopes pleasePut,HereAll,YourScopes,WhichYouNeed` 
+- provide the flag `--oidc-scopes pleasePut,HereAll,YourScopes,WhichYouNeed`
 - provide the environment variable `export OIDC_SCOPES="pleasePut,HereAll,YourScopes,WhichYouNeed"`
 
 The default value is `openid,profile,roles,name,groups,email`
 
 ### Remove Login
+
 Clouds are differentiated by their identifier `--os-domain-name`. To delete a cloud, use the `remove` command.
 
 `otc-auth login remove --os-domain-name <os_domain_name> --region <region>`
 
 ## List Projects
+
 It is possible to get a list of all projects in the current cloud. For that, use the following command.
 
 `otc-auth projects list`
 
 ## Cloud Container Engine
+
 Use the `cce` command to retrieve a list of available clusters in your project and/or get the remote kube configuration file. You can see the help page by entering `cce --help` or `cce -h`.
 
 To retrieve a list of clusters for a project use the following command. The project name will be checked against the ones in the cloud at the moment of the request.
@@ -107,6 +117,7 @@ To retrieve the remote kube configuration file (and merge to your local one) use
 Alternatively you can pass the argument `--days-valid` to set the period of days the configuration will be valid, the default is 7 days.
 
 ## Manage Access Key and Secret Key Pair
+
 You can use the OTC-Auth tool to download the AK/SK pair directly from the OTC. It will download the "ak-sk-env.sh" file to the current directory. The file contains four environment variables.
 
 `otc-auth access-token create --os-domain-name <os_domain_name> --region <region>`
@@ -114,6 +125,7 @@ You can use the OTC-Auth tool to download the AK/SK pair directly from the OTC. 
 The "ak-sk-env.sh" file must then be sourced before you can start using the environment variables.
 
 ## Openstack Integration
+
 The OTC-Auth tool is able to generate the clouds.yaml config file for openstack. With this file it is possible to
 reuse the clouds.yaml with terraform.
 
@@ -121,14 +133,15 @@ If you execute this command
 
 `otc-auth openstack config-create`
 
-It will create a cloud config for every project which you have access to and generate a scoped token. After that it overrides 
+It will create a cloud config for every project which you have access to and generate a scoped token. After that it overrides
 the clouds.yaml (by default: ~/.config/openstack/clouds.yaml) file.
 
 ## Environment Variables
+
 The OTC-Auth tool also provides environment variables for all the required arguments. For the sake of compatibility, they are aligned with the Open Stack environment variables (starting with OS).
 
 | Environment Variable | Argument              | Short | Description                                   |
-|----------------------|-----------------------|:-----:|-----------------------------------------------|
+| -------------------- | --------------------- | :---: | --------------------------------------------- |
 | CLIENT_ID            | `--client-id`         |  `c`  | Client id as configured on the IdP            |
 | CLIENT_SECRET        | `--client-secret`     |  `s`  | Client secret as configured on the IdP        |
 | CLUSTER_NAME         | `--cluster`           |  `c`  | Cluster name on the OTC                       |
@@ -140,3 +153,7 @@ The OTC-Auth tool also provides environment variables for all the required argum
 | OS_USERNAME          | `--os-username`       |  `u`  | Username (iam or idp)                         |
 | IDP_NAME             | `--idp-name`          |  `i`  | Identity Provider name (as configured on OTC) |
 | IDP_URL              | `--idp-url`           |  N/A  | Authorization endpoint on the IDP             |
+
+## Auto-Completions
+
+You install the auto completions for your shell by running. Please follow the instructions by running `otc-auth completion --help` in your terminal.
