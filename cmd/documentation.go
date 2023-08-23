@@ -36,7 +36,7 @@ var documentationCmd = &cobra.Command{
 		}
 
 		documentation := "./generated-documentation.md"
-		return os.WriteFile(documentation, buf.Bytes(), 0755)
+		return os.WriteFile(documentation, buf.Bytes(), 0600)
 	},
 }
 
