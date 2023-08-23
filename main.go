@@ -177,6 +177,13 @@ func main() {
 		Help:     fmt.Sprintf("OTC domain name. %s %s", provideArgumentHelp, envOsDomainName),
 	})
 
+	temporaryAccessTokenCommand := parser.NewCommand("temp-access-token", "Manage temporary AK/SK")
+	temporaryAccessTokenCommandCreate := temporaryAccessTokenCommand.NewCommand("create", "Create new temporary AK/SK")
+	//nolint:gomnd // The OpenTelekomCloud only lets temporary keys with a lifetime between 15m and 24h be generated
+	temporaryAccessTokenDurationSeconds := temporaryAccessTokenCommandCreate.Int("t", "duration-seconds",
+		&argparse.Options{Required: false, Help: "The token's lifetime, in seconds. " +
+			"Valid times are between 900 and 86400 seconds.", Default: 900})
+
 	// Openstack Management
 	openStackCommand := parser.NewCommand("openstack", "Manage Openstack Integration")
 	openStackCommandCreateConfigFile := openStackCommand.NewCommand("config-create", "Creates new clouds.yaml")
@@ -348,6 +355,19 @@ func main() {
 		if errDelete != nil {
 			common.OutputErrorToConsoleAndExit(errDelete)
 		}
+	}
+
+	if temporaryAccessTokenCommandCreate.Happened() {
+		domainName := getDomainNameOrThrow(*atDomainName)
+		config.LoadCloudConfig(domainName)
+
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		temporaryAccessTokenDurationSeconds := getDurationSecondsOrThrow(*temporaryAccessTokenDurationSeconds)
+		accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds)
 	}
 
 	if openStackCommandCreateConfigFile.Happened() {
