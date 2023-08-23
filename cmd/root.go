@@ -314,7 +314,7 @@ func Execute() {
 //nolint:funlen // setup has to be that lengthy
 func setupRootCmd() {
 	RootCmd.AddCommand(loginCmd)
-	RootCmd.Flags().BoolVarP(&skipTLS, skipTLSFlag, skipTLSShortFlag, false, skipTLSUsage)
+	RootCmd.PersistentFlags().BoolVarP(&skipTLS, skipTLSFlag, skipTLSShortFlag, false, skipTLSUsage)
 
 	loginCmd.AddCommand(loginIamCmd)
 	loginIamCmd.Flags().StringVarP(&username, usernameFlag, usernameShortFlag, "", usernameUsage)
@@ -633,7 +633,7 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	openstackCmdHelp             = "Manage Openstack Integration"
 	openstackConfigCreateCmdHelp = "Creates new clouds.yaml"
 	usernameFlag                 = "os-username"
-	skipTLSFlag                  = "skip-tls-verify"
+	skipTLSFlag                  = "skip-tls-verification"
 
 	usernameShortFlag       = "u"
 	skipTLSShortFlag        = ""
