@@ -182,6 +182,27 @@ var cceGetKubeConfigCmd = &cobra.Command{
 	},
 }
 
+var tempAccessTokenCmd = &cobra.Command{
+	Use:               "temp-access-token",
+	Short:             accessTokenCmdHelp,
+	PersistentPreRunE: configureCmdFlagsAgainstEnvs(accessTokenFlagToEnv),
+}
+
+var tempAccessTokenCreateCmd = &cobra.Command{
+	Use:     "create",
+	Short:   tempAccessTokenCreateCmdHelp,
+	Example: tempAccessTokenCreateCmdExample,
+	Run: func(cmd *cobra.Command, args []string) {
+		config.LoadCloudConfig(domainName)
+		if !config.IsAuthenticationValid() {
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+		}
+
+		accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds)
+	},
+}
+
 var accessTokenCmd = &cobra.Command{
 	Use:               "access-token",
 	Short:             accessTokenCmdHelp,
@@ -374,6 +395,19 @@ func setupRootCmd() {
 	)
 	cceGetKubeConfigCmd.MarkFlagRequired(targetLocationFlag)
 
+	RootCmd.AddCommand(tempAccessTokenCmd)
+	tempAccessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
+	tempAccessTokenCmd.MarkPersistentFlagRequired(domainNameFlag)
+
+	tempAccessTokenCmd.AddCommand(tempAccessTokenCreateCmd)
+	tempAccessTokenCmd.Flags().IntVarP(
+		&temporaryAccessTokenDurationSeconds,
+		temporaryAccessTokenDurationSecondsFlag,
+		temporaryAccessTokenDurationSecondsShortFlag,
+		15*60, // default is 15 minutes
+		temporaryAccessTokenDurationSecondsUsage,
+	)
+
 	RootCmd.AddCommand(accessTokenCmd)
 	accessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
 	accessTokenCmd.MarkPersistentFlagRequired(domainNameFlag)
@@ -412,22 +446,23 @@ func setupRootCmd() {
 }
 
 var (
-	username                     string
-	password                     string
-	domainName                   string
-	overwriteToken               bool
-	idpName                      string
-	idpURL                       string
-	totp                         string
-	userDomainID                 string
-	region                       string
-	projectName                  string
-	clusterName                  string
-	daysValid                    int
-	targetLocation               string
-	accessTokenCreateDescription string
-	token                        string
-	openStackConfigLocation      string
+	username                            string
+	password                            string
+	domainName                          string
+	overwriteToken                      bool
+	idpName                             string
+	idpURL                              string
+	totp                                string
+	userDomainID                        string
+	region                              string
+	projectName                         string
+	clusterName                         string
+	daysValid                           int
+	targetLocation                      string
+	accessTokenCreateDescription        string
+	temporaryAccessTokenDurationSeconds int
+	token                               string
+	openStackConfigLocation             string
 
 	loginIamFlagToEnv = map[string]string{
 		usernameFlag:     usernameEnv,
@@ -560,6 +595,9 @@ $ export AK_SK_TOKEN=YourToken
 $ otc-auth access-token delete
 
 $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
+	tempAccessTokenCreateCmdExample = `$ otc-auth temp-access-token create -t 900 -d YourDomainName # this creates a temp AK/SK which is 15 minutes valid (15 * 60 = 900)
+	
+	$ otc-auth temp-access-token create --duration-seconds 1800`
 	openstackCmdHelp             = "Manage Openstack Integration"
 	openstackConfigCreateCmdHelp = "Creates new clouds.yaml"
 	usernameFlag                 = "os-username"
@@ -577,44 +615,48 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	overwriteTokenFlag           = "overwrite-token"
 	overwriteTokenShortFlag      = "o"
 	//nolint:gosec // This is not a hardcoded credential but a help message with a filename inside
-	overwriteTokenUsage             = "Overrides .otc-info file."
-	idpNameFlag                     = "idp-name"
-	idpNameShortFlag                = "i"
-	idpNameEnv                      = "IDP_NAME"
-	idpNameUsage                    = "Required for authentication with IdP."
-	idpURLFlag                      = "idp-url"
-	idpURLEnv                       = "IDP_URL"
-	idpURLUsage                     = "Required for authentication with IdP."
-	totpFlag                        = "totp"
-	totpShortFlag                   = "t"
-	totpUsage                       = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
-	userDomainIDFlag                = "os-user-domain-id"
-	userDomainIDEnv                 = "OS_USER_DOMAIN_ID"
-	userDomainIDUsage               = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv + "."
-	regionFlag                      = "region"
-	regionShortFlag                 = "r"
-	regionEnv                       = "REGION"
-	regionUsage                     = "OTC region code. Either provide this argument or set the environment variable " + regionEnv + "."
-	projectNameFlag                 = "os-project-name"
-	projectNameShortFlag            = "p"
-	projectNameEnv                  = "OS_PROJECT_NAME"
-	projectNameUsage                = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv + "."
-	clusterNameFlag                 = "cluster"
-	clusterNameShortFlag            = "c"
-	clusterNameEnv                  = "CLUSTER_NAME"
-	clusterNameUsage                = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv + "."
-	daysValidFlag                   = "days-valid"
-	daysValidDefaultValue           = 7
-	daysValidShortFlag              = "v"
-	daysValidUsage                  = "Period (in days) that the config will be valid."
-	targetLocationFlag              = "target-location"
-	targetLocationShortFlag         = "l"
-	targetLocationUsage             = "Where the kube config should be saved"
-	accessTokenDescriptionFlag      = "description"
-	accessTokenDescriptionShortFlag = "s"
-	accessTokenDescriptionUsage     = "Description of the token"
-	accessTokenTokenFlag            = "token"
-	accessTokenTokenShortFlag       = "t"
+	overwriteTokenUsage                          = "Overrides .otc-info file."
+	idpNameFlag                                  = "idp-name"
+	idpNameShortFlag                             = "i"
+	idpNameEnv                                   = "IDP_NAME"
+	idpNameUsage                                 = "Required for authentication with IdP."
+	idpURLFlag                                   = "idp-url"
+	idpURLEnv                                    = "IDP_URL"
+	idpURLUsage                                  = "Required for authentication with IdP."
+	totpFlag                                     = "totp"
+	totpShortFlag                                = "t"
+	totpUsage                                    = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
+	userDomainIDFlag                             = "os-user-domain-id"
+	userDomainIDEnv                              = "OS_USER_DOMAIN_ID"
+	userDomainIDUsage                            = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv + "."
+	regionFlag                                   = "region"
+	regionShortFlag                              = "r"
+	regionEnv                                    = "REGION"
+	regionUsage                                  = "OTC region code. Either provide this argument or set the environment variable " + regionEnv + "."
+	projectNameFlag                              = "os-project-name"
+	projectNameShortFlag                         = "p"
+	projectNameEnv                               = "OS_PROJECT_NAME"
+	projectNameUsage                             = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv + "."
+	clusterNameFlag                              = "cluster"
+	clusterNameShortFlag                         = "c"
+	clusterNameEnv                               = "CLUSTER_NAME"
+	clusterNameUsage                             = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv + "."
+	daysValidFlag                                = "days-valid"
+	daysValidDefaultValue                        = 7
+	daysValidShortFlag                           = "v"
+	daysValidUsage                               = "Period (in days) that the config will be valid."
+	targetLocationFlag                           = "target-location"
+	targetLocationShortFlag                      = "l"
+	targetLocationUsage                          = "Where the kube config should be saved"
+	accessTokenDescriptionFlag                   = "description"
+	accessTokenDescriptionShortFlag              = "s"
+	accessTokenDescriptionUsage                  = "Description of the token"
+	accessTokenTokenFlag                         = "token"
+	accessTokenTokenShortFlag                    = "t"
+	tempAccessTokenCreateCmdHelp                 = "Manage temporary AK/SK"
+	temporaryAccessTokenDurationSecondsFlag      = "duration-seconds"
+	temporaryAccessTokenDurationSecondsShortFlag = "t"
+	temporaryAccessTokenDurationSecondsUsage     = "The token's lifetime, in seconds. Valid times are between 900 and 86400 seconds."
 	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
 	accessTokenTokenUsage                        = "The AK/SK token to delete."
 	openstackConfigCreateConfigLocationFlag      = "config-location"
