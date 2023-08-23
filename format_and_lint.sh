@@ -1,8 +1,11 @@
 #!/bin/zsh
-reset                       && \
-gci write .                 && \
-go vet .                    && \
-goimports -w .              && \
-gofmt -w .                  && \
-gofumpt  -w .               && \
-$HOME/go/bin/golangci-lint run -v
+
+PATH="$PATH:$HOME/go/bin"
+
+reset
+gci write .
+go vet .
+goimports -w .
+gofmt -w .
+gofumpt -w .
+golangci-lint run -v

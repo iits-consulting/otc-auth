@@ -33,13 +33,13 @@ type ServiceAccountResponse struct {
 	Scope            string `json:"scope"`
 }
 
-func authenticateServiceAccountWithIdp(params common.AuthInfo) common.OidcCredentialsResponse {
+func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) common.OidcCredentialsResponse {
 	idpTokenURL, err := url.JoinPath(params.IdpURL, "protocol/openid-connect/token")
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 	request := createServiceAccountAuthenticateRequest(idpTokenURL, params.ClientID, params.ClientSecret)
-	response := common.HTTPClientMakeRequest(request) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
+	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 	bodyBytes := common.GetBodyBytesFromResponse(response)
 
 	var result ServiceAccountResponse
