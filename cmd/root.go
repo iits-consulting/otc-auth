@@ -37,8 +37,9 @@ import (
 )
 
 var RootCmd = &cobra.Command{
-	Use:   "otc-auth",
-	Short: "OTC-Auth Command Line Interface for managing OTC clouds",
+	Use:     "otc-auth",
+	Short:   "OTC-Auth Command Line Interface for managing OTC clouds",
+	PreRunE: configureCmdFlagsAgainstEnvs(rootFlagToEnv),
 }
 
 var loginCmd = &cobra.Command{
@@ -62,7 +63,7 @@ var loginIamCmd = &cobra.Command{
 			OverwriteFile: overwriteToken,
 			Region:        region,
 		}
-		login.AuthenticateAndGetUnscopedToken(authInfo)
+		login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 	},
 }
 
@@ -70,7 +71,7 @@ var loginIdpSamlCmd = &cobra.Command{
 	Use:     "idp-saml",
 	Short:   loginIdpSamlCmdHelp,
 	Example: loginIdpSamlCmdExample,
-	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlOidcFlagToEnv),
+	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
 		authInfo := common.AuthInfo{
 			AuthType:      "idp",
@@ -83,7 +84,7 @@ var loginIdpSamlCmd = &cobra.Command{
 			OverwriteFile: overwriteToken,
 			Region:        region,
 		}
-		login.AuthenticateAndGetUnscopedToken(authInfo)
+		login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 	},
 }
 
@@ -91,20 +92,21 @@ var loginIdpOidcCmd = &cobra.Command{
 	Use:     "idp-oidc",
 	Short:   loginIdpOidcCmdHelp,
 	Example: loginIdpOidcCmdExample,
-	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlOidcFlagToEnv),
+	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpOidcFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
 		authInfo := common.AuthInfo{
 			AuthType:      "idp",
-			Username:      username,
-			Password:      password,
+			ClientID:      clientID,
+			ClientSecret:  clientSecret,
 			DomainName:    domainName,
 			IdpName:       idpName,
 			IdpURL:        idpURL,
 			AuthProtocol:  "oidc",
 			OverwriteFile: overwriteToken,
 			Region:        region,
+			OidcScopes:    oidcScopes,
 		}
-		login.AuthenticateAndGetUnscopedToken(authInfo)
+		login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 	},
 }
 
@@ -204,7 +206,10 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 		if temporaryAccessTokenDurationSeconds < 900 || temporaryAccessTokenDurationSeconds > 86400 {
 			return errors.New("fatal: token duration must be between 900 and 86400 seconds (15m and 24h)")
 		}
-		accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds)
+		err := accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds)
+		if err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -306,31 +311,25 @@ func Execute() {
 	}
 }
 
-//nolint:errcheck,funlen // error never occurs, setup has to be that lengthy
+//nolint:funlen // setup has to be that lengthy
 func setupRootCmd() {
 	RootCmd.AddCommand(loginCmd)
+	RootCmd.Flags().BoolVarP(&skipTLS, skipTLSFlag, skipTLSShortFlag, false, skipTLSUsage)
 
 	loginCmd.AddCommand(loginIamCmd)
 	loginIamCmd.Flags().StringVarP(&username, usernameFlag, usernameShortFlag, "", usernameUsage)
-	loginIamCmd.MarkFlagRequired(usernameFlag)
 	loginIamCmd.Flags().StringVarP(&password, passwordFlag, passwordShortFlag, "", passwordUsage)
-	loginIamCmd.MarkFlagRequired(passwordFlag)
 	loginIamCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
-	loginIamCmd.MarkFlagRequired(domainNameFlag)
 	loginIamCmd.Flags().BoolVarP(&overwriteToken, overwriteTokenFlag, overwriteTokenShortFlag, false, overwriteTokenUsage)
 	loginIamCmd.Flags().StringVarP(&totp, totpFlag, totpShortFlag, "", totpUsage)
 	loginIamCmd.Flags().StringVarP(&userDomainID, userDomainIDFlag, "", "", userDomainIDUsage)
 	loginIamCmd.MarkFlagsRequiredTogether(totpFlag, userDomainIDFlag)
 	loginIamCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
-	loginIamCmd.MarkFlagRequired(regionFlag)
 
 	loginCmd.AddCommand(loginIdpSamlCmd)
 	loginIdpSamlCmd.Flags().StringVarP(&username, usernameFlag, usernameShortFlag, "", usernameUsage)
-	loginIdpSamlCmd.MarkFlagRequired(usernameFlag)
 	loginIdpSamlCmd.Flags().StringVarP(&password, passwordFlag, passwordShortFlag, "", passwordUsage)
-	loginIdpSamlCmd.MarkFlagRequired(passwordFlag)
 	loginIdpSamlCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
-	loginIdpSamlCmd.MarkFlagRequired(domainNameFlag)
 	loginIdpSamlCmd.Flags().BoolVarP(
 		&overwriteToken,
 		overwriteTokenFlag,
@@ -339,19 +338,11 @@ func setupRootCmd() {
 		overwriteTokenUsage,
 	)
 	loginIdpSamlCmd.PersistentFlags().StringVarP(&idpName, idpNameFlag, idpNameShortFlag, "", idpNameUsage)
-	loginIdpSamlCmd.MarkPersistentFlagRequired(idpNameFlag)
 	loginIdpSamlCmd.PersistentFlags().StringVarP(&idpURL, idpURLFlag, "", "", idpURLUsage)
-	loginIdpSamlCmd.MarkPersistentFlagRequired(idpURLFlag)
 	loginIdpSamlCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
-	loginIdpSamlCmd.MarkFlagRequired(regionFlag)
 
 	loginCmd.AddCommand(loginIdpOidcCmd)
-	loginIdpOidcCmd.Flags().StringVarP(&username, usernameFlag, usernameShortFlag, "", usernameUsage)
-	loginIdpOidcCmd.MarkFlagRequired(usernameFlag)
-	loginIdpOidcCmd.Flags().StringVarP(&password, passwordFlag, passwordShortFlag, "", passwordUsage)
-	loginIdpOidcCmd.MarkFlagRequired(passwordFlag)
 	loginIdpOidcCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
-	loginIdpOidcCmd.MarkFlagRequired(domainNameFlag)
 	loginIdpOidcCmd.Flags().BoolVarP(
 		&overwriteToken,
 		overwriteTokenFlag,
@@ -360,30 +351,27 @@ func setupRootCmd() {
 		overwriteTokenUsage,
 	)
 	loginIdpOidcCmd.PersistentFlags().StringVarP(&idpName, idpNameFlag, idpNameShortFlag, "", idpNameUsage)
-	loginIdpOidcCmd.MarkPersistentFlagRequired(idpNameFlag)
 	loginIdpOidcCmd.PersistentFlags().StringVarP(&idpURL, idpURLFlag, "", "", idpURLUsage)
-	loginIdpOidcCmd.MarkPersistentFlagRequired(idpURLFlag)
 	loginIdpOidcCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
-	loginIdpOidcCmd.MarkFlagRequired(regionFlag)
+	loginIdpOidcCmd.Flags().StringVarP(&clientSecret, clientSecretFlag, clientSecretShortFlag, "", clientSecretUsage)
+	loginIdpOidcCmd.Flags().StringVarP(&clientID, clientIDFlag, clientIDShortFlag, "", clientIDUsage)
+	loginIdpOidcCmd.Flags().StringArrayVarP(&oidcScopes, oidcScopesFlag, oidcScopesShortFlag,
+		[]string{"openid"}, oidcScopesUsage)
 
 	loginCmd.AddCommand(loginRemoveCmd)
 	loginRemoveCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
-	loginRemoveCmd.MarkFlagRequired(domainNameFlag)
 
 	RootCmd.AddCommand(projectsCmd)
 	projectsCmd.AddCommand(projectsListCmd)
 
 	RootCmd.AddCommand(cceCmd)
 	cceCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
-	cceCmd.MarkPersistentFlagRequired(domainNameFlag)
 	cceCmd.PersistentFlags().StringVarP(&projectName, projectNameFlag, projectNameShortFlag, "", projectNameUsage)
-	cceCmd.MarkPersistentFlagRequired(projectNameFlag)
 
 	cceCmd.AddCommand(cceListCmd)
 
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
-	cceGetKubeConfigCmd.MarkFlagRequired(clusterNameFlag)
 	cceGetKubeConfigCmd.Flags().IntVarP(
 		&daysValid,
 		daysValidFlag,
@@ -391,7 +379,6 @@ func setupRootCmd() {
 		daysValidDefaultValue,
 		daysValidUsage,
 	)
-	cceGetKubeConfigCmd.MarkFlagRequired(daysValidFlag)
 	cceGetKubeConfigCmd.Flags().StringVarP(
 		&targetLocation,
 		targetLocationFlag,
@@ -399,25 +386,21 @@ func setupRootCmd() {
 		"~/.kube/config",
 		targetLocationUsage,
 	)
-	cceGetKubeConfigCmd.MarkFlagRequired(targetLocationFlag)
 
 	RootCmd.AddCommand(tempAccessTokenCmd)
 	tempAccessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
-	tempAccessTokenCmd.MarkPersistentFlagRequired(domainNameFlag)
-
 	tempAccessTokenCmd.AddCommand(tempAccessTokenCreateCmd)
-	tempAccessTokenCmd.Flags().IntVarP(
+	tempAccessTokenCreateCmd.Flags().IntVarP(
 		&temporaryAccessTokenDurationSeconds,
 		temporaryAccessTokenDurationSecondsFlag,
 		temporaryAccessTokenDurationSecondsShortFlag,
-		15*60, // default is 15 minutes
+		//nolint:gomnd // default key pair lifetime is 15 minutes
+		15*60,
 		temporaryAccessTokenDurationSecondsUsage,
 	)
 
 	RootCmd.AddCommand(accessTokenCmd)
 	accessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
-	accessTokenCmd.MarkPersistentFlagRequired(domainNameFlag)
-
 	accessTokenCmd.AddCommand(accessTokenCreateCmd)
 	accessTokenCreateCmd.Flags().StringVarP(
 		&accessTokenCreateDescription,
@@ -426,10 +409,8 @@ func setupRootCmd() {
 		"Token by otc-auth",
 		accessTokenDescriptionUsage,
 	)
-	accessTokenCreateCmd.MarkFlagRequired(accessTokenDescriptionFlag)
 
 	accessTokenCmd.AddCommand(accessTokenListCmd)
-
 	accessTokenCmd.AddCommand(accessTokenDeleteCmd)
 	accessTokenDeleteCmd.Flags().StringVarP(
 		&token,
@@ -438,7 +419,6 @@ func setupRootCmd() {
 		"",
 		accessTokenTokenUsage,
 	)
-	accessTokenDeleteCmd.MarkFlagRequired(accessTokenTokenFlag)
 
 	RootCmd.AddCommand(openstackCmd)
 	openstackCmd.AddCommand(openstackConfigCreateCmd)
@@ -449,6 +429,31 @@ func setupRootCmd() {
 		"~/.config/openstack/clouds.yaml",
 		openstackConfigCreateConfigLocationUsage,
 	)
+
+	cobra.CheckErr(errors.Join(
+		loginIamCmd.MarkFlagRequired(usernameFlag),
+		loginIamCmd.MarkFlagRequired(passwordFlag),
+		loginIamCmd.MarkFlagRequired(domainNameFlag),
+		loginIamCmd.MarkFlagRequired(regionFlag),
+		loginIdpSamlCmd.MarkFlagRequired(usernameFlag),
+		loginIdpSamlCmd.MarkFlagRequired(passwordFlag),
+		loginIdpSamlCmd.MarkFlagRequired(domainNameFlag),
+		loginIdpSamlCmd.MarkPersistentFlagRequired(idpNameFlag),
+		loginIdpSamlCmd.MarkFlagRequired(regionFlag),
+		loginIdpOidcCmd.MarkFlagRequired(domainNameFlag),
+		loginIdpSamlCmd.MarkPersistentFlagRequired(idpURLFlag),
+		loginIdpOidcCmd.MarkPersistentFlagRequired(idpNameFlag),
+		loginIdpOidcCmd.MarkPersistentFlagRequired(idpURLFlag),
+		loginIdpOidcCmd.MarkFlagRequired(regionFlag),
+		loginIdpOidcCmd.MarkFlagRequired(clientIDFlag),
+		loginRemoveCmd.MarkFlagRequired(domainNameFlag),
+		cceCmd.MarkPersistentFlagRequired(domainNameFlag),
+		cceCmd.MarkPersistentFlagRequired(projectNameFlag),
+		cceGetKubeConfigCmd.MarkFlagRequired(clusterNameFlag),
+		tempAccessTokenCmd.MarkPersistentFlagRequired(domainNameFlag),
+		accessTokenCmd.MarkPersistentFlagRequired(domainNameFlag),
+		accessTokenDeleteCmd.MarkFlagRequired(accessTokenTokenFlag),
+	))
 }
 
 var (
@@ -469,6 +474,14 @@ var (
 	temporaryAccessTokenDurationSeconds int
 	token                               string
 	openStackConfigLocation             string
+	skipTLS                             bool
+	clientSecret                        string
+	clientID                            string
+	oidcScopes                          []string
+
+	rootFlagToEnv = map[string]string{
+		skipTLSFlag: skipTLSEnv,
+	}
 
 	loginIamFlagToEnv = map[string]string{
 		usernameFlag:     usernameEnv,
@@ -480,7 +493,7 @@ var (
 		regionFlag:       regionEnv,
 	}
 
-	loginIdpSamlOidcFlagToEnv = map[string]string{
+	loginIdpSamlFlagToEnv = map[string]string{
 		usernameFlag:     usernameEnv,
 		passwordFlag:     passwordEnv,
 		domainNameFlag:   domainNameEnv,
@@ -488,6 +501,18 @@ var (
 		idpNameFlag:      idpNameEnv,
 		idpURLFlag:       idpURLEnv,
 		regionFlag:       regionEnv,
+	}
+
+	loginIdpOidcFlagToEnv = map[string]string{
+		usernameFlag:     usernameEnv,
+		passwordFlag:     passwordEnv,
+		domainNameFlag:   domainNameEnv,
+		userDomainIDFlag: userDomainIDEnv,
+		idpNameFlag:      idpNameEnv,
+		idpURLFlag:       idpURLEnv,
+		regionFlag:       regionEnv,
+		clientIDFlag:     clientIDEnv,
+		clientSecretFlag: clientSecretEnv,
 	}
 
 	loginRemoveFlagToEnv = map[string]string{
@@ -601,43 +626,62 @@ $ export AK_SK_TOKEN=YourToken
 $ otc-auth access-token delete
 
 $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
+	//nolint:gosec // This example code does not actually contain credentials
 	tempAccessTokenCreateCmdExample = `$ otc-auth temp-access-token create -t 900 -d YourDomainName # this creates a temp AK/SK which is 15 minutes valid (15 * 60 = 900)
 	
 	$ otc-auth temp-access-token create --duration-seconds 1800`
 	openstackCmdHelp             = "Manage Openstack Integration"
 	openstackConfigCreateCmdHelp = "Creates new clouds.yaml"
 	usernameFlag                 = "os-username"
-	usernameShortFlag            = "u"
-	usernameEnv                  = "OS_USERNAME"
-	usernameUsage                = "Username for the OTC IAM system. Either provide this argument or set the environment variable " + usernameEnv + "."
-	passwordFlag                 = "os-password"
-	passwordShortFlag            = "p"
-	passwordEnv                  = "OS_PASSWORD"
-	passwordUsage                = "Password for the OTC IAM system. Either provide this argument or set the environment variable " + passwordEnv + "."
-	domainNameFlag               = "os-domain-name"
-	domainNameShortFlag          = "d"
-	domainNameEnv                = "OS_DOMAIN_NAME"
-	domainNameUsage              = "OTC domain name. Either provide this argument or set the environment variable " + domainNameEnv + "."
-	overwriteTokenFlag           = "overwrite-token"
-	overwriteTokenShortFlag      = "o"
+	skipTLSFlag                  = "skip-tls-verify"
+
+	usernameShortFlag       = "u"
+	skipTLSShortFlag        = ""
+	usernameEnv             = "OS_USERNAME"
+	usernameUsage           = "Username for the OTC IAM system. Either provide this argument or set the environment variable " + usernameEnv + "."
+	skipTLSUsage            = "Skip TLS Verification. This is insecure. Either provide this argument or set the environment variable " + skipTLSEnv
+	passwordFlag            = "os-password"
+	passwordShortFlag       = "p"
+	passwordEnv             = "OS_PASSWORD"
+	passwordUsage           = "Password for the OTC IAM system. Either provide this argument or set the environment variable " + passwordEnv + "."
+	domainNameFlag          = "os-domain-name"
+	domainNameShortFlag     = "d"
+	domainNameEnv           = "OS_DOMAIN_NAME"
+	domainNameUsage         = "OTC domain name. Either provide this argument or set the environment variable " + domainNameEnv + "."
+	overwriteTokenFlag      = "overwrite-token"
+	overwriteTokenShortFlag = "o"
 	//nolint:gosec // This is not a hardcoded credential but a help message with a filename inside
-	overwriteTokenUsage                          = "Overrides .otc-info file."
-	idpNameFlag                                  = "idp-name"
-	idpNameShortFlag                             = "i"
-	idpNameEnv                                   = "IDP_NAME"
-	idpNameUsage                                 = "Required for authentication with IdP."
-	idpURLFlag                                   = "idp-url"
-	idpURLEnv                                    = "IDP_URL"
-	idpURLUsage                                  = "Required for authentication with IdP."
-	totpFlag                                     = "totp"
-	totpShortFlag                                = "t"
-	totpUsage                                    = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
-	userDomainIDFlag                             = "os-user-domain-id"
-	userDomainIDEnv                              = "OS_USER_DOMAIN_ID"
-	userDomainIDUsage                            = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv + "."
-	regionFlag                                   = "region"
-	regionShortFlag                              = "r"
-	regionEnv                                    = "REGION"
+	overwriteTokenUsage = "Overrides .otc-info file."
+	idpNameFlag         = "idp-name"
+	idpNameShortFlag    = "i"
+	idpNameEnv          = "IDP_NAME"
+	idpNameUsage        = "Required for authentication with IdP."
+	idpURLFlag          = "idp-url"
+	idpURLEnv           = "IDP_URL"
+	idpURLUsage         = "Required for authentication with IdP."
+	totpFlag            = "totp"
+	totpShortFlag       = "t"
+	totpUsage           = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
+	userDomainIDFlag    = "os-user-domain-id"
+	userDomainIDEnv     = "OS_USER_DOMAIN_ID"
+	userDomainIDUsage   = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv + "."
+	regionFlag          = "region"
+	regionShortFlag     = "r"
+	regionEnv           = "REGION"
+	skipTLSEnv          = "SKIP_TLS_VERIFICATION"
+	oidcScopesEnv       = "OIDC_SCOPES"
+	oidcScopesFlag      = "oidc-scopes"
+	oidcScopesShortFlag = ""
+	oidcScopesUsage     = "Flag to set the scopes which are expected from the OIDC request. Either provide this argument or set the environment variable " + oidcScopesEnv
+
+	clientIDEnv                                  = "CLIENT_ID"
+	clientIDFlag                                 = "client-id"
+	clientIDShortFlag                            = "c"
+	clientIDUsage                                = "Client ID as set on the IdP. Either provide this argument or set the environment variable " + clientIDEnv
+	clientSecretEnv                              = "CLIENT_SECRET"
+	clientSecretFlag                             = "client-secret"
+	clientSecretShortFlag                        = "s"
+	clientSecretUsage                            = "Secret ID as set on the IdP. Either provide this argument or set the environment variable " + clientSecretEnv
 	regionUsage                                  = "OTC region code. Either provide this argument or set the environment variable " + regionEnv + "."
 	projectNameFlag                              = "os-project-name"
 	projectNameShortFlag                         = "p"

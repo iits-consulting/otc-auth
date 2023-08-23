@@ -29,14 +29,13 @@ var documentationCmd = &cobra.Command{
 	Use:   "documentation",
 	Short: "Generates markdown documentation",
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		buf := bytes.NewBufferString("")
 		if err := cobradoc.WriteDocument(buf, cmd.Root(), cobradoc.Markdown, cobradoc.Options{}); err != nil {
 			return err
 		}
 
 		documentation := "./generated-documentation.md"
-		return os.WriteFile(documentation, buf.Bytes(), 0600)
+		return os.WriteFile(documentation, buf.Bytes(), 0o600)
 	},
 }
 

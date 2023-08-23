@@ -1,6 +1,7 @@
 package common
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,8 +9,12 @@ import (
 	"strconv"
 )
 
-func HTTPClientMakeRequest(request *http.Request) *http.Response {
-	httpClient := http.Client{}
+func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
+	tr := &http.Transport{
+		//nolint:gosec // Needs to be explicitly set to true via a flag to skip TLS verification.
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLS},
+	}
+	httpClient := http.Client{Transport: tr}
 	response, err := httpClient.Do(request)
 	if err != nil {
 		OutputErrorToConsoleAndExit(err, "fatal: error making a request %s")
