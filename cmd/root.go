@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"errors"
 	"log"
 	"os"
 	"strconv"
@@ -192,14 +193,19 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 	Use:     "create",
 	Short:   tempAccessTokenCreateCmdHelp,
 	Example: tempAccessTokenCreateCmdExample,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			common.OutputErrorMessageToConsoleAndExit(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+			return errors.New(
+				"fatal: no valid unscoped token found, please obtain an unscoped token by logging in first",
+			)
 		}
 
+		if temporaryAccessTokenDurationSeconds < 900 || temporaryAccessTokenDurationSeconds > 86400 {
+			return errors.New("fatal: token duration must be between 900 and 86400 seconds (15m and 24h)")
+		}
 		accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds)
+		return nil
 	},
 }
 

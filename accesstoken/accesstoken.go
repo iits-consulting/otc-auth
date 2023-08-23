@@ -70,14 +70,15 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 	log.Println("Please source the ak-sk-env.sh file in the current directory manually")
 }
 
-func CreateTemporaryAccessToken(durationSeconds int) {
+func CreateTemporaryAccessToken(durationSeconds int) error {
 	log.Println("Creating temporary access token file with GTC...")
 	resp, err := getTempAccessTokenFromServiceProvider(durationSeconds)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		return err
 	}
 
 	makeAccessFile(nil, resp)
+	return nil
 }
 
 func ListAccessToken() ([]credentials.Credential, error) {
