@@ -1,4 +1,4 @@
-package main
+package login
 
 import (
 	"log"
@@ -10,7 +10,12 @@ import (
 	"otc-auth/saml"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
+const (
+	protocolSAML = "saml"
+	protocolOIDC = "oidc"
+)
+
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 	config.LoadCloudConfig(authInfo.DomainName)
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
@@ -27,9 +32,9 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) {
 	case "idp":
 		switch authInfo.AuthProtocol {
 		case protocolSAML:
-			tokenResponse = saml.AuthenticateAndGetUnscopedToken(authInfo)
+			tokenResponse = saml.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 		case protocolOIDC:
-			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo)
+			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 		default:
 			common.OutputErrorMessageToConsoleAndExit(
 				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +

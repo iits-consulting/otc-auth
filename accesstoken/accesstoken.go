@@ -20,32 +20,65 @@ func CreateAccessToken(tokenDescription string) {
 	log.Println("Creating access token file with GTC...")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
-		// Handle error currently thrown when logged in by OIDC
-		var convErr golangsdk.ErrDefault404
-		if errors.As(err, &convErr) {
-			if convErr.ErrUnexpectedResponseCode.Actual == 404 &&
-				strings.Contains(convErr.ErrUnexpectedResponseCode.URL,
-					"OS-CREDENTIAL/credentials") {
-				common.OutputErrorMessageToConsoleAndExit(
-					"fatal: cannot generate AK/SK if logged in via OIDC")
-			}
+		// A 404 error is thrown when trying to create a permanent AK/SK when logged in with OIDC or SAML
+		var notFound golangsdk.ErrDefault404
+		if errors.As(err, &notFound) &&
+			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
+			strings.Contains(string(notFound.Body), "Could not find user:") {
+			common.OutputErrorMessageToConsoleAndExit(
+				"fatal: cannot create permanent access token when logged in via OIDC or SAML.")
+		} else {
+			common.OutputErrorToConsoleAndExit(err)
 		}
-		common.OutputErrorToConsoleAndExit(err)
 	}
+	makeAccessFile(resp, nil)
+}
 
-	accessKeyFileContent := fmt.Sprintf(
-		"export OS_ACCESS_KEY=%s\n"+
-			"export AWS_ACCESS_KEY_ID=%s\n"+
-			"export OS_SECRET_KEY=%s\n"+
-			"export AWS_SECRET_ACCESS_KEY=%s",
-		resp.AccessKey,
-		resp.AccessKey,
-		resp.SecretKey,
-		resp.SecretKey)
+func makeAccessFile(resp *credentials.Credential, tempResp *credentials.TemporaryCredential) {
+	if resp == nil && tempResp == nil {
+		common.OutputErrorMessageToConsoleAndExit("fatal: no temporary or permanent access keys to write")
+	}
+	var accessKeyFileContent string
+	if resp != nil {
+		accessKeyFileContent = fmt.Sprintf(
+			"export OS_ACCESS_KEY=%s\n"+
+				"export AWS_ACCESS_KEY_ID=%s\n"+
+				"export OS_SECRET_KEY=%s\n"+
+				"export AWS_SECRET_ACCESS_KEY=%s",
+			resp.AccessKey,
+			resp.AccessKey,
+			resp.SecretKey,
+			resp.SecretKey)
+	} else {
+		accessKeyFileContent = fmt.Sprintf(
+			"export OS_ACCESS_KEY=%s\n"+
+				"export AWS_ACCESS_KEY_ID=%s\n"+
+				"export OS_SECRET_KEY=%s\n"+
+				"export AWS_SECRET_ACCESS_KEY=%s\n"+
+				"export OS_SESSION_TOKEN=%s\n"+
+				"export AWS_SESSION_TOKEN=%s",
+			tempResp.AccessKey,
+			tempResp.AccessKey,
+			tempResp.SecretKey,
+			tempResp.SecretKey,
+			tempResp.SecurityToken,
+			tempResp.SecurityToken)
+	}
 
 	common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
 	log.Println("Access token file created successfully.")
 	log.Println("Please source the ak-sk-env.sh file in the current directory manually")
+}
+
+func CreateTemporaryAccessToken(durationSeconds int) error {
+	log.Println("Creating temporary access token file with GTC...")
+	resp, err := getTempAccessTokenFromServiceProvider(durationSeconds)
+	if err != nil {
+		return err
+	}
+
+	makeAccessFile(nil, resp)
+	return nil
 }
 
 func ListAccessToken() ([]credentials.Credential, error) {
@@ -60,6 +93,22 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	return credentials.List(client, credentials.ListOpts{UserID: user.ID}).Extract()
 }
 
+func getTempAccessTokenFromServiceProvider(durationSeconds int) (*credentials.TemporaryCredential, error) {
+	client, err := getIdentityServiceClient()
+	if err != nil {
+		return nil, err
+	}
+	tempCreds, err := credentials.CreateTemporary(client, credentials.CreateTemporaryOpts{
+		Methods:  []string{"token"},
+		Duration: durationSeconds,
+	}).Extract()
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("warning: access key will only be valid until: %v (UTC)", tempCreds.ExpiresAt)
+	return tempCreds, err
+}
+
 func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Credential, error) {
 	client, err := getIdentityServiceClient()
 	if err != nil {
@@ -69,11 +118,22 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
-	credential, err := credentials.Create(client, credentials.CreateOpts{
+	credResp := credentials.Create(client, credentials.CreateOpts{
 		UserID:      user.ID,
 		Description: tokenDescription,
-	}).Extract()
+	})
+	credential, err := credResp.Extract()
+	if err != nil {
+		credential, err = handlePotentialLimitError(err, user, client, tokenDescription)
+	}
+	return credential, err
+}
 
+func handlePotentialLimitError(err error,
+	user *tokens.User,
+	client *golangsdk.ServiceClient,
+	tokenDescription string,
+) (*credentials.Credential, error) {
 	var badRequest golangsdk.ErrDefault400
 	if errors.As(err, &badRequest) {
 		accessTokens, listErr := ListAccessToken()
@@ -88,10 +148,10 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 		}
 		return nil, err
 	}
-	return credential, err
+	return nil, err
 }
 
-// Replaces AK/SKs made by otc-auth if their descriptions match the default..
+// Replaces AK/SKs made by otc-auth if their descriptions match the default.
 func conditionallyReplaceAccessTokens(user *tokens.User, client *golangsdk.ServiceClient,
 	tokenDescription string, accessTokens []credentials.Credential,
 ) (*credentials.Credential, error) {
