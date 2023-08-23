@@ -140,12 +140,19 @@ default is 7 days.
 
 ## Manage Access Key and Secret Key Pair
 
-You can use the OTC-Auth tool to download the AK/SK pair directly from the OTC. It will download the "ak-sk-env.sh" file
-to the current directory. The file contains four environment variables.
+You can use the OTC-Auth tool to download permanent AK/SK pairs directly from the OTC. A file called "ak-sk-env.sh" will
+be created in the current directory. The file contains four environment variables.
 
 `otc-auth access-token create --os-domain-name <os_domain_name> --region <region>`
 
-The "ak-sk-env.sh" file must then be sourced before you can start using the environment variables.
+If a temporary AK/SK pair is needed instead, use the following command:
+
+`otc-auth temp-access-token create --os-domain-name <os_domain_name> --region <region> -t <lifetime in seconds>`
+
+This will generate a temporary AK/SK pair (valid for 15m by default, if the `-t` argument is not given), saved to "ak-sk-env.sh".
+The file will contain five environment variables. 
+
+The "ak-sk-env.sh" file must then be `source`-ed before you can start using the environment variables.
 
 ## Openstack Integration
 
