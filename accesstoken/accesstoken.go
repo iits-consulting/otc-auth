@@ -55,13 +55,11 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 				"export AWS_ACCESS_KEY_ID=%s\n"+
 				"export OS_SECRET_KEY=%s\n"+
 				"export AWS_SECRET_ACCESS_KEY=%s\n"+
-				"export OS_SESSION_TOKEN=%s\n"+
 				"export AWS_SESSION_TOKEN=%s",
 			tempResp.AccessKey,
 			tempResp.AccessKey,
 			tempResp.SecretKey,
 			tempResp.SecretKey,
-			tempResp.SecurityToken,
 			tempResp.SecurityToken)
 	}
 
