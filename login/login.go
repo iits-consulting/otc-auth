@@ -52,8 +52,14 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 		common.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
 	}
 	updateOTCInfoFile(tokenResponse, authInfo.Region)
-	createScopedTokenForEveryProject()
+	createDomainScopedToken()
+
 	log.Println("Successfully obtained unscoped token!")
+}
+
+func createDomainScopedToken() {
+	iam.GetDomainScopedToken()
+	createScopedTokenForEveryProject()
 }
 
 func createScopedTokenForEveryProject() {
@@ -63,14 +69,15 @@ func createScopedTokenForEveryProject() {
 
 func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
 	cloud := config.GetActiveCloudConfig()
-	if cloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
+	domain := cloud.Domain
+	if domain.Name != tokenResponse.Token.User.Domain.Name {
 		// Sanity check: we're in the same cloud as the active cloud
 		common.OutputErrorMessageToConsoleAndExit("fatal: authorization made for wrong cloud configuration")
 	}
-	cloud.Domain.ID = tokenResponse.Token.User.Domain.ID
+	domain.ID = tokenResponse.Token.User.Domain.ID
 	if cloud.Username != tokenResponse.Token.User.Name {
-		for i, project := range cloud.Projects {
-			cloud.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{
+		for i, project := range domain.Projects {
+			domain.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{
 				Secret:    "",
 				IssuedAt:  "",
 				ExpiresAt: "",

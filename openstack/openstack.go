@@ -16,11 +16,11 @@ import (
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
 	cloudConfig := config.GetActiveCloudConfig()
-	domainName := cloudConfig.Domain.Name
+	domain := cloudConfig.Domain
 	clouds := make(map[string]clientconfig.Cloud)
-	for _, project := range cloudConfig.Projects {
-		cloudName := domainName + "_" + project.Name
-		clouds[cloudName] = createOpenstackCloudConfig(project, domainName, cloudConfig.Region)
+	for _, project := range domain.Projects {
+		cloudName := domain.Name + "_" + project.Name
+		clouds[cloudName] = createOpenstackCloudConfig(project, domain.Name, cloudConfig.Region)
 	}
 
 	createOpenstackCloudsYAML(clientconfig.Clouds{Clouds: clouds}, openStackConfigFileLocation)

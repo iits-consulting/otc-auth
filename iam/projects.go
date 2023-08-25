@@ -30,17 +30,17 @@ func GetProjectsInActiveCloud() config.Projects {
 
 func CreateScopedTokenForEveryProject(projectNames []string) {
 	for _, projectName := range projectNames {
-		GetScopedToken(projectName)
+		GetProjectScopedToken(projectName)
 	}
 }
 
-func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
+func getServiceClientForActiveCloud() (*golangsdk.ServiceClient, error) {
 	cloud := config.GetActiveCloudConfig()
-	log.Printf("info: fetching projects for cloud %s \n", cloud.Domain.Name)
+	domain := cloud.Domain
 
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
-		DomainID:         cloud.Domain.ID,
+		DomainName:       domain.Name,
 		TokenID:          cloud.UnscopedToken.Secret,
 	})
 	if err != nil {
@@ -50,6 +50,15 @@ func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
+	return client, err
+}
+
+func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
+	client, err := getServiceClientForActiveCloud()
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
 	projectsList, err := projects.List(client, projects.ListOpts{}).AllPages()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)

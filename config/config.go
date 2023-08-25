@@ -30,8 +30,10 @@ func registerNewCloud(domainName string) Clouds {
 	clouds := otcConfig.Clouds
 
 	newCloud := Cloud{
-		Domain: NameAndIDResource{
-			Name: domainName,
+		Domain: Domain{
+			NameAndIDResource: NameAndIDResource{
+				Name: domainName,
+			},
 		},
 	}
 	if otcConfig.Clouds.ContainsCloud(newCloud.Domain.Name) {
@@ -91,7 +93,7 @@ func UpdateClusters(clusters Clusters) {
 func UpdateProjects(projects Projects) {
 	otcConfig := getOtcConfig()
 	cloudIndex := otcConfig.Clouds.GetActiveCloudIndex()
-	otcConfig.Clouds[cloudIndex].Projects = projects
+	otcConfig.Clouds[cloudIndex].Domain.Projects = projects
 	writeOtcConfigContentToFile(otcConfig)
 }
 

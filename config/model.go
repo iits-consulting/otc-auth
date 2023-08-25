@@ -74,13 +74,18 @@ func (clouds *Clouds) NumberOfActiveCloudConfigs() int {
 }
 
 type Cloud struct {
-	Region        string            `json:"region"`
-	Domain        NameAndIDResource `json:"domain"`
-	UnscopedToken Token             `json:"unscopedToken"`
-	Projects      Projects          `json:"projects"`
-	Clusters      Clusters          `json:"clusters"`
-	Username      string            `json:"username"`
-	Active        bool              `json:"active"`
+	Region        string   `json:"region"`
+	Domain        Domain   `json:"domain"`
+	UnscopedToken Token    `json:"unscopedToken"`
+	Clusters      Clusters `json:"clusters"`
+	Username      string   `json:"username"`
+	Active        bool     `json:"active"`
+}
+
+type Domain struct {
+	NameAndIDResource
+	ScopedToken Token    `json:"scopedToken"`
+	Projects    Projects `json:"projects"`
 }
 
 type Project struct {

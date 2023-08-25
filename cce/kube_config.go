@@ -19,12 +19,13 @@ import (
 func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 	log.Println("Getting kube config...")
 
-	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
+	clusterID, err := getClusterID(kubeConfigParams.ProjectName, kubeConfigParams.ClusterName)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster id: %s")
 	}
 
-	response, err := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterID, kubeConfigParams.DaysValid)
+	response, err := getClusterCertFromServiceProvider(
+		kubeConfigParams.ProjectName, clusterID, kubeConfigParams.DaysValid)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}

@@ -18,27 +18,49 @@ func TestCloudsSlice_RemoveCloudByNameIfExists(t *testing.T) {
 		{
 			desc: "cloud to be removed exists",
 			actual: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIDResource{Name: "cloud-2"}},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-2"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: false},
 			},
 			expected: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: false},
 			},
 			input: "cloud-2",
 		},
 		{
 			desc: "cloud to be removed does not exist",
 			actual: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIDResource{Name: "cloud-2"}},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-2"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: false},
 			},
 			expected: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}},
-				{Domain: config.NameAndIDResource{Name: "cloud-2"}},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-2"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: false},
 			},
 			input: "cloud-4",
 		},
@@ -82,28 +104,52 @@ func TestCloudsSlice_SetActiveByName(t *testing.T) {
 		{
 			desc: "set active makes all others inactive",
 			expected: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: false},
-				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: true},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-2"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: false},
 			},
 			actual: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: true},
-				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: true},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-2"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: true},
 			},
 			input: "cloud-2",
 		},
 		{
 			desc: "set active with unknown name sets all inactive",
 			expected: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: false},
-				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: false},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-2"},
+				}, Active: false},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: false},
 			},
 			actual: config.Clouds{
-				{Domain: config.NameAndIDResource{Name: "cloud-1"}, Active: true},
-				{Domain: config.NameAndIDResource{Name: "cloud-2"}, Active: true},
-				{Domain: config.NameAndIDResource{Name: "cloud-3"}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-1"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-2"},
+				}, Active: true},
+				{Domain: config.Domain{
+					NameAndIDResource: config.NameAndIDResource{Name: "cloud-3"},
+				}, Active: true},
 			},
 			input: "cloud-4",
 		},
