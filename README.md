@@ -2,7 +2,7 @@
 
 Open Source CLI for the Authorization with the Open Telekom Cloud.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/iits-consulting/otc-auth/blob/main/LICENSE)
+[![License: GPLv3](https://img.shields.io/badge/GitHub-GPL--3.0-informational)](https://github.com/iits-consulting/otc-auth/blob/main/LICENSE)
 ![Build](https://github.com/iits-consulting/otc-auth/workflows/Build/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/iits-consulting/otc-auth)](https://goreportcard.com/report/github.com/iits-consulting/otc-auth)
 ![CodeQL](https://github.com/iits-consulting/otc-auth/workflows/CodeQL/badge.svg)
