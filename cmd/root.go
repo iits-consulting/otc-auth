@@ -137,13 +137,14 @@ var projectsListCmd = &cobra.Command{
 var cceCmd = &cobra.Command{
 	Use:               "cce",
 	Short:             cceCmdHelp,
-	PersistentPreRunE: configureCmdFlagsAgainstEnvs(cceListFlagToEnv),
+	PersistentPreRunE: configureCmdFlagsAgainstEnvs(cceFlagToEnv),
 }
 
 var cceListCmd = &cobra.Command{
 	Use:     "list",
 	Short:   cceListCmdHelp,
 	Example: cceListCmdExample,
+	PreRunE: configureCmdFlagsAgainstEnvs(cceListFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
@@ -369,9 +370,9 @@ func setupRootCmd() {
 	cceCmd.PersistentFlags().StringVarP(&projectName, projectNameFlag, projectNameShortFlag, "", projectNameUsage)
 
 	cceCmd.AddCommand(cceListCmd)
-	cceListCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
+	cceListCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
 	cceGetKubeConfigCmd.Flags().IntVarP(
 		&daysValid,
@@ -387,7 +388,7 @@ func setupRootCmd() {
 		"~/.kube/config",
 		targetLocationUsage,
 	)
-  cceGetKubeConfigCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
+	cceGetKubeConfigCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 
 	RootCmd.AddCommand(tempAccessTokenCmd)
 	tempAccessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
@@ -451,8 +452,6 @@ func setupRootCmd() {
 		loginRemoveCmd.MarkFlagRequired(domainNameFlag),
 		cceCmd.MarkPersistentFlagRequired(domainNameFlag),
 		cceCmd.MarkPersistentFlagRequired(projectNameFlag),
-    cceListCmd.MarkFlagRequired(regionFlag),
-		cceGetKubeConfigCmd.MarkFlagRequired(regionFlag),
 		cceGetKubeConfigCmd.MarkFlagRequired(clusterNameFlag),
 		tempAccessTokenCmd.MarkPersistentFlagRequired(domainNameFlag),
 		accessTokenCmd.MarkPersistentFlagRequired(domainNameFlag),
@@ -523,13 +522,18 @@ var (
 		userDomainIDFlag: userDomainIDEnv,
 	}
 
-	cceListFlagToEnv = map[string]string{
+	cceFlagToEnv = map[string]string{
 		projectNameFlag: projectNameEnv,
 		domainNameFlag:  domainNameEnv,
 	}
 
+	cceListFlagToEnv = map[string]string{
+		regionFlag: regionEnv,
+	}
+
 	cceGetKubeConfigFlagToEnv = map[string]string{
 		clusterNameFlag: clusterNameEnv,
+		regionFlag:      regionEnv,
 	}
 
 	accessTokenFlagToEnv = map[string]string{
