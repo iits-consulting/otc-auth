@@ -387,7 +387,7 @@ func setupRootCmd() {
 		"~/.kube/config",
 		targetLocationUsage,
 	)
-	cceGetKubeConfigCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
+  cceGetKubeConfigCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 
 	RootCmd.AddCommand(tempAccessTokenCmd)
 	tempAccessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
@@ -451,7 +451,7 @@ func setupRootCmd() {
 		loginRemoveCmd.MarkFlagRequired(domainNameFlag),
 		cceCmd.MarkPersistentFlagRequired(domainNameFlag),
 		cceCmd.MarkPersistentFlagRequired(projectNameFlag),
-		cceListCmd.MarkFlagRequired(regionFlag),
+    cceListCmd.MarkFlagRequired(regionFlag),
 		cceGetKubeConfigCmd.MarkFlagRequired(regionFlag),
 		cceGetKubeConfigCmd.MarkFlagRequired(clusterNameFlag),
 		tempAccessTokenCmd.MarkPersistentFlagRequired(domainNameFlag),
@@ -526,12 +526,10 @@ var (
 	cceListFlagToEnv = map[string]string{
 		projectNameFlag: projectNameEnv,
 		domainNameFlag:  domainNameEnv,
-		regionFlag:      regionEnv,
 	}
 
 	cceGetKubeConfigFlagToEnv = map[string]string{
 		clusterNameFlag: clusterNameEnv,
-		regionFlag:      regionEnv,
 	}
 
 	accessTokenFlagToEnv = map[string]string{
