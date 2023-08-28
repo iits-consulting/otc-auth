@@ -369,7 +369,6 @@ func setupRootCmd() {
 	cceCmd.PersistentFlags().StringVarP(&projectName, projectNameFlag, projectNameShortFlag, "", projectNameUsage)
 
 	cceCmd.AddCommand(cceListCmd)
-
 	cceListCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
