@@ -328,3 +328,5 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/go,goland+all,intellij+all,vim,emacs,macos,linux,visualstudiocode,git
 
+/.run/
+/bin/

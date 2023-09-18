@@ -9,7 +9,7 @@ builds:
     hooks:
       post:
         - cmd: ./signOSX.sh {{ .Path }} {{ .Os }} {{ .Version }} {{ .Arch }}
-  - env:
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -28,8 +28,8 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     # use zip for windows archives
     format_overrides:
-    - goos: windows
-      format: zip
+      - goos: windows
+        format: zip
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -46,9 +46,8 @@ changelog:
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
-
 nfpms:
-  - id: foo
+  - id: linux_packages
     package_name: otc-auth
     file_name_template: "{{ .ConventionalFileName }}"
     vendor: "iits-consulting"
