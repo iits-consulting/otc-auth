@@ -89,6 +89,7 @@ jobs:
 
   aur-publish:
     runs-on: ubuntu-latest
+    needs: goreleaser
     steps:
       - uses: actions/checkout@v2
 
@@ -106,6 +107,168 @@ jobs:
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Bump to ${{ github.github_ref_name }}"
           ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
+
+  apk-publish:
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    container:
+      image: alpine:latest
+
+    steps:
+      - name: Get latest apks
+        uses: robinraju/release-downloader@v1.8
+        with:
+          latest: true
+          fileName: "*.apk"
+
+      - name: Install dependencies
+        run: |
+          apk add alpine-sdk openssl
+
+      - name: Import keys
+        run: |
+          mkdir ~/.abuild
+          echo "$APK_PACKAGE_RSA" > ~/.abuild/abuild.rsa
+          openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
+          echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
+          cp ~/.abuild/abuild.rsa.pub /etc/apk/keys/
+        env:
+          APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
+
+      - name: Make and sign apkindex
+        run: |
+          apk index -o APKINDEX.tar.gz *.apk
+          abuild-sign -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
+
+      - name: Create repo structure
+        run: |
+          cp ~/.abuild/abuild.rsa.pub otc-auth.rsa.pub
+          echo -e "  # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n apk add curl \n curl -SsL -o /etc/apk/keys/otc-auth.rsa.pub https://iits-consulting.github.io/apk-repo otc-auth.rsa.pub \n apk add otc-auth --repository='https://iits-consulting.github.io/apk-repo' \`\`\`" > README.md;
+
+      - name: Cleanup
+        run: |
+          rm -rf ~/.abuild
+
+      - name: Push to APK repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.APK_SSH_DEPLOY_KEY }}
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: .
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'apk-repo'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
+
+  rpm-publish:
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    container:
+      image: fedora:latest
+
+    steps:
+      - name: Get latest rpms
+        uses: robinraju/release-downloader@v1.8
+        with:
+          latest: true
+          fileName: "*.rpm"
+
+      - name: Get dependencies
+        run: |
+          dnf install rpm-sign -y
+
+
+      - name: Generate keys
+        run: |
+          export GPG_TTY=`tty`;
+          echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
+          echo -e "pinentry-mode loopback \npassphrase ${GPG_PPA_PRIV_KEY_PASSPHRASE}" > ~/.gnupg/gpg.conf
+          echo -e "%_signature gpg \n%_gpg_name mweya.ruider@iits-consulting.de" > /root/.rpmmacros
+          echo "Sanity check: $(cat /root/.rpmmacros)"
+          rpm --define "_gpg_name mweya.ruider@iits-consulting.de" --addsign *.rpm
+          mkdir -p otc\-auth/packages
+          mv *.rpm otc\-auth/packages
+          cd otc\-auth/packages
+          createrepo .
+          gpg --detach-sign --armor --default-key "mweya.ruider@iits-consulting.de" repodata/repomd.xml
+          gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
+          echo -e "[example-repo]\nname=Example Repo\nbaseurl=http://iits-consulting.github.io/rpm-repo/packages\nenabled=1\ngpgcheck=1\ngpgkey=http://iits-consulting.github.io/rpm-repo/KEY.gpg" > example.repo
+          cd ~
+          echo -e " # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth RPM Repo \n This repo contains .deb files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n yum-config-manager --add-repo https://iits-consulting.github.io/rpm-repo.repo \n yum install -y hello-world \n \`\`\`" > README.md;
+        env:
+          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
+          GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
+
+      - name: Push to RPM repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.RPM_SSH_DEPLOY_KEY }}
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: .
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'rpm-repo'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
+
+  deb-publish:
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    steps:
+      - name: Get latest debs
+        uses: robinraju/release-downloader@v1.8
+        with:
+            latest: true
+            fileName: "*.deb"
+
+      - name: Create PPA repo structure
+        run: |
+          dpkg-scanpackages --multiversion . > Packages;
+          gzip -k -f Packages;
+          apt-ftparchive release . > Release;
+          echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa/debian ./" > otc-auth.list
+          echo -e " # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth PPA \n This repo (based on the one [here](https://github.com/assafmo/ppa)) contains .deb files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n sudo curl -SsL -o /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg https://iits-consulting.github.io/ppa/debian/KEY.gpg \n sudo curl -SsL -o /etc/apt/sources.list.d/otc-auth.list https://iits-consulting.github.io/ppa/debian/otc-auth.list \n cat /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg >/dev/null \n sudo apt update \n sudo apt install otc-auth \n \`\`\`" > README.md;
+
+      - name: Generate keys
+        run: |
+          export GPG_TTY=`tty`;
+          echo "$GPG_PPA_PRIV_KEY" | base64 --decode | gpg --import --batch;
+          gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
+          echo "Sanity Check: $(ls -la Release)"
+          echo -e "pinentry-mode loopback \npassphrase ${GPG_PPA_PRIV_KEY_PASSPHRASE}" > ~/.gnupg/gpg.conf
+          gpg --default-key "mweya.ruider@iits-consulting.de" -abs -o - Release > Release.gpg;
+          gpg --default-key "mweya.ruider@iits-consulting.de" --clearsign -o - Release > InRelease;
+          
+          sudo apt-get install -y debsigs 
+          for package in *.deb; do
+            debsigs --sign=origin --default-key="mweya.ruider@iits-consulting.de" "$package"
+          done
+
+        env:
+          GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
+          GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
+
+      - name: Final cleanup
+        run: |
+          mkdir .debian
+          mv README.md .README.md
+          mv * .debian
+          mv .README.md README.md
+          mv .debian debian
+          rm ~/.gnupg/gpg.conf
+
+      - name: Push to PPA repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source-directory: .
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'ppa'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
 
   wikiupdate:
     runs-on: ubuntu-latest
