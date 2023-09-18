@@ -17,15 +17,36 @@ Container Engine (CCE) and also get the remote kube config file and merge with y
 
 This tool can also be used to manage (create) a pair of Access Key/ Secret Key in order to make requests more secure.
 
+## Table of contents
+
+* [Demo](#demo)
+* [Install](#install)
+    * [Arch Linux](#arch-linux)
+* Usage
+    * [Login](#login)
+        * [Service Provider Login (IAM)](#service-provider-login-iam)
+        * [Identity Provider Login (IdP)](#identity-provider-login-idp)
+            * [External IdP and SAML](#external-idp-and-saml)
+            * [External IdP and OIDC](#external-idp-and-oidc)
+            * [Service Account via external IdP and OIDC](#service-account-via-external-idp-and-oidc)
+        * [OIDC Scopes](#oidc-scopes)
+        * [Remove Login](#remove-login)
+    * [List Projects](#list-projects)
+    * [Cloud Container Engine](#cloud-container-engine)
+    * [Manage Access Key and Secret Key Pair](#manage-access-key-and-secret-key-pair)
+    * [Openstack Integration](#openstack-integration)
+    * [Environment Variables](#environment-variables)
+    * [Auto-Completions](#auto-completions)
+
 ## Demo
 
 https://user-images.githubusercontent.com/19291722/208880256-b0da924e-254e-4bc4-b9ee-396c43234a5b.mp4
 
 ## Install
 
-You can download the binary for your system in
+You can download the binary for your system from
 the [releases page](https://github.com/iits-consulting/otc-auth/releases).
-Unpack the binary and add it to your PATH and you are good to go!
+Unpack the binary, add it to your PATH and you are good to go!
 
 ### Arch Linux
 
@@ -42,17 +63,19 @@ options (`iam`, `idp-saml`, and `idp-oidc`) and one of them must be provided.
 To log in directly with the Open Telekom Cloud's IAM, you will have to supply the domain name you're attempting to log
 in to (usually starting with "OTC-EU", following the region and a longer identifier), your username and password.
 
-`otc-auth login iam --os-username <username> --os-password <password> --os-domain-name <domain_name> --region <region>`
+```bash
+otc-auth login iam --os-username <username> --os-password <password> --os-domain-name <domain_name> --region <region>
+```
 
-In addition, it is possible to use MFA if that's desired and/or required. In this case both
-arguments `--os-user-domain-id` and `--totp` are required. The user id can be obtained in the "My Credentials" page on
+Additionally, it is possible to use MFA if needed. In this case, both
+arguments `--os-user-domain-id` and `--totp`, are required. The user id can be obtained in the "My Credentials" page on
 the OTC.
 
-```
+```bash
 otc-auth login iam --os-username <username> --os-password <password> --os-domain-name <domain_name> --os-user-domain-id <user_domain_id> --totp <6_digit_token> --region <region>
 ```
 
-The OTP Token is 6-digit long and refreshes every 30 seconds. For more information on MFA please refer to
+The OTP Token is 6-digits long and refreshes every 30 seconds. For more information on MFA please refer to
 the [OTC's documentation](https://docs.otc.t-systems.com/en-us/usermanual/iam/iam_10_0002.html).
 
 ### Identity Provider Login (IdP)
@@ -66,7 +89,9 @@ for the SAML login and client id (and optionally client secret) for the OIDC log
 The SAML login flow is SP initiated and requires you to send username and password to the SP. The SP then authorizes you
 with the configured IdP and returns either an unscoped token or an error, if the user is not allowed to log in.
 
-`otc-auth login idp-saml --os-username <username> --os-password <password> --idp-name <idp_name> --idp-url <authorization_url> --os-domain-name <os_domain_name> --region <region>`
+```bash
+otc-auth login idp-saml --os-username <username> --os-password <password> --idp-name <idp_name> --idp-url <authorization_url> --os-domain-name <os_domain_name> --region <region>
+```
 
 At the moment, no MFA is supported for this login flow.
 
@@ -77,7 +102,9 @@ log in as desired. This flow does support MFA (this requires it to be configured
 authenticated with the IdP, the SP will be contacted with the corresponding credentials and will return either an
 unscoped token or an error, if the user is not allowed to log in.
 
-`otc-auth login idp-oidc --idp-name <idp_name> --idp-url <authorization_url> --client-id <client_id> --os-domain-name <os_domain_name> --region <region> [--client-secret <client_secret>]`
+```bash
+otc-auth login idp-oidc --idp-name <idp_name> --idp-url <authorization_url> --client-id <client_id> --os-domain-name <os_domain_name> --region <region> [--client-secret <client_secret>]
+```
 
 The argument `--client-id` is required, but the argument `--client-secret` is only needed if configured on the IdP.
 
@@ -87,7 +114,7 @@ If you have set up your IdP to provide service accounts then you can utilize ser
 also sure that the IdP is correctly configured in the OTC Identity and Access Management. Then run the `otc-auth` as
 follows:
 
-```shell
+```bash
 otc-auth login idp-oidc \
     --idp-name NameOfClientInIdp \
     --idp-url IdpAuthUrl \
@@ -112,13 +139,17 @@ The default value is `openid,profile,roles,name,groups,email`
 
 Clouds are differentiated by their identifier `--os-domain-name`. To delete a cloud, use the `remove` command.
 
-`otc-auth login remove --os-domain-name <os_domain_name> --region <region>`
+```bash
+otc-auth login remove --os-domain-name <os_domain_name> --region <region>
+```
 
 ## List Projects
 
 It is possible to get a list of all projects in the current cloud. For that, use the following command.
 
-`otc-auth projects list`
+```bash
+otc-auth projects list
+```
 
 ## Cloud Container Engine
 
@@ -129,11 +160,15 @@ To retrieve a list of clusters for a project use the following command. The proj
 ones in the cloud at the moment of the request.
 If the desired project isn't found, you will receive an error message.
 
-`otc-auth cce list --os-domain-name <os_domain_name> --region <region> --os-project-name <project_name>`
+```bash
+otc-auth cce list --os-domain-name <os_domain_name> --region <region> --os-project-name <project_name>
+```
 
-To retrieve the remote kube configuration file (and merge to your local one) use the following command:
+To retrieve the remote kube configuration file (and merge it to your local one) use the following command:
 
-`otc-auth cce get-kube-config --os-domain-name <os_domain_name> --region <region> --os-project-name <project_name> --cluster <cluster_name>`
+```bash
+otc-auth cce get-kube-config --os-domain-name <os_domain_name> --region <region> --os-project-name <project_name> --cluster <cluster_name>
+```
 
 Alternatively you can pass the argument `--days-valid` to set the period of days the configuration will be valid, the
 default is 7 days.
@@ -143,14 +178,19 @@ default is 7 days.
 You can use the OTC-Auth tool to download permanent AK/SK pairs directly from the OTC. A file called "ak-sk-env.sh" will
 be created in the current directory. The file contains four environment variables.
 
-`otc-auth access-token create --os-domain-name <os_domain_name> --region <region>`
+```bash
+otc-auth access-token create --os-domain-name <os_domain_name> --region <region>
+```
 
 If a temporary AK/SK pair is needed instead, use the following command:
 
-`otc-auth temp-access-token create --os-domain-name <os_domain_name> --region <region> -t <lifetime in seconds>`
+```bash
+otc-auth temp-access-token create --os-domain-name <os_domain_name> --region <region> -t <lifetime in seconds>
+```
 
-This will generate a temporary AK/SK pair (valid for 15m by default, if the `-t` argument is not given), saved to "ak-sk-env.sh".
-The file will contain five environment variables. 
+This will generate a temporary AK/SK pair (valid for 15m by default, if the `-t` argument is not given), saved to "
+ak-sk-env.sh".
+The file will contain five environment variables.
 
 The "ak-sk-env.sh" file must then be `source`-ed before you can start using the environment variables.
 
@@ -161,7 +201,9 @@ reuse the clouds.yaml with terraform.
 
 If you execute this command
 
-`otc-auth openstack config-create`
+```bash
+otc-auth openstack config-create
+```
 
 It will create a cloud config for every project which you have access to and generate a scoped token. After that it
 overrides
