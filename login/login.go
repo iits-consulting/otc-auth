@@ -21,7 +21,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
 		log.Println(
 			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
-				"\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument.")
+				"\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
 		return
 	}
 
@@ -38,18 +38,18 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 		default:
 			common.OutputErrorMessageToConsoleAndExit(
 				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
-					"Please provide a valid argument and try again.")
+					"Please provide a valid argument and try again")
 		}
 	case "iam":
 		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
 		common.OutputErrorMessageToConsoleAndExit(
 			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
-				"Please provide a valid argument and try again.")
+				"Please provide a valid argument and try again")
 	}
 
 	if tokenResponse.Token.Secret == "" {
-		common.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again.")
+		common.OutputErrorMessageToConsoleAndExit("Authorization did not succeed. Please try again")
 	}
 	updateOTCInfoFile(tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()

@@ -52,6 +52,13 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
+	if configParams.Server != "" {
+		kubeConfigBkp := kubeConfig
+		for idx := range kubeConfigBkp.Clusters {
+			kubeConfig.Clusters[idx].Server = configParams.Server
+		}
+	}
+
 	filenameNewFile := "kubeConfig_new"
 	filenameCurrentFile := "kubeConfig_current"
 

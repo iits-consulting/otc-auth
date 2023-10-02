@@ -169,8 +169,9 @@ To retrieve the remote kube configuration file (and merge it to your local one) 
 otc-auth cce get-kube-config --os-domain-name <os_domain_name> --region <region> --os-project-name <project_name> --cluster <cluster_name>
 ```
 
-Alternatively you can pass the argument `--days-valid` to set the period of days the configuration will be valid, the
-default is 7 days.
+You could also pass the `--days-valid` argument to set the period of days the configuration will be valid for, with the
+default being 7 days. The `-s` or `--server` argument could also be used to override the *server* attribute in the
+config generated.
 
 ## Manage Access Key and Secret Key Pair
 

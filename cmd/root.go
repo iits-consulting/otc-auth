@@ -149,7 +149,7 @@ var cceListCmd = &cobra.Command{
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
 			common.OutputErrorMessageToConsoleAndExit(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.",
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
 			)
 		}
 		cce.GetClusterNames(projectName)
@@ -165,7 +165,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
 			common.OutputErrorMessageToConsoleAndExit(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.",
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
 			)
 		}
 
@@ -180,6 +180,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 			ClusterName:    clusterName,
 			DaysValid:      daysValidString,
 			TargetLocation: targetLocation,
+			Server:         server,
 		}
 
 		cce.GetKubeConfig(kubeConfigParams)
@@ -229,7 +230,7 @@ var accessTokenCreateCmd = &cobra.Command{
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
 			common.OutputErrorMessageToConsoleAndExit(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
 		accesstoken.CreateAccessToken(accessTokenCreateDescription)
@@ -243,7 +244,7 @@ var accessTokenListCmd = &cobra.Command{
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
 			common.OutputErrorMessageToConsoleAndExit(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
 		accessTokens, err2 := accesstoken.ListAccessToken()
@@ -275,11 +276,11 @@ var accessTokenDeleteCmd = &cobra.Command{
 
 		if !config.IsAuthenticationValid() {
 			common.OutputErrorMessageToConsoleAndExit(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first.")
+				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
 		if token == "" {
-			common.OutputErrorMessageToConsoleAndExit("fatal: argument token cannot be empty.")
+			common.OutputErrorMessageToConsoleAndExit("fatal: argument token cannot be empty")
 		}
 		errDelete := accesstoken.DeleteAccessToken(token)
 		if errDelete != nil {
@@ -382,6 +383,12 @@ func setupRootCmd() {
 		daysValidUsage,
 	)
 	cceGetKubeConfigCmd.Flags().StringVarP(
+		&server,
+		serverFlag,
+		serverShortFlag,
+		"",
+		serverUsage)
+	cceGetKubeConfigCmd.Flags().StringVarP(
 		&targetLocation,
 		targetLocationFlag,
 		targetLocationShortFlag,
@@ -473,6 +480,7 @@ var (
 	clusterName                         string
 	daysValid                           int
 	targetLocation                      string
+	server                              string
 	accessTokenCreateDescription        string
 	temporaryAccessTokenDurationSeconds int
 	token                               string
@@ -543,8 +551,8 @@ var (
 
 //nolint:lll // The long lines represent
 const (
-	loginCmdHelp       = "Login to the Open Telekom Cloud and receive an unscoped token."
-	loginIamCmdHelp    = "Login to the Open Telekom Cloud through its Identity and Access Management system and receive an unscoped token."
+	loginCmdHelp       = "Login to the Open Telekom Cloud and receive an unscoped token"
+	loginIamCmdHelp    = "Login to the Open Telekom Cloud through its Identity and Access Management system and receive an unscoped token"
 	loginIamCmdExample = `$ otc-auth login iam --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName
 
 $ export OS_USERNAME=YourUsername
@@ -557,7 +565,7 @@ $ export OS_PASSWORD=YourPassword
 $ export OS_DOMAIN_NAME=YourDomainName
 $ export REGION=YourRegion
 $ otc-auth login iam --overwrite-token --region YourRegion`
-	loginIdpSamlCmdHelp    = "Login to the Open Telekom Cloud through an Identity Provider and SAML and receive an unscoped token."
+	loginIdpSamlCmdHelp    = "Login to the Open Telekom Cloud through an Identity Provider and SAML and receive an unscoped token"
 	loginIdpSamlCmdExample = `otc-auth login idp-saml --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName
 
 export OS_DOMAIN_NAME=MyDomain
@@ -569,7 +577,7 @@ otc-auth login idp-saml --idp-name MyIdP --idp-url https://example.com/saml
 export OS_DOMAIN_NAME=MyDomain
 export OS_PASSWORD=MyPassword
 otc-auth login idp-saml --idp-name MyIdP --idp-url https://example.com/saml --os-username MyUsername --region MyRegion`
-	loginIdpOidcCmdHelp    = "Login to the Open Telekom Cloud through an Identity Provider and OIDC and receive an unscoped token."
+	loginIdpOidcCmdHelp    = "Login to the Open Telekom Cloud through an Identity Provider and OIDC and receive an unscoped token"
 	loginIdpOidcCmdExample = `otc-auth login idp-oidc --os-username YourUsername --os-password YourPassword --os-domain-name YourDomainName
 
 export OS_DOMAIN_NAME=MyDomain
@@ -589,8 +597,8 @@ $ otc-auth login remove`
 	projectsCmdHelp        = "Manage Project Information"
 	projectsListCmdHelp    = "List Projects in Active Cloud"
 	projectsListCmdExample = "otc-auth projects list"
-	cceCmdHelp             = "Manage Cloud Container Engine."
-	cceListCmdHelp         = "Lists Project Clusters in CCE."
+	cceCmdHelp             = "Manage Cloud Container Engine"
+	cceListCmdHelp         = "Lists Project Clusters in CCE"
 	cceListCmdExample      = `$ otc-auth cce list --os-project-name MyProject
 
 $ export OS_DOMAIN_NAME=MyDomain
@@ -599,7 +607,7 @@ $ otc-auth cce list
 
 $ export OS_PROJECT_NAME=MyProject
 $ otc-auth cce list`
-	cceGetKubeConfigCmdHelp    = "Get remote kube config and merge it with existing local config file."
+	cceGetKubeConfigCmdHelp    = "Get remote kube config and merge it with existing local config file"
 	cceGetKubeConfigCmdExample = `$ otc-auth cce get-kube-config --cluster MyCluster --target-location /path/to/config
 
 $ export CLUSTER_NAME=MyCluster
@@ -613,9 +621,9 @@ $ export OS_PROJECT_NAME=MyProject
 $ otc-auth cce get-kube-config`
 
 	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
-	accessTokenCmdHelp = "Manage AK/SK."
+	accessTokenCmdHelp = "Manage AK/SK"
 	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
-	accessTokenCreateCmdHelp = "Create new AK/SK."
+	accessTokenCreateCmdHelp = "Create new AK/SK"
 
 	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
 	accessTokenCreateCmdExample = `$ otc-auth access-token create --description "Custom token description"
@@ -624,8 +632,8 @@ $ otc-auth access-token create
 
 $ export OS_DOMAIN_NAME=MyDomain
 $ otc-auth access-token create`
-	accessTokenListCmdHelp   = "List existing AK/SKs."
-	accessTokenDeleteCmdHelp = "Delete existing AK/SKs."
+	accessTokenListCmdHelp   = "List existing AK/SKs"
+	accessTokenDeleteCmdHelp = "Delete existing AK/SKs"
 	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
 	accessTokenDeleteCmdExample = `$ otc-auth access-token delete --token YourToken
 
@@ -646,33 +654,33 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	usernameShortFlag       = "u"
 	skipTLSShortFlag        = ""
 	usernameEnv             = "OS_USERNAME"
-	usernameUsage           = "Username for the OTC IAM system. Either provide this argument or set the environment variable " + usernameEnv + "."
+	usernameUsage           = "Username for the OTC IAM system. Either provide this argument or set the environment variable " + usernameEnv
 	skipTLSUsage            = "Skip TLS Verification. This is insecure. Either provide this argument or set the environment variable " + skipTLSEnv
 	passwordFlag            = "os-password"
 	passwordShortFlag       = "p"
 	passwordEnv             = "OS_PASSWORD"
-	passwordUsage           = "Password for the OTC IAM system. Either provide this argument or set the environment variable " + passwordEnv + "."
+	passwordUsage           = "Password for the OTC IAM system. Either provide this argument or set the environment variable " + passwordEnv
 	domainNameFlag          = "os-domain-name"
 	domainNameShortFlag     = "d"
 	domainNameEnv           = "OS_DOMAIN_NAME"
-	domainNameUsage         = "OTC domain name. Either provide this argument or set the environment variable " + domainNameEnv + "."
+	domainNameUsage         = "OTC domain name. Either provide this argument or set the environment variable " + domainNameEnv
 	overwriteTokenFlag      = "overwrite-token"
 	overwriteTokenShortFlag = "o"
 	//nolint:gosec // This is not a hardcoded credential but a help message with a filename inside
-	overwriteTokenUsage = "Overrides .otc-info file."
+	overwriteTokenUsage = "Overrides .otc-info file"
 	idpNameFlag         = "idp-name"
 	idpNameShortFlag    = "i"
 	idpNameEnv          = "IDP_NAME"
-	idpNameUsage        = "Required for authentication with IdP."
+	idpNameUsage        = "Required for authentication with IdP"
 	idpURLFlag          = "idp-url"
 	idpURLEnv           = "IDP_URL"
-	idpURLUsage         = "Required for authentication with IdP."
+	idpURLUsage         = "Required for authentication with IdP"
 	totpFlag            = "totp"
 	totpShortFlag       = "t"
-	totpUsage           = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id."
+	totpUsage           = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id"
 	userDomainIDFlag    = "os-user-domain-id"
 	userDomainIDEnv     = "OS_USER_DOMAIN_ID"
-	userDomainIDUsage   = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv + "."
+	userDomainIDUsage   = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv
 	regionFlag          = "region"
 	regionShortFlag     = "r"
 	regionEnv           = "REGION"
@@ -690,19 +698,22 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	clientSecretFlag                             = "client-secret"
 	clientSecretShortFlag                        = "s"
 	clientSecretUsage                            = "Secret ID as set on the IdP. Either provide this argument or set the environment variable " + clientSecretEnv
-	regionUsage                                  = "OTC region code. Either provide this argument or set the environment variable " + regionEnv + "."
+	regionUsage                                  = "OTC region code. Either provide this argument or set the environment variable " + regionEnv
 	projectNameFlag                              = "os-project-name"
 	projectNameShortFlag                         = "p"
 	projectNameEnv                               = "OS_PROJECT_NAME"
-	projectNameUsage                             = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv + "."
+	projectNameUsage                             = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv
 	clusterNameFlag                              = "cluster"
 	clusterNameShortFlag                         = "c"
 	clusterNameEnv                               = "CLUSTER_NAME"
-	clusterNameUsage                             = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv + "."
+	clusterNameUsage                             = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv
 	daysValidFlag                                = "days-valid"
 	daysValidDefaultValue                        = 7
 	daysValidShortFlag                           = "v"
-	daysValidUsage                               = "Period (in days) that the config will be valid."
+	daysValidUsage                               = "Period (in days) that the config will be valid"
+	serverFlag                                   = "server"
+	serverShortFlag                              = "s"
+	serverUsage                                  = "Override the server attribute in the kube config with the specified value"
 	targetLocationFlag                           = "target-location"
 	targetLocationShortFlag                      = "l"
 	targetLocationUsage                          = "Where the kube config should be saved"
@@ -714,10 +725,10 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	tempAccessTokenCreateCmdHelp                 = "Manage temporary AK/SK"
 	temporaryAccessTokenDurationSecondsFlag      = "duration-seconds"
 	temporaryAccessTokenDurationSecondsShortFlag = "t"
-	temporaryAccessTokenDurationSecondsUsage     = "The token's lifetime, in seconds. Valid times are between 900 and 86400 seconds."
+	temporaryAccessTokenDurationSecondsUsage     = "The token's lifetime, in seconds. Valid times are between 900 and 86400 seconds"
 	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
-	accessTokenTokenUsage                        = "The AK/SK token to delete."
+	accessTokenTokenUsage                        = "The AK/SK token to delete"
 	openstackConfigCreateConfigLocationFlag      = "config-location"
 	openstackConfigCreateConfigLocationShortFlag = "l"
-	openstackConfigCreateConfigLocationUsage     = "Where the config should be saved."
+	openstackConfigCreateConfigLocationUsage     = "Where the config should be saved"
 )

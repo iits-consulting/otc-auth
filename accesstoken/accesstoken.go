@@ -26,7 +26,7 @@ func CreateAccessToken(tokenDescription string) {
 			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
 			strings.Contains(string(notFound.Body), "Could not find user:") {
 			common.OutputErrorMessageToConsoleAndExit(
-				"fatal: cannot create permanent access token when logged in via OIDC or SAML.")
+				"fatal: cannot create permanent access token when logged in via OIDC or SAML")
 		} else {
 			common.OutputErrorToConsoleAndExit(err)
 		}
@@ -64,7 +64,7 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 	}
 
 	common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
-	log.Println("Access token file created successfully.")
+	log.Println("Access token file created successfully")
 	log.Println("Please source the ak-sk-env.sh file in the current directory manually")
 }
 
