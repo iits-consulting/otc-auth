@@ -713,7 +713,7 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	daysValidUsage                               = "Period (in days) that the config will be valid"
 	serverFlag                                   = "server"
 	serverShortFlag                              = "s"
-	serverUsage                                  = "Hostname or IP address of server to be added to the kube config"
+	serverUsage                                  = "Override the server attribute in the kube config with the specified value"
 	targetLocationFlag                           = "target-location"
 	targetLocationShortFlag                      = "l"
 	targetLocationUsage                          = "Where the kube config should be saved"
