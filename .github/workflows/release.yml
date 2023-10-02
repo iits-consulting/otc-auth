@@ -194,7 +194,7 @@ jobs:
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
           echo -e "[example-repo]\nname=Example Repo\nbaseurl=http://iits-consulting.github.io/rpm-repo/packages\nenabled=1\ngpgcheck=1\ngpgkey=http://iits-consulting.github.io/rpm-repo/KEY.gpg" > example.repo
           cd ~
-          echo -e " # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth RPM Repo \n This repo contains .deb files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n yum-config-manager --add-repo https://iits-consulting.github.io/rpm-repo.repo \n yum install -y hello-world \n \`\`\`" > README.md;
+          echo -e " # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth RPM Repo \n This repo contains .rpm files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n yum-config-manager --add-repo https://iits-consulting.github.io/rpm-repo.repo \n yum install -y hello-world \n \`\`\`" > README.md;
         env:
           GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
           GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
