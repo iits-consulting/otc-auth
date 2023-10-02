@@ -176,8 +176,7 @@ jobs:
 
       - name: Get dependencies
         run: |
-          dnf install rpm-sign -y
-
+          dnf install rpm-sign createrepo -y
 
       - name: Generate keys
         run: |
