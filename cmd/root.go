@@ -180,7 +180,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 			ClusterName:    clusterName,
 			DaysValid:      daysValidString,
 			TargetLocation: targetLocation,
-			Jumphost:       jumphost,
+			Server:         server,
 		}
 
 		cce.GetKubeConfig(kubeConfigParams)
@@ -383,11 +383,11 @@ func setupRootCmd() {
 		daysValidUsage,
 	)
 	cceGetKubeConfigCmd.Flags().StringVarP(
-		&jumphost,
-		jumphostFlag,
-		jumphostShortFlag,
+		&server,
+		serverFlag,
+		serverShortFlag,
 		"",
-		jumphostUsage)
+		serverUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(
 		&targetLocation,
 		targetLocationFlag,
@@ -480,7 +480,7 @@ var (
 	clusterName                         string
 	daysValid                           int
 	targetLocation                      string
-	jumphost                            string
+	server                              string
 	accessTokenCreateDescription        string
 	temporaryAccessTokenDurationSeconds int
 	token                               string
@@ -711,9 +711,9 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	daysValidDefaultValue                        = 7
 	daysValidShortFlag                           = "v"
 	daysValidUsage                               = "Period (in days) that the config will be valid"
-	jumphostFlag                                 = "jumphost"
-	jumphostShortFlag                            = "j"
-	jumphostUsage                                = "Hostname or IP address of jumphost to be added to the kube config"
+	serverFlag                                   = "server"
+	serverShortFlag                              = "s"
+	serverUsage                                  = "Hostname or IP address of server to be added to the kube config"
 	targetLocationFlag                           = "target-location"
 	targetLocationShortFlag                      = "l"
 	targetLocationUsage                          = "Where the kube config should be saved"

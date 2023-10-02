@@ -5,7 +5,7 @@ type KubeConfigParams struct {
 	ClusterName    string
 	DaysValid      string
 	TargetLocation string
-	Jumphost       string
+	Server         string
 }
 
 type KubeConfig struct {

@@ -52,10 +52,10 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	if configParams.Jumphost != "" {
+	if configParams.Server != "" {
 		kubeConfigBkp := kubeConfig
 		for idx := range kubeConfigBkp.Clusters {
-			kubeConfig.Clusters[idx].Server = configParams.Jumphost
+			kubeConfig.Clusters[idx].Server = configParams.Server
 		}
 	}
 
