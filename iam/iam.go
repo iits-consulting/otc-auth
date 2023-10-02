@@ -65,10 +65,10 @@ func GetScopedToken(projectName string) config.Token {
 		}
 	}
 
-	log.Println("attempting to request a scoped token.")
+	log.Println("attempting to request a scoped token")
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
-	log.Println("scoped token acquired successfully.")
+	log.Println("scoped token acquired successfully")
 	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	return project.ScopedToken
 }

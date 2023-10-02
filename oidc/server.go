@@ -68,7 +68,7 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 
 		idToken, ok := oauth2Token.Extra(idTokenField).(string)
 		if !ok {
-			http.Error(w, "No id_token field in oauth2 token.", http.StatusInternalServerError)
+			http.Error(w, "No id_token field in oauth2 token", http.StatusInternalServerError)
 			return
 		}
 		rawIDToken, err := idTokenVerifier.Verify(backgroundCtx, idToken)

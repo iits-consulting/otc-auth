@@ -20,7 +20,7 @@ func GetCloudCredentialsFromResponseOrThrow(response *http.Response) TokenRespon
 		if strings.Contains(responseString, "mfa totp code verify fail") {
 			OutputErrorMessageToConsoleAndExit(
 				"fatal: invalid otp unscopedToken.\n" +
-					"\nPlease try it again with a new otp unscopedToken.")
+					"\nPlease try it again with a new otp unscopedToken")
 		} else {
 			formattedError := ByteSliceToIndentedJSONFormat(bodyBytes)
 			OutputErrorMessageToConsoleAndExit(fmt.Sprintf(

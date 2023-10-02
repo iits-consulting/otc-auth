@@ -52,6 +52,17 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
+	if configParams.Jumphost != "" {
+		for idx, cluster := range kubeConfig.Clusters {
+			if strings.HasSuffix(idx, "-jumphost") {
+				continue
+			}
+			clusterJumphostName := fmt.Sprintf("%s-jumphost", idx)
+			kubeConfig.Clusters[clusterJumphostName] = cluster
+			kubeConfig.Clusters[clusterJumphostName].Server = configParams.Jumphost
+		}
+	}
+
 	filenameNewFile := "kubeConfig_new"
 	filenameCurrentFile := "kubeConfig_current"
 
