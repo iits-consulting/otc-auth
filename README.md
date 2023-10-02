@@ -21,7 +21,6 @@ This tool can also be used to manage (create) a pair of Access Key/ Secret Key i
 
 * [Demo](#demo)
 * [Install](#install)
-    * [Arch Linux](#arch-linux)
 * Usage
     * [Login](#login)
         * [Service Provider Login (IAM)](#service-provider-login-iam)
@@ -44,13 +43,13 @@ https://user-images.githubusercontent.com/19291722/208880256-b0da924e-254e-4bc4-
 
 ## Install
 
-You can download the binary for your system from
+We have repos set up
+for [Arch based distros](https://aur.archlinux.org/packages/otc-auth), [Debian based distros](https://github.com/iits-consulting/ppa), [Fedora-based distros](https://github.com/iits-consulting/rpm-repo)
+and [Alpine](https://github.com/iits-consulting/apk-repo).
+
+If your package manager isn't listed above, you can also download the binary for your system from
 the [releases page](https://github.com/iits-consulting/otc-auth/releases).
 Unpack the binary, add it to your PATH and you are good to go!
-
-### Arch Linux
-
-Users of Arch Linux may use the package published in the [AUR](https://aur.archlinux.org/packages/otc-auth)
 
 ## Login
 
