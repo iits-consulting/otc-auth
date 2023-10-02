@@ -54,10 +54,8 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 
 	if configParams.Jumphost != "" {
 		kubeConfigBkp := kubeConfig
-		for idx, cluster := range kubeConfigBkp.Clusters {
-			clusterJumphostName := fmt.Sprintf("%s-jumphost", idx)
-			kubeConfig.Clusters[clusterJumphostName] = cluster
-			kubeConfig.Clusters[clusterJumphostName].Server = configParams.Jumphost
+		for idx := range kubeConfigBkp.Clusters {
+			kubeConfig.Clusters[idx].Server = configParams.Jumphost
 		}
 	}
 
