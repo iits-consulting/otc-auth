@@ -183,7 +183,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 			Server:         server,
 		}
 
-		cce.GetKubeConfig(kubeConfigParams)
+		cce.GetKubeConfig(kubeConfigParams, printKubeConfig)
 	},
 }
 
@@ -374,6 +374,8 @@ func setupRootCmd() {
 
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
 	cceListCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
+	cceGetKubeConfigCmd.Flags().BoolVarP(&printKubeConfig, printKubeConfigFlag, printKubeConfigShortFlag,
+		false, printKubeConfigUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
 	cceGetKubeConfigCmd.Flags().IntVarP(
 		&daysValid,
@@ -486,6 +488,7 @@ var (
 	token                               string
 	openStackConfigLocation             string
 	skipTLS                             bool
+	printKubeConfig                     bool
 	clientSecret                        string
 	clientID                            string
 	oidcScopes                          []string
@@ -703,6 +706,9 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	projectNameShortFlag                         = "p"
 	projectNameEnv                               = "OS_PROJECT_NAME"
 	projectNameUsage                             = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv
+	printKubeConfigFlag                          = "output"
+	printKubeConfigShortFlag                     = "o"
+	printKubeConfigUsage                         = "Output fetched kube config to stdout instead of merging it with your existing kube config"
 	clusterNameFlag                              = "cluster"
 	clusterNameShortFlag                         = "c"
 	clusterNameEnv                               = "CLUSTER_NAME"
