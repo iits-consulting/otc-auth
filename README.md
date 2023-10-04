@@ -51,7 +51,7 @@ If your package manager isn't listed above, you can also download the binary for
 the [releases page](https://github.com/iits-consulting/otc-auth/releases).
 Unpack the binary, add it to your PATH and you are good to go!
 
-### MacOS
+#### MacOS
 
 ```shell
 curl -OL https://github.com/iits-consulting/otc-auth/releases/download/v2.0.6/otc-auth_Darwin_arm64.tar.gz && tar -xf otc-auth_Darwin_arm64.tar.gz
