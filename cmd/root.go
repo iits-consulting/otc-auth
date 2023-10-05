@@ -373,7 +373,6 @@ func setupRootCmd() {
 	cceCmd.AddCommand(cceListCmd)
 
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
-	cceListCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 	cceGetKubeConfigCmd.Flags().BoolVarP(&printKubeConfig, printKubeConfigFlag, printKubeConfigShortFlag,
 		false, printKubeConfigUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
@@ -397,7 +396,6 @@ func setupRootCmd() {
 		"~/.kube/config",
 		targetLocationUsage,
 	)
-	cceGetKubeConfigCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 
 	RootCmd.AddCommand(tempAccessTokenCmd)
 	tempAccessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
