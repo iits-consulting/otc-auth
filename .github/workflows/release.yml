@@ -216,8 +216,8 @@ jobs:
       - name: Get latest debs
         uses: robinraju/release-downloader@v1.8
         with:
-            latest: true
-            fileName: "*.deb"
+          latest: true
+          fileName: "*.deb"
 
       - name: Create PPA repo structure
         run: |
@@ -273,8 +273,8 @@ jobs:
       - name: Checkout brew repo
         uses: actions/checkout@v2
         with:
-            repository: 'iits-consulting/homebrew-tap'
-            ref: main
+          repository: 'iits-consulting/homebrew-tap'
+          ref: main
 
       - name: Update otc-auth Formula
         working-directory: homebrew-tap/Formula
