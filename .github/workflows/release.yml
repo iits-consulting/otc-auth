@@ -275,7 +275,6 @@ jobs:
         with:
           repository: 'iits-consulting/homebrew-tap'
           ref: main
-          fetch-depth: 0
       - name: Update otc-auth Formula
         working-directory: Formula
         run: |
@@ -289,7 +288,7 @@ jobs:
         env:
           SSH_DEPLOY_KEY: ${{ secrets.BREW_SSH_DEPLOY_KEY }}
         with:
-          source-directory: homebrew-tap/Formula
+          source-directory: Formula
           target-directory: Formula
           destination-github-username: 'iits-consulting'
           destination-repository-name: 'homebrew-tap'
