@@ -42,7 +42,7 @@ func GetClusterNames(projectName string) config.Clusters {
 func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeConfig bool) {
 	kubeConfig, err := getKubeConfig(configParams)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	if skipKubeTLS || configParams.Server != "" {
@@ -60,13 +60,13 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 	if printKubeConfig {
 		configBytes, errMarshal := json.Marshal(kubeConfig)
 		if errMarshal != nil {
-			common.OutputErrorToConsoleAndExit(errMarshal)
+			log.Fatal(errMarshal)
 		}
 		configBytes = append([]byte{'\n'}, configBytes...)
 		configBytes = append(configBytes, '\n', '\n')
 		_, errWriter := log.Writer().Write(configBytes)
 		if err != nil {
-			common.OutputErrorToConsoleAndExit(errWriter)
+			log.Fatal(errWriter)
 		}
 		log.Printf("Successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
@@ -121,7 +121,7 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams, cluste
 		kubeConfigParams.ClusterName, string(cert))
 	extractedCert, err := clientcmd.NewClientConfigFromBytes([]byte(certWithContext))
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	return extractedCert.RawConfig()
 }
