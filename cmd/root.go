@@ -183,7 +183,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 			Server:         server,
 		}
 
-		cce.GetKubeConfig(kubeConfigParams, skipKubeTLS)
+		cce.GetKubeConfig(kubeConfigParams, skipKubeTLS, printKubeConfig)
 	},
 }
 
@@ -373,7 +373,8 @@ func setupRootCmd() {
 	cceCmd.AddCommand(cceListCmd)
 
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
-	cceListCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
+	cceGetKubeConfigCmd.Flags().BoolVarP(&printKubeConfig, printKubeConfigFlag, printKubeConfigShortFlag,
+		false, printKubeConfigUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
 	cceGetKubeConfigCmd.Flags().BoolVarP(&skipKubeTLS, skipKubeTLSFlag, "", false, skipKubeTLSUsage)
 	cceGetKubeConfigCmd.Flags().IntVarP(
@@ -396,7 +397,6 @@ func setupRootCmd() {
 		"~/.kube/config",
 		targetLocationUsage,
 	)
-	cceGetKubeConfigCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 
 	RootCmd.AddCommand(tempAccessTokenCmd)
 	tempAccessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
@@ -488,6 +488,7 @@ var (
 	token                               string
 	openStackConfigLocation             string
 	skipTLS                             bool
+	printKubeConfig                     bool
 	clientSecret                        string
 	clientID                            string
 	oidcScopes                          []string
@@ -707,6 +708,9 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	projectNameShortFlag                         = "p"
 	projectNameEnv                               = "OS_PROJECT_NAME"
 	projectNameUsage                             = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv
+	printKubeConfigFlag                          = "output"
+	printKubeConfigShortFlag                     = "o"
+	printKubeConfigUsage                         = "Output fetched kube config to stdout instead of merging it with your existing kube config"
 	clusterNameFlag                              = "cluster"
 	clusterNameShortFlag                         = "c"
 	clusterNameEnv                               = "CLUSTER_NAME"

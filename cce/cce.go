@@ -57,9 +57,41 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool) {
 		}
 	}
 
-	mergeKubeConfig(configParams, kubeConfig)
+	kubeConfigContextData := addContextInformationToKubeConfig(configParams.ProjectName,
+		configParams.ClusterName, kubeConfigData)
 
-	log.Printf("Successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
+	clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(kubeConfigContextData))
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	kubeConfig, err := clientConfig.RawConfig()
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+
+	if configParams.Server != "" {
+		kubeConfigBkp := kubeConfig
+		for idx := range kubeConfigBkp.Clusters {
+			kubeConfig.Clusters[idx].Server = configParams.Server
+		}
+	}
+
+	if printKubeConfig {
+		configBytes, errMarshal := json.Marshal(kubeConfig)
+		if errMarshal != nil {
+			common.OutputErrorToConsoleAndExit(errMarshal)
+		}
+		configBytes = append([]byte{'\n'}, configBytes...)
+		configBytes = append(configBytes, '\n', '\n')
+		_, errWriter := log.Writer().Write(configBytes)
+		if err != nil {
+			common.OutputErrorToConsoleAndExit(errWriter)
+		}
+		log.Printf("Successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
+	} else {
+		mergeKubeConfig(configParams, kubeConfig)
+		log.Printf("Successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
+	}
 }
 
 func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {
