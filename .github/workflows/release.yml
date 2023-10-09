@@ -275,6 +275,7 @@ jobs:
         with:
           repository: 'iits-consulting/homebrew-tap'
           ref: main
+          fetch-depth: 0
       - name: Update otc-auth Formula
         working-directory: Formula
         run: |
