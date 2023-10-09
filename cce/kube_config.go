@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"otc-auth/common"
 	"otc-auth/config"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -21,16 +20,16 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster id: %s")
+		log.Fatalf("fatal: error receiving cluster id: %s", err)
 	}
 
 	response, err := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterID, kubeConfigParams.DaysValid)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	responseMarshalled, err := json.Marshal(response)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	return string(responseMarshalled)
 }
@@ -40,16 +39,16 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 		configParams.ClusterName, kubeConfigData)
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(kubeConfigContextData))
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	kubeConfig, err := clientConfig.RawConfig()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	if configParams.Server != "" {
@@ -64,11 +63,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 
 	err = clientcmd.WriteToFile(kubeConfig, filenameNewFile)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	err = clientcmd.WriteToFile(*currentConfig, filenameCurrentFile)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	loadingRules := clientcmd.ClientConfigLoadingRules{
@@ -77,11 +76,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
 
 	mergedConfig, err := loadingRules.Load()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	err = clientcmd.WriteToFile(*mergedConfig, determineTargetLocation(configParams.TargetLocation))
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	_ = os.RemoveAll(filenameNewFile)
@@ -93,7 +92,7 @@ func determineTargetLocation(targetLocation string) string {
 	if targetLocation != "" {
 		err := os.MkdirAll(filepath.Dir(targetLocation), os.ModePerm)
 		if err != nil {
-			common.OutputErrorMessageToConsoleAndExit(err.Error())
+			log.Fatal(err)
 		}
 		return targetLocation
 	}

@@ -148,7 +148,7 @@ var cceListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			common.OutputErrorMessageToConsoleAndExit(
+			log.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
 			)
 		}
@@ -164,7 +164,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			common.OutputErrorMessageToConsoleAndExit(
+			log.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
 			)
 		}
@@ -229,7 +229,7 @@ var accessTokenCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			common.OutputErrorMessageToConsoleAndExit(
+			log.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
@@ -243,13 +243,13 @@ var accessTokenListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			common.OutputErrorMessageToConsoleAndExit(
+			log.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
 		accessTokens, err2 := accesstoken.ListAccessToken()
 		if err2 != nil {
-			common.OutputErrorToConsoleAndExit(err2)
+			log.Fatal(err2)
 		}
 		if len(accessTokens) > 0 {
 			log.Println("\nAccess Tokens:")
@@ -275,16 +275,16 @@ var accessTokenDeleteCmd = &cobra.Command{
 		config.LoadCloudConfig(domainName)
 
 		if !config.IsAuthenticationValid() {
-			common.OutputErrorMessageToConsoleAndExit(
+			log.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
 		if token == "" {
-			common.OutputErrorMessageToConsoleAndExit("fatal: argument token cannot be empty")
+			log.Fatalf("fatal: argument token cannot be empty")
 		}
 		errDelete := accesstoken.DeleteAccessToken(token)
 		if errDelete != nil {
-			common.OutputErrorToConsoleAndExit(errDelete)
+			log.Fatal(errDelete)
 		}
 	},
 }

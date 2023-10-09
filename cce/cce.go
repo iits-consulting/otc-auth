@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
@@ -20,7 +19,7 @@ import (
 func GetClusterNames(projectName string) config.Clusters {
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	var clustersArr config.Clusters
@@ -75,17 +74,17 @@ func getClusterCertFromServiceProvider(projectName string, clusterID string, dur
 		TenantID:         project.ID,
 	})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	var expOpts clusters.ExpirationOpts
 	expOpts.Duration, err = strconv.Atoi(duration)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
 	var extractedCert KubeConfig
@@ -102,7 +101,7 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	var clusterArr config.Clusters

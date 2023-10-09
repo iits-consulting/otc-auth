@@ -25,18 +25,17 @@ func CreateAccessToken(tokenDescription string) {
 		if errors.As(err, &notFound) &&
 			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
 			strings.Contains(string(notFound.Body), "Could not find user:") {
-			common.OutputErrorMessageToConsoleAndExit(
+			log.Fatalf(
 				"fatal: cannot create permanent access token when logged in via OIDC or SAML")
-		} else {
-			common.OutputErrorToConsoleAndExit(err)
 		}
+		log.Fatal(err)
 	}
 	makeAccessFile(resp, nil)
 }
 
 func makeAccessFile(resp *credentials.Credential, tempResp *credentials.TemporaryCredential) {
 	if resp == nil && tempResp == nil {
-		common.OutputErrorMessageToConsoleAndExit("fatal: no temporary or permanent access keys to write")
+		log.Fatalf("fatal: no temporary or permanent access keys to write")
 	}
 	var accessKeyFileContent string
 	if resp != nil {

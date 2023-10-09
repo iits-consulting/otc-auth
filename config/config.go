@@ -35,7 +35,7 @@ func registerNewCloud(domainName string) Clouds {
 		},
 	}
 	if otcConfig.Clouds.ContainsCloud(newCloud.Domain.Name) {
-		common.OutputErrorMessageToConsoleAndExit(
+		log.Fatalf(
 			fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command",
 				newCloud.Domain.Name))
 
@@ -69,7 +69,7 @@ func IsAuthenticationValid() bool {
 func RemoveCloudConfig(domainName string) {
 	otcConfig := getOtcConfig()
 	if !otcConfig.Clouds.ContainsCloud(domainName) {
-		common.OutputErrorMessageToConsoleAndExit(
+		log.Fatalf(
 			fmt.Sprintf("fatal: cloud with name %s does not exist in the config file", domainName))
 	}
 
@@ -77,7 +77,7 @@ func RemoveCloudConfig(domainName string) {
 
 	_, err := fmt.Fprintf(os.Stdout, "Cloud %s deleted successfully", domainName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 }
 
@@ -108,9 +108,9 @@ func GetActiveCloudConfig() Cloud {
 	clouds := otcConfig.Clouds
 	cloud, _, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err,
+		log.Fatalf(
 			"fatal: %s.\n\nPlease use the cloud-config register or the cloud-config load command "+
-				"to set an active cloud configuration")
+				"to set an active cloud configuration", err)
 	}
 	return *cloud
 }
@@ -135,7 +135,7 @@ func getOtcConfig() OtcConfigContent {
 
 	err := json.Unmarshal([]byte(content), &otcConfig)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error deserializing json.\ntrace: %s")
+		log.Fatalf("fatal: error deserializing json.\ntrace: %s", err)
 	}
 	return otcConfig
 }
@@ -143,7 +143,7 @@ func getOtcConfig() OtcConfigContent {
 func GetHomeFolder() (homeFolder string) {
 	homeFolder, err := os.UserHomeDir()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error retrieving home directory.\ntrace: %s")
+		log.Fatalf("fatal: error retrieving home directory.\ntrace: %s", err)
 	}
 
 	return homeFolder
@@ -156,7 +156,7 @@ func createConfigFileWithCloudConfig(content OtcConfigContent) {
 func writeOtcConfigContentToFile(content OtcConfigContent) {
 	contentAsBytes, err := json.Marshal(content)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error encoding json.\ntrace: %s")
+		log.Fatalf("fatal: error encoding json.\ntrace: %s", err)
 	}
 
 	WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), path.Join(GetHomeFolder(), ".otc-auth-config"))
@@ -165,12 +165,12 @@ func writeOtcConfigContentToFile(content OtcConfigContent) {
 func readFileContent() string {
 	file, err := os.Open(path.Join(GetHomeFolder(), ".otc-auth-config"))
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error opening config file.\ntrace: %s")
+		log.Fatalf("fatal: error opening config file.\ntrace: %s", err)
 	}
 	defer func(file *os.File) {
 		errClose := file.Close()
 		if errClose != nil {
-			common.OutputErrorToConsoleAndExit(errClose, "fatal: error saving config file.\ntrace: %s")
+			log.Fatalf("fatal: error saving config file.\ntrace: %s", errClose)
 		}
 	}(file)
 
@@ -180,7 +180,7 @@ func readFileContent() string {
 		content += fileScanner.Text()
 	}
 	if errScanner := fileScanner.Err(); errScanner != nil {
-		common.OutputErrorToConsoleAndExit(errScanner, "fatal: error reading config file.\ntrace: %s")
+		log.Printf("fatal: error reading config file.\ntrace: %s", errScanner)
 	}
 
 	return content
@@ -189,17 +189,17 @@ func readFileContent() string {
 func WriteConfigFile(content string, configPath string) {
 	file, err := os.Create(configPath)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error reading config file.\ntrace: %s")
+		log.Fatalf("fatal: error reading config file.\ntrace: %s", err)
 	}
 
 	_, err = file.WriteString(content)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error writing to config file.\ntrace: %s")
+		log.Fatalf("fatal: error writing to config file.\ntrace: %s", err)
 	}
 
 	err = file.Close()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error saving config file.\ntrace: %s")
+		log.Fatalf("fatal: error saving config file.\ntrace: %s", err)
 	}
 }
 

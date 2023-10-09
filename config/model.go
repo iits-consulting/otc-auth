@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"otc-auth/common"
@@ -57,7 +58,7 @@ func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, er
 func (clouds *Clouds) GetActiveCloudIndex() int {
 	cloud, index, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil || cloud == nil || index == nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: invalid state %s")
+		log.Fatalf("fatal: invalid state %s", err)
 	}
 
 	return *index
@@ -101,9 +102,9 @@ func (projects Projects) FindProjectByName(name string) *Project {
 func (projects Projects) GetProjectByNameOrThrow(name string) Project {
 	project := projects.FindProjectByName(name)
 	if project == nil {
-		common.OutputErrorToConsoleAndExit(fmt.Errorf(
+		log.Fatalf(
 			"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
-				"get a list of projects", name))
+				"get a list of projects", name)
 	}
 	return *project
 }
@@ -141,9 +142,9 @@ func (clusters Clusters) GetClusterNames() []string {
 func (clusters Clusters) GetClusterByNameOrThrow(name string) Cluster {
 	cluster := clusters.FindClusterByName(name)
 	if cluster == nil {
-		common.OutputErrorToConsoleAndExit(fmt.Errorf(
+		log.Fatalf(
 			"fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve "+
-				"a list of clusters", name))
+				"a list of clusters", name)
 	}
 	return *cluster
 }

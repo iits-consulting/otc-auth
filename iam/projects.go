@@ -44,22 +44,22 @@ func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse)
 		TokenID:          cloud.UnscopedToken.Secret,
 	})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	projectsList, err := projects.List(client, projects.ListOpts{}).AllPages()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	projectsResponseMap := projectsList.GetBody()
 
 	err = json.Unmarshal(projectsResponseMap, &projectsResponse)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	return projectsResponse
