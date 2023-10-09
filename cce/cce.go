@@ -1,6 +1,7 @@
 package cce
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -39,7 +40,7 @@ func GetClusterNames(projectName string) config.Clusters {
 	return clustersArr
 }
 
-func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool) {
+func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeConfig bool) {
 	kubeConfig, err := getKubeConfig(configParams)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
@@ -54,25 +55,6 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool) {
 			if configParams.Server != "" {
 				kubeConfig.Clusters[idx].Server = configParams.Server
 			}
-		}
-	}
-
-	kubeConfigContextData := addContextInformationToKubeConfig(configParams.ProjectName,
-		configParams.ClusterName, kubeConfigData)
-
-	clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(kubeConfigContextData))
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	kubeConfig, err := clientConfig.RawConfig()
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-
-	if configParams.Server != "" {
-		kubeConfigBkp := kubeConfig
-		for idx := range kubeConfigBkp.Clusters {
-			kubeConfig.Clusters[idx].Server = configParams.Server
 		}
 	}
 
