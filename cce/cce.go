@@ -16,6 +16,7 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func GetClusterNames(projectName string) config.Clusters {
@@ -39,25 +40,21 @@ func GetClusterNames(projectName string) config.Clusters {
 	return clustersArr
 }
 
-func GetKubeConfig(configParams KubeConfigParams, printKubeConfig bool) {
-	kubeConfigData := getKubeConfig(configParams)
-
-	kubeConfigContextData := addContextInformationToKubeConfig(configParams.ProjectName,
-		configParams.ClusterName, kubeConfigData)
-
-	clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(kubeConfigContextData))
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	kubeConfig, err := clientConfig.RawConfig()
+func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeConfig bool) {
+	kubeConfig, err := getKubeConfig(configParams)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 
-	if configParams.Server != "" {
+	if skipKubeTLS || configParams.Server != "" {
 		kubeConfigBkp := kubeConfig
 		for idx := range kubeConfigBkp.Clusters {
-			kubeConfig.Clusters[idx].Server = configParams.Server
+			if skipKubeTLS {
+				kubeConfig.Clusters[idx].InsecureSkipTLSVerify = true
+			}
+			if configParams.Server != "" {
+				kubeConfig.Clusters[idx].Server = configParams.Server
+			}
 		}
 	}
 
@@ -98,8 +95,8 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	return clusters.List(client, clusters.ListOpts{})
 }
 
-func getClusterCertFromServiceProvider(projectName string, clusterID string, duration string) (KubeConfig, error) {
-	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams, clusterID string) (api.Config, error) {
+	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(kubeConfigParams.ProjectName)
 	cloud := config.GetActiveCloudConfig()
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
@@ -116,14 +113,18 @@ func getClusterCertFromServiceProvider(projectName string, clusterID string, dur
 	}
 
 	var expOpts clusters.ExpirationOpts
-	expOpts.Duration, err = strconv.Atoi(duration)
+	expOpts.Duration, err = strconv.Atoi(kubeConfigParams.DaysValid)
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
 	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
-	var extractedCert KubeConfig
-	err = json.Unmarshal(cert, &extractedCert)
-	return extractedCert, err
+	certWithContext := addContextInformationToKubeConfig(kubeConfigParams.ProjectName,
+		kubeConfigParams.ClusterName, string(cert))
+	extractedCert, err := clientcmd.NewClientConfigFromBytes([]byte(certWithContext))
+	if err != nil {
+		common.OutputErrorToConsoleAndExit(err)
+	}
+	return extractedCert.RawConfig()
 }
 
 func getClusterID(clusterName string, projectName string) (clusterID string, err error) {

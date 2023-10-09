@@ -1,7 +1,6 @@
 package cce
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -17,7 +16,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-func getKubeConfig(kubeConfigParams KubeConfigParams) string {
+func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 	log.Println("Getting kube config...")
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
@@ -25,28 +24,13 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster id: %s")
 	}
 
-	response, err := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterID, kubeConfigParams.DaysValid)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	responseMarshalled, err := json.Marshal(response)
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	return string(responseMarshalled)
+	return getClusterCertFromServiceProvider(kubeConfigParams, clusterID)
 }
 
 func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
-	}
-
-	if configParams.Server != "" {
-		kubeConfigBkp := kubeConfig
-		for idx := range kubeConfigBkp.Clusters {
-			kubeConfig.Clusters[idx].Server = configParams.Server
-		}
 	}
 
 	filenameNewFile := "kubeConfig_new"

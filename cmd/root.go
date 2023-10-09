@@ -183,7 +183,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 			Server:         server,
 		}
 
-		cce.GetKubeConfig(kubeConfigParams, printKubeConfig)
+		cce.GetKubeConfig(kubeConfigParams, skipKubeTLS, printKubeConfig)
 	},
 }
 
@@ -376,6 +376,7 @@ func setupRootCmd() {
 	cceGetKubeConfigCmd.Flags().BoolVarP(&printKubeConfig, printKubeConfigFlag, printKubeConfigShortFlag,
 		false, printKubeConfigUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
+	cceGetKubeConfigCmd.Flags().BoolVarP(&skipKubeTLS, skipKubeTLSFlag, "", false, skipKubeTLSUsage)
 	cceGetKubeConfigCmd.Flags().IntVarP(
 		&daysValid,
 		daysValidFlag,
@@ -476,6 +477,7 @@ var (
 	totp                                string
 	userDomainID                        string
 	region                              string
+	skipKubeTLS                         bool
 	projectName                         string
 	clusterName                         string
 	daysValid                           int
@@ -683,6 +685,8 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	userDomainIDEnv     = "OS_USER_DOMAIN_ID"
 	userDomainIDUsage   = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv
 	regionFlag          = "region"
+	skipKubeTLSFlag     = "skip-kube-tls"
+	skipKubeTLSUsage    = "Setting this adds the insecure-skip-tls-verify rule to the config for every cluster"
 	regionShortFlag     = "r"
 	regionEnv           = "REGION"
 	skipTLSEnv          = "SKIP_TLS_VERIFICATION"
