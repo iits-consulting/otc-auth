@@ -13,6 +13,7 @@ import (
 	"otc-auth/config"
 
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -35,19 +36,8 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 	return string(responseMarshalled)
 }
 
-func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
-	kubeConfigContextData := addContextInformationToKubeConfig(configParams.ProjectName,
-		configParams.ClusterName, kubeConfigData)
+func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-
-	clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(kubeConfigContextData))
-	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
-	}
-	kubeConfig, err := clientConfig.RawConfig()
 	if err != nil {
 		common.OutputErrorToConsoleAndExit(err)
 	}
