@@ -275,7 +275,7 @@ jobs:
         with:
           repository: 'iits-consulting/homebrew-tap'
           ref: main
-      - name: [Debug] Where are we?
+      - name: Print directory info
         run: |
           pwd
           ls -la .
