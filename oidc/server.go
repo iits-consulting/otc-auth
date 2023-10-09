@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -98,7 +99,7 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 
 	err := http.ListenAndServe(localhost, nil) //nolint:gosec,lll // Complains about not being able to set timeouts, but this function will be removed soon anyway
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, fmt.Sprintf("failed to start server at %s", localhost))
+		log.Fatalf("failed to start server at %s: %s", localhost, err)
 	}
 }
 
@@ -108,7 +109,7 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, params.IdpURL)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	oAuth2Config = oauth2.Config{
@@ -124,7 +125,7 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	return <-channel

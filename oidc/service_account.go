@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -36,7 +37,7 @@ type ServiceAccountResponse struct {
 func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) common.OidcCredentialsResponse {
 	idpTokenURL, err := url.JoinPath(params.IdpURL, "protocol/openid-connect/token")
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	request := createServiceAccountAuthenticateRequest(idpTokenURL, params.ClientID, params.ClientSecret)
 	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
@@ -45,7 +46,7 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) com
 	var result ServiceAccountResponse
 	err = json.Unmarshal(bodyBytes, &result)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	serviceAccountCreds := common.OidcCredentialsResponse{}

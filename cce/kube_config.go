@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"otc-auth/common"
 	"otc-auth/config"
 
 	"k8s.io/client-go/tools/clientcmd"
@@ -21,7 +20,7 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error receiving cluster id: %s")
+		log.Fatalf("fatal: error receiving cluster id: %s", err)
 	}
 
 	return getClusterCertFromServiceProvider(kubeConfigParams, clusterID)
@@ -30,7 +29,7 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	filenameNewFile := "kubeConfig_new"
@@ -38,11 +37,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 	err = clientcmd.WriteToFile(kubeConfig, filenameNewFile)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	err = clientcmd.WriteToFile(*currentConfig, filenameCurrentFile)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	loadingRules := clientcmd.ClientConfigLoadingRules{
@@ -51,11 +50,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 	mergedConfig, err := loadingRules.Load()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	err = clientcmd.WriteToFile(*mergedConfig, determineTargetLocation(configParams.TargetLocation))
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	_ = os.RemoveAll(filenameNewFile)
@@ -67,7 +66,7 @@ func determineTargetLocation(targetLocation string) string {
 	if targetLocation != "" {
 		err := os.MkdirAll(filepath.Dir(targetLocation), os.ModePerm)
 		if err != nil {
-			common.OutputErrorMessageToConsoleAndExit(err.Error())
+			log.Fatal(err)
 		}
 		return targetLocation
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"io"
+	"log"
 	"net/http"
 
 	"otc-auth/common"
@@ -23,7 +24,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) (to
 
 	err := xml.Unmarshal(bodyBytes, &assertionResult)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error deserializing xml.\ntrace: %s")
+		log.Fatalf("fatal: error deserializing xml.\ntrace: %s", err)
 	}
 
 	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
@@ -32,7 +33,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) (to
 	defer func(Body io.ReadCloser) {
 		errClose := Body.Close()
 		if errClose != nil {
-			common.OutputErrorToConsoleAndExit(errClose)
+			log.Fatal(errClose)
 		}
 	}(response.Body)
 

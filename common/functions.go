@@ -3,7 +3,6 @@ package common
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 )
@@ -16,45 +15,24 @@ func RemoveFromSliceAtIndex[T any](s []T, index int) []T {
 func WriteStringToFile(filepath string, content string) {
 	outputFile, err := os.Create(filepath)
 	if err != nil {
-		OutputErrorToConsoleAndExit(err, "fatal: error creating output file.\ntrace: %s")
+		log.Fatalf("fatal: error creating output file.\ntrace: %s", err)
 	}
 
 	_, err = outputFile.WriteString(content)
 	if err != nil {
-		OutputErrorToConsoleAndExit(err, "fatal: error writing to file.\ntrace: %s")
+		log.Fatalf("fatal: error writing to file.\ntrace: %s", err)
 	}
 	err = outputFile.Close()
 	if err != nil {
-		OutputErrorToConsoleAndExit(err, "fatal: error closing file.\ntrace: %s")
+		log.Fatalf("fatal: error closing file.\ntrace: %s", err)
 	}
-}
-
-func OutputErrorToConsoleAndExit(err error, errorMessage ...string) {
-	if errorMessage != nil {
-		_, errPrint := fmt.Fprintf(os.Stderr, errorMessage[0], err)
-		if errPrint != nil {
-			OutputErrorToConsoleAndExit(errPrint)
-		}
-	} else {
-		_, errPrint := fmt.Fprintf(os.Stderr, "fatal: %s", err)
-		if errPrint != nil {
-			OutputErrorToConsoleAndExit(errPrint)
-		}
-	}
-
-	os.Exit(1)
-}
-
-func OutputErrorMessageToConsoleAndExit(errorMessage string) {
-	log.Println(errorMessage)
-	os.Exit(1)
 }
 
 func ByteSliceToIndentedJSONFormat(biteSlice []byte) string {
 	var formattedJSON bytes.Buffer
 	err := json.Indent(&formattedJSON, biteSlice, "", "   ")
 	if err != nil {
-		OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	return formattedJSON.String()
 }
@@ -63,7 +41,7 @@ func DeserializeJSONForType[T any](data []byte) *T {
 	var pointer T
 	err := json.Unmarshal(data, &pointer)
 	if err != nil {
-		OutputErrorToConsoleAndExit(err, "fatal: error deserializing json.\ntrace: %s")
+		log.Fatalf("fatal: error deserializing json.\ntrace: %s", err)
 	}
 
 	return &pointer

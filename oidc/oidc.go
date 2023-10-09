@@ -3,6 +3,7 @@ package oidc
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -44,7 +45,7 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			common.OutputErrorToConsoleAndExit(err)
+			log.Fatal(err)
 		}
 	}(response.Body)
 	return tokenResponse

@@ -6,7 +6,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
@@ -50,7 +49,7 @@ func createOpenstackCloudConfig(project config.Project, domainName string, regio
 func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLocation string) {
 	contentAsBytes, err := yaml.Marshal(clouds)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err, "fatal: error encoding json.\ntrace: %s")
+		log.Fatalf("fatal: error encoding json.\ntrace: %s", err)
 	}
 
 	if openStackConfigFileLocation == "" {
@@ -58,7 +57,7 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 	}
 	mkDirError := os.MkdirAll(filepath.Dir(openStackConfigFileLocation), os.ModePerm)
 	if mkDirError != nil {
-		common.OutputErrorMessageToConsoleAndExit(err.Error())
+		log.Fatal(err)
 	}
 	config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
 

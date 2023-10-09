@@ -3,8 +3,7 @@ package endpoints
 import (
 	"errors"
 	"fmt"
-
-	"otc-auth/common"
+	"log"
 )
 
 const (
@@ -14,7 +13,7 @@ const (
 
 func BaseURLIam(region string) string {
 	if region == "" {
-		common.OutputErrorToConsoleAndExit(errors.New("empty region supplied, can't generate IAM URL"))
+		log.Fatal(errors.New("empty region supplied, can't generate IAM URL"))
 	}
 	return fmt.Sprintf("https://iam.%s.otc.t-systems.com:443", region)
 }

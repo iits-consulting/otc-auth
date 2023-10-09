@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
@@ -22,7 +21,7 @@ import (
 func GetClusterNames(projectName string) config.Clusters {
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	var clustersArr config.Clusters
@@ -43,7 +42,7 @@ func GetClusterNames(projectName string) config.Clusters {
 func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeConfig bool) {
 	kubeConfig, err := getKubeConfig(configParams)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	if skipKubeTLS || configParams.Server != "" {
@@ -61,13 +60,13 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 	if printKubeConfig {
 		configBytes, errMarshal := json.Marshal(kubeConfig)
 		if errMarshal != nil {
-			common.OutputErrorToConsoleAndExit(errMarshal)
+			log.Fatal(errMarshal)
 		}
 		configBytes = append([]byte{'\n'}, configBytes...)
 		configBytes = append(configBytes, '\n', '\n')
 		_, errWriter := log.Writer().Write(configBytes)
 		if err != nil {
-			common.OutputErrorToConsoleAndExit(errWriter)
+			log.Fatal(errWriter)
 		}
 		log.Printf("Successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
@@ -105,24 +104,24 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams, cluste
 		TenantID:         project.ID,
 	})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	var expOpts clusters.ExpirationOpts
 	expOpts.Duration, err = strconv.Atoi(kubeConfigParams.DaysValid)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
 	certWithContext := addContextInformationToKubeConfig(kubeConfigParams.ProjectName,
 		kubeConfigParams.ClusterName, string(cert))
 	extractedCert, err := clientcmd.NewClientConfigFromBytes([]byte(certWithContext))
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	return extractedCert.RawConfig()
 }
@@ -136,7 +135,7 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	var clusterArr config.Clusters

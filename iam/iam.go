@@ -2,7 +2,6 @@ package iam
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -28,12 +27,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	tokenResult := tokens.Create(client, &authOpts)
@@ -41,12 +40,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	var tokenMarshalledResult common.TokenResponse
 	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	token, err := tokenResult.ExtractToken()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	tokenMarshalledResult.Token.Secret = token.ID
 	return tokenMarshalledResult
@@ -86,16 +85,16 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	scopedToken, err := tokens.Create(client, &authOpts).ExtractToken()
 	if err != nil {
-		common.OutputErrorToConsoleAndExit(err)
+		log.Fatal(err)
 	}
 
 	token := config.Token{
@@ -104,10 +103,10 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 	}
 	index := cloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
-		common.OutputErrorToConsoleAndExit(
-			fmt.Errorf("fatal: project with name %s not found.\n"+
+		log.Fatalf(
+			"fatal: project with name %s not found.\n"+
 				"\nUse the cce list-projects command to get a list of projects",
-				projectName))
+			projectName)
 	}
 	cloud.Projects[*index].ScopedToken = token
 	return cloud
