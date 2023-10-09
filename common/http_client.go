@@ -28,9 +28,9 @@ func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
 func GetRequest(method string, url string, body io.Reader) *http.Request {
 	request, err := http.NewRequest(method, url, body) //nolint:noctx // This method will be removed soon anyway
 	if err != nil {
-		log.Fatalf(fmt.Sprintf(
+		log.Fatalf(
 			"fatal: error building %s request for url %s\ntrace: %s",
-			method, url, err.Error()))
+			method, url, err)
 	}
 
 	return request

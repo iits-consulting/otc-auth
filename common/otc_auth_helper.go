@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -24,9 +23,9 @@ func GetCloudCredentialsFromResponseOrThrow(response *http.Response) TokenRespon
 					"\nPlease try it again with a new otp unscopedToken")
 		}
 		formattedError := ByteSliceToIndentedJSONFormat(bodyBytes)
-		log.Fatalf(fmt.Sprintf(
+		log.Fatalf(
 			"fatal: response failed with status %s. Body:\n%s",
-			response.Status, formattedError))
+			response.Status, formattedError)
 	}
 
 	bodyBytes := GetBodyBytesFromResponse(response)

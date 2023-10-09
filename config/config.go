@@ -36,8 +36,8 @@ func registerNewCloud(domainName string) Clouds {
 	}
 	if otcConfig.Clouds.ContainsCloud(newCloud.Domain.Name) {
 		log.Fatalf(
-			fmt.Sprintf("warning: cloud with name %s already exists.\n\nUse the cloud-config load command",
-				newCloud.Domain.Name))
+			"warning: cloud with name %s already exists.\n\nUse the cloud-config load command",
+			newCloud.Domain.Name)
 
 		return nil
 	}
@@ -70,7 +70,7 @@ func RemoveCloudConfig(domainName string) {
 	otcConfig := getOtcConfig()
 	if !otcConfig.Clouds.ContainsCloud(domainName) {
 		log.Fatalf(
-			fmt.Sprintf("fatal: cloud with name %s does not exist in the config file", domainName))
+			"fatal: cloud with name %s does not exist in the config file", domainName)
 	}
 
 	removeCloudConfig(domainName)
