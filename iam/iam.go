@@ -2,7 +2,6 @@ package iam
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -104,10 +103,10 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 	}
 	index := cloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
-		log.Fatal(
-			fmt.Errorf("fatal: project with name %s not found.\n"+
+		log.Fatalf(
+			"fatal: project with name %s not found.\n"+
 				"\nUse the cce list-projects command to get a list of projects",
-				projectName))
+			projectName)
 	}
 	cloud.Projects[*index].ScopedToken = token
 	return cloud
