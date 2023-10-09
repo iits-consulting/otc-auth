@@ -280,9 +280,10 @@ jobs:
         working-directory: Formula
         run: |
           set -e
+          git fetch --tags
           latest_tag=$(git describe --tags --abbrev=0)
           revision=$(git rev-list -n 1 ${latest_tag})
-          echo -e 'class OtcAuth < Formula\n  desc "Open Source CLI for the Open Telekom Cloud written in go"\n  homepage "https://github.com/iits-consulting/otc-auth"\n  url "https://github.com/iits-consulting/otc-auth.git",\n      tag:      "${latest_tag}",\n     revision: "${revision}"\n  license "GPLv3"\n  head "https://github.com/iits-consulting/otc-auth.git", branch: "main"\n  depends_on "bash" => :build\n  depends_on "coreutils" => :build\n  depends_on "go" => :build\n  uses_from_macos "rsync" => :build\n  def install\n    system "go", "build", "-ldflags", "-X main.version=#{version} -X main.date=#{Date.today}"\n    bin.install "./otc-auth"\n  end\n  test do\n    run_output = shell_output("#{bin}/otc-auth version 2>&1")\n    assert run_output.start_with?("OTC-Auth #{version}")\n  end\nend' > otc-auth.rb
+          echo -e 'class OtcAuth < Formula\n  desc "Open Source CLI for the Open Telekom Cloud written in go"\n  homepage "https://github.com/iits-consulting/otc-auth"\n  url "https://github.com/iits-consulting/otc-auth.git",\n      tag:      "'${latest_tag}'",\n     revision: "'${revision}'"\n  license "GPLv3"\n  head "https://github.com/iits-consulting/otc-auth.git", branch: "main"\n  depends_on "bash" => :build\n  depends_on "coreutils" => :build\n  depends_on "go" => :build\n  uses_from_macos "rsync" => :build\n  def install\n    system "go", "build", "-ldflags", "-X main.version=#{version} -X main.date=#{Date.today}"\n    bin.install "./otc-auth"\n  end\n  test do\n    run_output = shell_output("#{bin}/otc-auth version 2>&1")\n    assert run_output.start_with?("OTC-Auth #{version}")\n  end\nend' > otc-auth.rb
 
       - name: Push to brew repo
         uses: cpina/github-action-push-to-another-repository@main
