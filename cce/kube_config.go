@@ -1,7 +1,6 @@
 package cce
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,10 +11,11 @@ import (
 	"otc-auth/config"
 
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 )
 
-func getKubeConfig(kubeConfigParams KubeConfigParams) string {
+func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 	log.Println("Getting kube config...")
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
@@ -23,39 +23,13 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) string {
 		log.Fatalf("fatal: error receiving cluster id: %s", err)
 	}
 
-	response, err := getClusterCertFromServiceProvider(kubeConfigParams.ProjectName, clusterID, kubeConfigParams.DaysValid)
-	if err != nil {
-		log.Fatal(err)
-	}
-	responseMarshalled, err := json.Marshal(response)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(responseMarshalled)
+	return getClusterCertFromServiceProvider(kubeConfigParams, clusterID)
 }
 
-func mergeKubeConfig(configParams KubeConfigParams, kubeConfigData string) {
-	kubeConfigContextData := addContextInformationToKubeConfig(configParams.ProjectName,
-		configParams.ClusterName, kubeConfigData)
+func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	clientConfig, err := clientcmd.NewClientConfigFromBytes([]byte(kubeConfigContextData))
-	if err != nil {
-		log.Fatal(err)
-	}
-	kubeConfig, err := clientConfig.RawConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if configParams.Server != "" {
-		kubeConfigBkp := kubeConfig
-		for idx := range kubeConfigBkp.Clusters {
-			kubeConfig.Clusters[idx].Server = configParams.Server
-		}
 	}
 
 	filenameNewFile := "kubeConfig_new"

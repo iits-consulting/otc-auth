@@ -153,7 +153,6 @@ jobs:
         uses: cpina/github-action-push-to-another-repository@main
         env:
           SSH_DEPLOY_KEY: ${{ secrets.APK_SSH_DEPLOY_KEY }}
-          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           source-directory: .
           destination-github-username: 'iits-consulting'
@@ -203,7 +202,6 @@ jobs:
         uses: cpina/github-action-push-to-another-repository@main
         env:
           SSH_DEPLOY_KEY: ${{ secrets.RPM_SSH_DEPLOY_KEY }}
-          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           source-directory: .
           destination-github-username: 'iits-consulting'
@@ -218,8 +216,8 @@ jobs:
       - name: Get latest debs
         uses: robinraju/release-downloader@v1.8
         with:
-            latest: true
-            fileName: "*.deb"
+          latest: true
+          fileName: "*.deb"
 
       - name: Create PPA repo structure
         run: |
@@ -261,11 +259,40 @@ jobs:
         uses: cpina/github-action-push-to-another-repository@main
         env:
           SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
-          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           source-directory: .
           destination-github-username: 'iits-consulting'
           destination-repository-name: 'ppa'
+          user-email: mweya.ruider@iits-consulting.de
+          target-branch: main
+
+  brew-publish:
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    steps:
+      - name: Checkout brew repo
+        uses: actions/checkout@v2
+        with:
+          repository: 'iits-consulting/homebrew-tap'
+          ref: main
+
+      - name: Update otc-auth Formula
+        working-directory: homebrew-tap/Formula
+        run: |
+          set -e
+          latest_tag=$(git describe --tags --abbrev=0)
+          revision=$(git rev-list -n 1 ${latest_tag})
+          echo -e 'class OtcAuth < Formula\n  desc "Open Source CLI for the Open Telekom Cloud written in go"\n  homepage "https://github.com/iits-consulting/otc-auth"\n  url "https://github.com/iits-consulting/otc-auth.git",\n      tag:      "${latest_tag}",\n     revision: "${revision}"\n  license "GPLv3"\n  head "https://github.com/iits-consulting/otc-auth.git", branch: "main"\n  depends_on "bash" => :build\n  depends_on "coreutils" => :build\n  depends_on "go" => :build\n  uses_from_macos "rsync" => :build\n  def install\n    system "go", "build", "-ldflags", "-X main.version=#{version} -X main.date=#{Date.today}"\n    bin.install "./otc-auth"\n  end\n  test do\n    run_output = shell_output("#{bin}/otc-auth version 2>&1")\n    assert run_output.start_with?("OTC-Auth #{version}")\n  end\nend' > otc-auth.rb
+
+      - name: Push to brew repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.BREW_SSH_DEPLOY_KEY }}
+        with:
+          source-directory: homebrew-tap/Formula
+          target-directory: Formula
+          destination-github-username: 'iits-consulting'
+          destination-repository-name: 'homebrew-tap'
           user-email: mweya.ruider@iits-consulting.de
           target-branch: main
 

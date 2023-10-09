@@ -183,7 +183,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 			Server:         server,
 		}
 
-		cce.GetKubeConfig(kubeConfigParams)
+		cce.GetKubeConfig(kubeConfigParams, skipKubeTLS, printKubeConfig)
 	},
 }
 
@@ -373,7 +373,10 @@ func setupRootCmd() {
 	cceCmd.AddCommand(cceListCmd)
 
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
+	cceGetKubeConfigCmd.Flags().BoolVarP(&printKubeConfig, printKubeConfigFlag, printKubeConfigShortFlag,
+		false, printKubeConfigUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
+	cceGetKubeConfigCmd.Flags().BoolVarP(&skipKubeTLS, skipKubeTLSFlag, "", false, skipKubeTLSUsage)
 	cceGetKubeConfigCmd.Flags().IntVarP(
 		&daysValid,
 		daysValidFlag,
@@ -474,6 +477,7 @@ var (
 	totp                                string
 	userDomainID                        string
 	region                              string
+	skipKubeTLS                         bool
 	projectName                         string
 	clusterName                         string
 	daysValid                           int
@@ -484,6 +488,7 @@ var (
 	token                               string
 	openStackConfigLocation             string
 	skipTLS                             bool
+	printKubeConfig                     bool
 	clientSecret                        string
 	clientID                            string
 	oidcScopes                          []string
@@ -680,6 +685,8 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	userDomainIDEnv     = "OS_USER_DOMAIN_ID"
 	userDomainIDUsage   = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv
 	regionFlag          = "region"
+	skipKubeTLSFlag     = "skip-kube-tls"
+	skipKubeTLSUsage    = "Setting this adds the insecure-skip-tls-verify rule to the config for every cluster"
 	regionShortFlag     = "r"
 	regionEnv           = "REGION"
 	skipTLSEnv          = "SKIP_TLS_VERIFICATION"
@@ -701,6 +708,9 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	projectNameShortFlag                         = "p"
 	projectNameEnv                               = "OS_PROJECT_NAME"
 	projectNameUsage                             = "Name of the project you want to access. Either provide this argument or set the environment variable " + projectNameEnv
+	printKubeConfigFlag                          = "output"
+	printKubeConfigShortFlag                     = "o"
+	printKubeConfigUsage                         = "Output fetched kube config to stdout instead of merging it with your existing kube config"
 	clusterNameFlag                              = "cluster"
 	clusterNameShortFlag                         = "c"
 	clusterNameEnv                               = "CLUSTER_NAME"

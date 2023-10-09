@@ -21,6 +21,9 @@ This tool can also be used to manage (create) a pair of Access Key/ Secret Key i
 
 * [Demo](#demo)
 * [Install](#install)
+    * [Linux/BSD/Unix](#linuxbsdunix)
+    * [Mac](#macos)
+    * [Windows/Other](#windowsother)
 * Usage
     * [Login](#login)
         * [Service Provider Login (IAM)](#service-provider-login-iam)
@@ -43,12 +46,32 @@ https://user-images.githubusercontent.com/19291722/208880256-b0da924e-254e-4bc4-
 
 ## Install
 
+### Linux/BSD/Unix
+
 We have repos set up
-for [Arch based distros](https://aur.archlinux.org/packages/otc-auth), [Debian based distros](https://github.com/iits-consulting/ppa), [Fedora-based distros](https://github.com/iits-consulting/rpm-repo)
+for [Arch](https://aur.archlinux.org/packages/otc-auth), [Debian](https://github.com/iits-consulting/ppa), [Fedora](https://github.com/iits-consulting/rpm-repo)
 and [Alpine](https://github.com/iits-consulting/apk-repo).
 
-If your package manager isn't listed above, you can also download the binary for your system from
-the [releases page](https://github.com/iits-consulting/otc-auth/releases).
+Alternatively, you can download and use the binaries from our [releases page](https://github.com/iits-consulting/otc-auth/releases). Remember to add it to your PATH! Replace {OTC_AUTH_VERSION} and {YOUR_PLATFORM} in the example below with the version you want to download and the platform you want to download it for.
+```shell
+curl -OL https://github.com/iits-consulting/otc-auth/releases/download/{OTC_AUTH_VERSION}/otc-auth_{YOUR_PLATFORM}.tar.gz
+tar -xf otc-auth_{YOUR_PLATFORM}.tar.gz
+sudo mv otc-auth /usr/local/bin/otc-auth                                                                                                                                                                                                                                                                            1
+```
+
+### MacOS
+We recommend using our [brew](https://brew.sh) tap to install otc-auth. 
+
+```shell
+brew tap iits-consulting/homebrew-tap
+brew install otc-auth
+```
+
+If you don't want to use brew, feel free to download the binary for your system from the [releases page](https://github.com/iits-consulting/otc-auth/releases). Remember to add it to your PATH!
+
+### Windows/Other
+
+Download the binary for your system from the [releases page](https://github.com/iits-consulting/otc-auth/releases).
 Unpack the binary, add it to your PATH and you are good to go!
 
 ## Login
