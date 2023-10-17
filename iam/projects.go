@@ -24,7 +24,7 @@ func GetProjectsInActiveCloud() config.Projects {
 	}
 
 	config.UpdateProjects(cloudProjects)
-	log.Printf("Projects for active cloud:\n%s \n", strings.Join(cloudProjects.GetProjectNames(), ",\n"))
+	log.Printf("info: projects for active cloud:\n%s \n", strings.Join(cloudProjects.GetProjectNames(), ",\n"))
 	return cloudProjects
 }
 
