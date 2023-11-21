@@ -1,7 +1,7 @@
 package config
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"time"
 
@@ -43,7 +43,7 @@ func (clouds *Clouds) SetActiveByName(name string) {
 
 func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, err error) {
 	if clouds.NumberOfActiveCloudConfigs() > 1 {
-		return nil, nil, fmt.Errorf("more than one cloud active")
+		return nil, nil, errors.New("more than one cloud active")
 	}
 
 	for index, cloud := range *clouds {
@@ -52,7 +52,7 @@ func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, er
 		}
 	}
 
-	return nil, nil, fmt.Errorf("no active cloud")
+	return nil, nil, errors.New("no active cloud")
 }
 
 func (clouds *Clouds) GetActiveCloudIndex() int {

@@ -22,7 +22,7 @@ func LoadCloudConfig(domainName string) {
 	otcConfig.Clouds = clouds
 	writeOtcConfigContentToFile(otcConfig)
 
-	log.Printf("Cloud %s loaded successfully and set to active.\n", domainName)
+	log.Printf("info: cloud %s loaded successfully and set to active.\n", domainName)
 }
 
 func registerNewCloud(domainName string) Clouds {
