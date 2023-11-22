@@ -256,3 +256,7 @@ they are aligned with the Open Stack environment variables (starting with OS).
 
 You install the auto completions for your shell by running. Please follow the instructions by
 running `otc-auth completion --help` in your terminal.
+
+
+
+otonatoinsaontoiantsst
