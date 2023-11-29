@@ -30,7 +30,7 @@ func createOpenstackCloudConfig(project config.Project, domainName string, regio
 	cloudName := domainName + "_" + projectName
 
 	authInfo := clientconfig.AuthInfo{
-		AuthURL:           endpoints.BaseURLIam(regionCode) + "/v3",
+		AuthURL:           endpoints.BaseURLIam(regionCode),
 		Token:             project.ScopedToken.Secret,
 		ProjectDomainName: projectName,
 	}

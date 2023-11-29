@@ -79,7 +79,7 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	cloud := config.GetActiveCloudConfig()
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
 		DomainID:         cloud.Domain.ID,
 		TokenID:          project.ScopedToken.Secret,
 		TenantID:         project.ID,
@@ -98,7 +98,7 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams, cluste
 	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(kubeConfigParams.ProjectName)
 	cloud := config.GetActiveCloudConfig()
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
 		DomainID:         cloud.Domain.ID,
 		TokenID:          project.ScopedToken.Secret,
 		TenantID:         project.ID,
