@@ -14,6 +14,8 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
 
+const v3 = "/v3"
+
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
 	authOpts := golangsdk.AuthOptions{
 		DomainName:       authInfo.DomainName,
@@ -64,10 +66,10 @@ func GetScopedToken(projectName string) config.Token {
 		}
 	}
 
-	log.Println("attempting to request a scoped token")
+	log.Printf("info: attempting to request a scoped token for %s\n", projectName)
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
-	log.Println("scoped token acquired successfully")
+	log.Println("info: scoped token acquired successfully")
 	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	return project.ScopedToken
 }

@@ -25,7 +25,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 		return
 	}
 
-	log.Println("Retrieving unscoped token for active cloud...")
+	log.Println("info: retrieving unscoped token for active cloud...")
 
 	var tokenResponse common.TokenResponse
 	switch authInfo.AuthType {
@@ -53,7 +53,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 	}
 	updateOTCInfoFile(tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()
-	log.Println("Successfully obtained unscoped token!")
+	log.Println("info: successfully obtained unscoped token!")
 }
 
 func createScopedTokenForEveryProject() {

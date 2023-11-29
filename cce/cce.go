@@ -34,7 +34,7 @@ func GetClusterNames(projectName string) config.Clusters {
 	}
 
 	config.UpdateClusters(clustersArr)
-	log.Printf("CCE Clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
+	log.Printf("info: CCE clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
 
 	return clustersArr
 }
@@ -68,10 +68,10 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		if err != nil {
 			log.Fatal(errWriter)
 		}
-		log.Printf("Successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
+		log.Printf("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
 		mergeKubeConfig(configParams, kubeConfig)
-		log.Printf("Successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
+		log.Printf("info: successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
 	}
 }
 
@@ -145,7 +145,7 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 			ID:   cluster.Metadata.Id,
 		})
 	}
-	log.Printf("Clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
+	log.Printf("info: clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
 
 	config.UpdateClusters(clusterArr)
 	cloud = config.GetActiveCloudConfig()

@@ -17,7 +17,7 @@ import (
 )
 
 func CreateAccessToken(tokenDescription string) {
-	log.Println("Creating access token file with GTC...")
+	log.Println("info: creating access token file with GTC...")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
 		// A 404 error is thrown when trying to create a permanent AK/SK when logged in with OIDC or SAML
@@ -63,12 +63,12 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 	}
 
 	common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
-	log.Println("Access token file created successfully")
-	log.Println("Please source the ak-sk-env.sh file in the current directory manually")
+	log.Println("info: access token file created successfully")
+	log.Println("info: please source the ak-sk-env.sh file in the current directory manually")
 }
 
 func CreateTemporaryAccessToken(durationSeconds int) error {
-	log.Println("Creating temporary access token file with GTC...")
+	log.Println("info: creating temporary access token file with GTC...")
 	resp, err := getTempAccessTokenFromServiceProvider(durationSeconds)
 	if err != nil {
 		return err
@@ -140,7 +140,7 @@ func handlePotentialLimitError(err error,
 
 		//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
 		if len(accessTokens) == 2 {
-			log.Printf("Hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
+			log.Printf("warning: hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
 			return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)
 		}
 		return nil, err

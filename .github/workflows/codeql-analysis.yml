@@ -17,6 +17,7 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-22.04
+    if: github.actor != 'dependabot[bot]'
 
     strategy:
       fail-fast: false
