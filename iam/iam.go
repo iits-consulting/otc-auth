@@ -14,8 +14,6 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
 
-const v3 = "/v3"
-
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
 	authOpts := golangsdk.AuthOptions{
 		DomainName:       authInfo.DomainName,
