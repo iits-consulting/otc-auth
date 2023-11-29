@@ -357,7 +357,7 @@ func setupRootCmd() {
 	loginIdpOidcCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 	loginIdpOidcCmd.Flags().StringVarP(&clientSecret, clientSecretFlag, clientSecretShortFlag, "", clientSecretUsage)
 	loginIdpOidcCmd.Flags().StringVarP(&clientID, clientIDFlag, clientIDShortFlag, "", clientIDUsage)
-	loginIdpOidcCmd.Flags().StringArrayVarP(&oidcScopes, oidcScopesFlag, oidcScopesShortFlag,
+	loginIdpOidcCmd.Flags().StringSliceVarP(&oidcScopes, oidcScopesFlag, oidcScopesShortFlag,
 		[]string{"openid"}, oidcScopesUsage)
 
 	loginCmd.AddCommand(loginRemoveCmd)
@@ -527,6 +527,7 @@ var (
 		regionFlag:       regionEnv,
 		clientIDFlag:     clientIDEnv,
 		clientSecretFlag: clientSecretEnv,
+		oidcScopesFlag:   oidcScopesEnv,
 	}
 
 	loginRemoveFlagToEnv = map[string]string{
