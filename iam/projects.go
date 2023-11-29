@@ -39,7 +39,7 @@ func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse)
 	log.Printf("info: fetching projects for cloud %s \n", cloud.Domain.Name)
 
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
 		DomainID:         cloud.Domain.ID,
 		TokenID:          cloud.UnscopedToken.Secret,
 	})

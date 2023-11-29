@@ -19,7 +19,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 		DomainName:       authInfo.DomainName,
 		Username:         authInfo.Username,
 		Password:         authInfo.Password,
-		IdentityEndpoint: endpoints.BaseURLIam(authInfo.Region) + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam(authInfo.Region),
 
 		Passcode: authInfo.Otp,
 		UserID:   authInfo.UserDomainID,
@@ -77,7 +77,7 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).ID
 
 	authOpts := golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region) + "/v3",
+		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
 		TokenID:          cloud.UnscopedToken.Secret,
 		TenantID:         projectID,
 		DomainName:       cloud.Domain.Name,
