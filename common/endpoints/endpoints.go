@@ -17,7 +17,7 @@ func BaseURLIam(region string) string {
 	}
 	switch region {
 	case "eu-ch2":
-		return fmt.Sprintf("https://iam-pub.eu-ch2.sc.otc.t-systems.com:443/v3")
+		return "https://iam-pub.eu-ch2.sc.otc.t-systems.com:443/v3"
 	default:
 		return fmt.Sprintf("https://iam.%s.otc.t-systems.com:443/v3", region)
 	}
