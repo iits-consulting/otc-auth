@@ -53,13 +53,19 @@ var loginIamCmd = &cobra.Command{
 	Example: loginIamCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIamFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
+		if totp != "" && username != "" {
+			log.Fatal("when using MFA (totp), the userID should be given, not the username")
+		}
+		if (userID != "" && username != "") || (userID == "" && username == "") {
+			log.Fatal("either the username or the userID must be set, not both")
+		}
 		authInfo := common.AuthInfo{
 			AuthType:      "iam",
 			Username:      username,
 			Password:      password,
 			DomainName:    domainName,
 			Otp:           totp,
-			UserDomainID:  userDomainID,
+			UserID:        userID,
 			OverwriteFile: overwriteToken,
 			Region:        region,
 		}
@@ -324,8 +330,7 @@ func setupRootCmd() {
 	loginIamCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
 	loginIamCmd.Flags().BoolVarP(&overwriteToken, overwriteTokenFlag, overwriteTokenShortFlag, false, overwriteTokenUsage)
 	loginIamCmd.Flags().StringVarP(&totp, totpFlag, totpShortFlag, "", totpUsage)
-	loginIamCmd.Flags().StringVarP(&userDomainID, userDomainIDFlag, "", "", userDomainIDUsage)
-	loginIamCmd.MarkFlagsRequiredTogether(totpFlag, userDomainIDFlag)
+	loginIamCmd.Flags().StringVarP(&userID, userIDFlag, "", "", userIDUsage)
 	loginIamCmd.Flags().StringVarP(&region, regionFlag, regionShortFlag, "", regionUsage)
 
 	loginCmd.AddCommand(loginIdpSamlCmd)
@@ -442,7 +447,6 @@ func setupRootCmd() {
 	)
 
 	cobra.CheckErr(errors.Join(
-		loginIamCmd.MarkFlagRequired(usernameFlag),
 		loginIamCmd.MarkFlagRequired(passwordFlag),
 		loginIamCmd.MarkFlagRequired(domainNameFlag),
 		loginIamCmd.MarkFlagRequired(regionFlag),
@@ -475,7 +479,7 @@ var (
 	idpName                             string
 	idpURL                              string
 	totp                                string
-	userDomainID                        string
+	userID                              string
 	region                              string
 	skipKubeTLS                         bool
 	projectName                         string
@@ -498,30 +502,30 @@ var (
 	}
 
 	loginIamFlagToEnv = map[string]string{
-		usernameFlag:     usernameEnv,
-		passwordFlag:     passwordEnv,
-		domainNameFlag:   domainNameEnv,
-		userDomainIDFlag: userDomainIDEnv,
-		idpNameFlag:      idpNameEnv,
-		idpURLFlag:       idpURLEnv,
-		regionFlag:       regionEnv,
+		usernameFlag:   usernameEnv,
+		passwordFlag:   passwordEnv,
+		domainNameFlag: domainNameEnv,
+		userIDFlag:     userIDEnv,
+		idpNameFlag:    idpNameEnv,
+		idpURLFlag:     idpURLEnv,
+		regionFlag:     regionEnv,
 	}
 
 	loginIdpSamlFlagToEnv = map[string]string{
-		usernameFlag:     usernameEnv,
-		passwordFlag:     passwordEnv,
-		domainNameFlag:   domainNameEnv,
-		userDomainIDFlag: userDomainIDEnv,
-		idpNameFlag:      idpNameEnv,
-		idpURLFlag:       idpURLEnv,
-		regionFlag:       regionEnv,
+		usernameFlag:   usernameEnv,
+		passwordFlag:   passwordEnv,
+		domainNameFlag: domainNameEnv,
+		userIDFlag:     userIDEnv,
+		idpNameFlag:    idpNameEnv,
+		idpURLFlag:     idpURLEnv,
+		regionFlag:     regionEnv,
 	}
 
 	loginIdpOidcFlagToEnv = map[string]string{
 		usernameFlag:     usernameEnv,
 		passwordFlag:     passwordEnv,
 		domainNameFlag:   domainNameEnv,
-		userDomainIDFlag: userDomainIDEnv,
+		userIDFlag:       userIDEnv,
 		idpNameFlag:      idpNameEnv,
 		idpURLFlag:       idpURLEnv,
 		regionFlag:       regionEnv,
@@ -531,7 +535,7 @@ var (
 	}
 
 	loginRemoveFlagToEnv = map[string]string{
-		userDomainIDFlag: userDomainIDEnv,
+		userIDFlag: userIDEnv,
 	}
 
 	cceFlagToEnv = map[string]string{
@@ -681,10 +685,10 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	idpURLUsage         = "Required for authentication with IdP"
 	totpFlag            = "totp"
 	totpShortFlag       = "t"
-	totpUsage           = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Required together with the user-domain-id"
-	userDomainIDFlag    = "os-user-domain-id"
-	userDomainIDEnv     = "OS_USER_DOMAIN_ID"
-	userDomainIDUsage   = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userDomainIDEnv
+	totpUsage           = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Needs to be used in conjunction with the " + userIDFlag + " flag or the " + userIDEnv + " environment variable"
+	userIDFlag          = "os-user-domain-id"
+	userIDEnv           = "OS_USER_DOMAIN_ID"
+	userIDUsage         = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userIDEnv
 	regionFlag          = "region"
 	skipKubeTLSFlag     = "skip-kube-tls"
 	skipKubeTLSUsage    = "Setting this adds the insecure-skip-tls-verify rule to the config for every cluster"

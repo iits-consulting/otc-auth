@@ -22,9 +22,8 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 		IdentityEndpoint: endpoints.BaseURLIam(authInfo.Region),
 
 		Passcode: authInfo.Otp,
-		UserID:   authInfo.UserDomainID,
+		UserID:   authInfo.UserID,
 	}
-
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
 		log.Fatal(err)
