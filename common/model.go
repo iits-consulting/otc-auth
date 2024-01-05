@@ -14,7 +14,7 @@ type AuthInfo struct {
 	AuthProtocol     string
 	DomainName       string
 	Otp              string
-	UserDomainID     string
+	UserID           string
 	ClientID         string
 	ClientSecret     string
 	OverwriteFile    bool
