@@ -15,7 +15,12 @@ func BaseURLIam(region string) string {
 	if region == "" {
 		log.Fatal(errors.New("empty region supplied, can't generate IAM URL"))
 	}
-	return fmt.Sprintf("https://iam.%s.otc.t-systems.com:443/v3", region)
+	switch region {
+	case "eu-ch2":
+		return "https://iam-pub.eu-ch2.sc.otc.t-systems.com:443/v3"
+	default:
+		return fmt.Sprintf("https://iam.%s.otc.t-systems.com:443/v3", region)
+	}
 }
 
 func IdentityProviders(identityProvider string, protocol string, region string) string {
