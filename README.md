@@ -90,11 +90,11 @@ otc-auth login iam --os-username <username> --os-password <password> --os-domain
 ```
 
 Additionally, it is possible to use MFA if needed. In this case, both
-arguments `--os-user-domain-id` and `--totp`, are required. The user id can be obtained in the "My Credentials" page on
-the OTC.
+arguments `--os-user-domain-id` and `--totp`, are required (with `--os-user-domain-id` replacing `--os-username`). 
+The user id can be obtained in the "My Credentials" page on the OTC.
 
 ```bash
-otc-auth login iam --os-username <username> --os-password <password> --os-domain-name <domain_name> --os-user-domain-id <user_domain_id> --totp <6_digit_token> --region <region>
+otc-auth login iam --os-password <password> --os-domain-name <domain_name> --os-user-domain-id <user_domain_id> --totp <6_digit_token> --region <region>
 ```
 
 The OTP Token is 6-digits long and refreshes every 30 seconds. For more information on MFA please refer to
