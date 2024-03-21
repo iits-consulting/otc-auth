@@ -33,7 +33,6 @@ func initializeConfig(cmd *cobra.Command, flagToEnvMapping map[string]string) er
 }
 
 func configureCmdFlagsAgainstEnvs(flagToEnvMapping map[string]string) func(*cobra.Command, []string) error {
-	//nolint:revive // args is used later
 	return func(cmd *cobra.Command, args []string) error {
 		return initializeConfig(cmd, flagToEnvMapping)
 	}
