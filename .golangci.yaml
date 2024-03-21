@@ -227,7 +227,6 @@ linters:
     - predeclared # finds code that shadows one of Go's predeclared identifiers
     - promlinter # checks Prometheus metrics naming via promlint
     - reassign # checks that package variables are not reassigned
-    - revive # fast, configurable, extensible, flexible, and beautiful linter for Go, drop-in replacement of golint
     - rowserrcheck # checks whether Err of rows is checked successfully
     - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed
     - stylecheck # is a replacement for golint
@@ -244,6 +243,7 @@ linters:
     - interfacebloat # checks the number of methods inside an interface
 
     ## you may want to enable
+    #- revive # fast, configurable, extensible, flexible, and beautiful linter for Go, drop-in replacement of golint
     #- musttag # enforces field tags in (un)marshaled structs
     #- exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
     #- gci # controls golang package import order and makes it always deterministic
