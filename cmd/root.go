@@ -52,6 +52,7 @@ var loginIamCmd = &cobra.Command{
 	Short:   loginIamCmdHelp,
 	Example: loginIamCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIamFlagToEnv),
+	//nolint:revive // cmd is used later
 	Run: func(cmd *cobra.Command, args []string) {
 		if totp != "" && username != "" {
 			log.Fatal("when using MFA (totp), the userID should be given, not the username")
@@ -78,6 +79,7 @@ var loginIdpSamlCmd = &cobra.Command{
 	Short:   loginIdpSamlCmdHelp,
 	Example: loginIdpSamlCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlFlagToEnv),
+	//nolint:revive // cmd is used later
 	Run: func(cmd *cobra.Command, args []string) {
 		authInfo := common.AuthInfo{
 			AuthType:      "idp",
@@ -99,6 +101,7 @@ var loginIdpOidcCmd = &cobra.Command{
 	Short:   loginIdpOidcCmdHelp,
 	Example: loginIdpOidcCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpOidcFlagToEnv),
+	//nolint:revive // cmd is used later
 	Run: func(cmd *cobra.Command, args []string) {
 		authInfo := common.AuthInfo{
 			AuthType:      "idp",
@@ -121,6 +124,7 @@ var loginRemoveCmd = &cobra.Command{
 	Short:   loginRemoveCmdHelp,
 	Example: loginRemoveCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginRemoveFlagToEnv),
+	//nolint:revive // cmd is used later
 	Run: func(cmd *cobra.Command, args []string) {
 		config.RemoveCloudConfig(domainName)
 	},
@@ -135,6 +139,7 @@ var projectsListCmd = &cobra.Command{
 	Use:     "list",
 	Short:   projectsListCmdHelp,
 	Example: projectsListCmdExample,
+	//nolint:revive // cmd is used later
 	Run: func(cmd *cobra.Command, args []string) {
 		iam.GetProjectsInActiveCloud()
 	},
@@ -151,6 +156,7 @@ var cceListCmd = &cobra.Command{
 	Short:   cceListCmdHelp,
 	Example: cceListCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(cceListFlagToEnv),
+	//nolint:revive // cmd is used later
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
@@ -167,6 +173,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 	Short:   cceGetKubeConfigCmdHelp,
 	Example: cceGetKubeConfigCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(cceGetKubeConfigFlagToEnv),
+	//nolint:revive // cmd is used later
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
@@ -203,6 +210,7 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 	Use:     "create",
 	Short:   tempAccessTokenCreateCmdHelp,
 	Example: tempAccessTokenCreateCmdExample,
+	//nolint:revive // cmd is used later
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {

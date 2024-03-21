@@ -28,6 +28,7 @@ import (
 var documentationCmd = &cobra.Command{
 	Use:   "documentation",
 	Short: "Generates markdown documentation",
+	//nolint:revive // args is used later
 	RunE: func(cmd *cobra.Command, args []string) error {
 		buf := bytes.NewBufferString("")
 		if err := cobradoc.WriteDocument(buf, cmd.Root(), cobradoc.Markdown, cobradoc.Options{}); err != nil {
