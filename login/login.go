@@ -1,13 +1,13 @@
 package login
 
 import (
-	"log"
-
 	"otc-auth/common"
 	"otc-auth/config"
 	"otc-auth/iam"
 	"otc-auth/oidc"
 	"otc-auth/saml"
+
+	"github.com/golang/glog"
 )
 
 const (
@@ -19,13 +19,13 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 	config.LoadCloudConfig(authInfo.DomainName)
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
-		log.Println(
+		glog.V(1).Info(
 			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
 				"\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
 		return
 	}
 
-	log.Println("info: retrieving unscoped token for active cloud...")
+	glog.V(1).Info("info: retrieving unscoped token for active cloud...")
 
 	var tokenResponse common.TokenResponse
 	switch authInfo.AuthType {
@@ -36,24 +36,24 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 		case protocolOIDC:
 			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 		default:
-			log.Fatalf(
+			glog.Fatalf(
 				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
 					"Please provide a valid argument and try again")
 		}
 	case "iam":
 		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
-		log.Fatalf(
+		glog.Fatalf(
 			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
 				"Please provide a valid argument and try again")
 	}
 
 	if tokenResponse.Token.Secret == "" {
-		log.Fatalf("Authorization did not succeed. Please try again")
+		glog.Fatalf("Authorization did not succeed. Please try again")
 	}
 	updateOTCInfoFile(tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()
-	log.Println("info: successfully obtained unscoped token!")
+	glog.V(1).Info("info: successfully obtained unscoped token!")
 }
 
 func createScopedTokenForEveryProject() {
@@ -65,7 +65,7 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
 	cloud := config.GetActiveCloudConfig()
 	if cloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
 		// Sanity check: we're in the same cloud as the active cloud
-		log.Fatalf("fatal: authorization made for wrong cloud configuration")
+		glog.Fatalf("fatal: authorization made for wrong cloud configuration")
 	}
 	cloud.Domain.ID = tokenResponse.Token.User.Domain.ID
 	if cloud.Username != tokenResponse.Token.User.Name {

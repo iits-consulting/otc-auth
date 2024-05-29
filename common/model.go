@@ -80,7 +80,7 @@ const SuccessPageHTML = `
             <p style="margin-top: .75rem">You can now close this window.</p>
         </div>
         <div class="text-center">
-            <img src="https://github.com/iits-consulting/otc-auth/blob/main/static/images/iits-logo-2021-red-square-xl.png?raw=true" width="250" style="padding: 2rem"/>
+            <img src="https://github.com/iits-consulting/otc-auth/blob/main/static/images/iits-2024.svg?raw=true" width="250" style="padding: 2rem"/>
         </div>
     </div>
     <div class="col"></div>

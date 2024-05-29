@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"time"
 
 	"otc-auth/common"
+
+	"github.com/golang/glog"
 )
 
 func LoadCloudConfig(domainName string) {
@@ -22,7 +23,7 @@ func LoadCloudConfig(domainName string) {
 	otcConfig.Clouds = clouds
 	writeOtcConfigContentToFile(otcConfig)
 
-	log.Printf("info: cloud %s loaded successfully and set to active.\n", domainName)
+	glog.V(1).Infof("info: cloud %s loaded successfully and set to active.\n", domainName)
 }
 
 func registerNewCloud(domainName string) Clouds {
@@ -35,7 +36,7 @@ func registerNewCloud(domainName string) Clouds {
 		},
 	}
 	if otcConfig.Clouds.ContainsCloud(newCloud.Domain.Name) {
-		log.Fatalf(
+		glog.Fatalf(
 			"warning: cloud with name %s already exists.\n\nUse the cloud-config load command",
 			newCloud.Domain.Name)
 
@@ -57,7 +58,7 @@ func IsAuthenticationValid() bool {
 	tokenExpirationDate := common.ParseTimeOrThrow(unscopedToken.ExpiresAt)
 	if tokenExpirationDate.After(time.Now()) {
 		// token still valid
-		log.Printf("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat))
+		glog.V(1).Infof("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat))
 
 		return true
 	}
@@ -69,7 +70,7 @@ func IsAuthenticationValid() bool {
 func RemoveCloudConfig(domainName string) {
 	otcConfig := getOtcConfig()
 	if !otcConfig.Clouds.ContainsCloud(domainName) {
-		log.Fatalf(
+		glog.Fatalf(
 			"fatal: cloud with name %s does not exist in the config file", domainName)
 	}
 
@@ -77,7 +78,7 @@ func RemoveCloudConfig(domainName string) {
 
 	_, err := fmt.Fprintf(os.Stdout, "Cloud %s deleted successfully", domainName)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 }
 
@@ -108,7 +109,7 @@ func GetActiveCloudConfig() Cloud {
 	clouds := otcConfig.Clouds
 	cloud, _, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil {
-		log.Fatalf(
+		glog.Fatalf(
 			"fatal: %s.\n\nPlease use the cloud-config register or the cloud-config load command "+
 				"to set an active cloud configuration", err)
 	}
@@ -127,7 +128,7 @@ func OtcConfigFileExists() bool {
 func getOtcConfig() OtcConfigContent {
 	if !OtcConfigFileExists() {
 		createConfigFileWithCloudConfig(OtcConfigContent{})
-		log.Println("info: cloud config created")
+		glog.V(1).Info("info: cloud config created")
 	}
 
 	var otcConfig OtcConfigContent
@@ -135,7 +136,7 @@ func getOtcConfig() OtcConfigContent {
 
 	err := json.Unmarshal([]byte(content), &otcConfig)
 	if err != nil {
-		log.Fatalf("fatal: error deserializing json.\ntrace: %s", err)
+		glog.Fatalf("fatal: error deserializing json.\ntrace: %s", err)
 	}
 	return otcConfig
 }
@@ -143,7 +144,7 @@ func getOtcConfig() OtcConfigContent {
 func GetHomeFolder() (homeFolder string) {
 	homeFolder, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatalf("fatal: error retrieving home directory.\ntrace: %s", err)
+		glog.Fatalf("fatal: error retrieving home directory.\ntrace: %s", err)
 	}
 
 	return homeFolder
@@ -156,7 +157,7 @@ func createConfigFileWithCloudConfig(content OtcConfigContent) {
 func writeOtcConfigContentToFile(content OtcConfigContent) {
 	contentAsBytes, err := json.Marshal(content)
 	if err != nil {
-		log.Fatalf("fatal: error encoding json.\ntrace: %s", err)
+		glog.Fatalf("fatal: error encoding json.\ntrace: %s", err)
 	}
 
 	WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), path.Join(GetHomeFolder(), ".otc-auth-config"))
@@ -165,12 +166,12 @@ func writeOtcConfigContentToFile(content OtcConfigContent) {
 func readFileContent() string {
 	file, err := os.Open(path.Join(GetHomeFolder(), ".otc-auth-config"))
 	if err != nil {
-		log.Fatalf("fatal: error opening config file.\ntrace: %s", err)
+		glog.Fatalf("fatal: error opening config file.\ntrace: %s", err)
 	}
 	defer func(file *os.File) {
 		errClose := file.Close()
 		if errClose != nil {
-			log.Fatalf("fatal: error saving config file.\ntrace: %s", errClose)
+			glog.Fatalf("fatal: error saving config file.\ntrace: %s", errClose)
 		}
 	}(file)
 
@@ -180,7 +181,7 @@ func readFileContent() string {
 		content += fileScanner.Text()
 	}
 	if errScanner := fileScanner.Err(); errScanner != nil {
-		log.Printf("fatal: error reading config file.\ntrace: %s", errScanner)
+		glog.Fatalf("fatal: error reading config file.\ntrace: %s", errScanner)
 	}
 
 	return content
@@ -189,17 +190,17 @@ func readFileContent() string {
 func WriteConfigFile(content string, configPath string) {
 	file, err := os.Create(configPath)
 	if err != nil {
-		log.Fatalf("fatal: error reading config file.\ntrace: %s", err)
+		glog.Fatalf("fatal: error reading config file.\ntrace: %s", err)
 	}
 
 	_, err = file.WriteString(content)
 	if err != nil {
-		log.Fatalf("fatal: error writing to config file.\ntrace: %s", err)
+		glog.Fatalf("fatal: error writing to config file.\ntrace: %s", err)
 	}
 
 	err = file.Close()
 	if err != nil {
-		log.Fatalf("fatal: error saving config file.\ntrace: %s", err)
+		glog.Fatalf("fatal: error saving config file.\ntrace: %s", err)
 	}
 }
 

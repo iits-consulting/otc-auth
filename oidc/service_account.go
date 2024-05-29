@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"otc-auth/common"
 
 	"github.com/go-http-utils/headers"
+	"github.com/golang/glog"
 )
 
 func createServiceAccountAuthenticateRequest(requestURL string, clientID string, clientSecret string) *http.Request {
@@ -37,7 +37,7 @@ type ServiceAccountResponse struct {
 func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) common.OidcCredentialsResponse {
 	idpTokenURL, err := url.JoinPath(params.IdpURL, "protocol/openid-connect/token")
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	request := createServiceAccountAuthenticateRequest(idpTokenURL, params.ClientID, params.ClientSecret)
 	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
@@ -46,7 +46,7 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) com
 	var result ServiceAccountResponse
 	err = json.Unmarshal(bodyBytes, &result)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	serviceAccountCreds := common.OidcCredentialsResponse{}
