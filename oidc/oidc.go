@@ -3,7 +3,6 @@ package oidc
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	"otc-auth/common/endpoints"
 
 	"github.com/go-http-utils/headers"
+	"github.com/golang/glog"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) common.TokenResponse {
@@ -45,7 +45,7 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			log.Fatal(err)
+			glog.Fatal(err)
 		}
 	}(response.Body)
 	return tokenResponse

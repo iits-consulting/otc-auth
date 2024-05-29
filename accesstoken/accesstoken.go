@@ -10,14 +10,15 @@ import (
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
+	"github.com/golang/glog"
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/credentials"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
 
-func CreateAccessToken(tokenDescription string) {
-	log.Println("info: creating access token file with GTC...")
+func CreateAccessToken(tokenDescription string, printAkSk bool) {
+	glog.V(1).Infof("info: creating access token file with GTC...")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
 		// A 404 error is thrown when trying to create a permanent AK/SK when logged in with OIDC or SAML
@@ -25,17 +26,17 @@ func CreateAccessToken(tokenDescription string) {
 		if errors.As(err, &notFound) &&
 			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
 			strings.Contains(string(notFound.Body), "Could not find user:") {
-			log.Fatalf(
+			glog.Fatalf(
 				"fatal: cannot create permanent access token when logged in via OIDC or SAML")
 		}
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
-	makeAccessFile(resp, nil)
+	makeAccessFile(resp, nil, printAkSk)
 }
 
-func makeAccessFile(resp *credentials.Credential, tempResp *credentials.TemporaryCredential) {
+func makeAccessFile(resp *credentials.Credential, tempResp *credentials.TemporaryCredential, printAkSk bool) {
 	if resp == nil && tempResp == nil {
-		log.Fatalf("fatal: no temporary or permanent access keys to write")
+		glog.Fatalf("fatal: no temporary or permanent access keys to write")
 	}
 	var accessKeyFileContent string
 	if resp != nil {
@@ -62,19 +63,26 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 			tempResp.SecurityToken)
 	}
 
-	common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
-	log.Println("info: access token file created successfully")
-	log.Println("info: please source the ak-sk-env.sh file in the current directory manually")
+	if printAkSk {
+		_, errWriter := log.Writer().Write(append([]byte(accessKeyFileContent), '\n'))
+		if errWriter != nil {
+			glog.Fatal(errWriter)
+		}
+	} else {
+		common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
+		glog.V(1).Info("info: access token file created successfully")
+		glog.V(1).Info("info: please source the ak-sk-env.sh file in the current directory manually")
+	}
 }
 
-func CreateTemporaryAccessToken(durationSeconds int) error {
-	log.Println("info: creating temporary access token file with GTC...")
+func CreateTemporaryAccessToken(durationSeconds int, printAkSk bool) error {
+	glog.V(1).Info("info: creating temporary access token file with GTC...")
 	resp, err := getTempAccessTokenFromServiceProvider(durationSeconds)
 	if err != nil {
 		return err
 	}
 
-	makeAccessFile(nil, resp)
+	makeAccessFile(nil, resp, printAkSk)
 	return nil
 }
 
@@ -102,7 +110,7 @@ func getTempAccessTokenFromServiceProvider(durationSeconds int) (*credentials.Te
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("warning: access key will only be valid until: %v (UTC)", tempCreds.ExpiresAt)
+	glog.Warningf("warning: access key will only be valid until: %v (UTC)", tempCreds.ExpiresAt)
 	return tempCreds, err
 }
 
@@ -140,7 +148,7 @@ func handlePotentialLimitError(err error,
 
 		//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
 		if len(accessTokens) == 2 {
-			log.Printf("warning: hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
+			glog.Warning("warning: hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
 			return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)
 		}
 		return nil, err

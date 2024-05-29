@@ -3,7 +3,8 @@ package endpoints
 import (
 	"errors"
 	"fmt"
-	"log"
+
+	"github.com/golang/glog"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 
 func BaseURLIam(region string) string {
 	if region == "" {
-		log.Fatal(errors.New("empty region supplied, can't generate IAM URL"))
+		glog.Fatal(errors.New("empty region supplied, can't generate IAM URL"))
 	}
 	switch region {
 	case "eu-ch2":

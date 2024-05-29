@@ -39,6 +39,7 @@ This tool can also be used to manage (create) a pair of Access Key/ Secret Key i
     * [Openstack Integration](#openstack-integration)
     * [Environment Variables](#environment-variables)
     * [Auto-Completions](#auto-completions)
+    * [Debugging](#debugging)
 
 ## Demo
 
@@ -256,3 +257,21 @@ they are aligned with the Open Stack environment variables (starting with OS).
 
 You install the auto completions for your shell by running. Please follow the instructions by
 running `otc-auth completion --help` in your terminal.
+
+## Debugging
+
+Is something not working the way you've expected? otc-auth uses [glog](https://pkg.go.dev/github.com/golang/glog) for logging with all info output at log-level 1.
+In the following example, we'd like to have the logs from the OIDC login command be saved to our current directory:
+
+```bash
+otc-auth login idp-oidc -v 1 --log_dir .
+```
+
+We could also just print the logs to stderr instead of writing them to a file:
+
+```bash
+otc-auth login idp-oidc -v 1 --logtostderr=true
+```
+
+The more advanced logging features (like logging to both a file and stderr, emitting a stack trace at a specific line, buffering log messages and more) 
+are described in the [glog documentation](https://pkg.go.dev/github.com/golang/glog#pkg-overview).

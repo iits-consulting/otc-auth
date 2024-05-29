@@ -3,7 +3,6 @@ package oidc
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-http-utils/headers"
+	"github.com/golang/glog"
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
@@ -99,7 +99,7 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 
 	err := http.ListenAndServe(localhost, nil) //nolint:gosec,lll // Complains about not being able to set timeouts, but this function will be removed soon anyway
 	if err != nil {
-		log.Fatalf("failed to start server at %s: %s", localhost, err)
+		glog.Fatalf("failed to start server at %s: %s", localhost, err)
 	}
 }
 
@@ -109,7 +109,7 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, params.IdpURL)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	oAuth2Config = oauth2.Config{
@@ -125,7 +125,7 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	return <-channel

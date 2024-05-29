@@ -2,7 +2,6 @@ package cce
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -10,17 +9,18 @@ import (
 
 	"otc-auth/config"
 
+	"github.com/golang/glog"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 )
 
 func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
-	log.Println("info: getting kube config...")
+	glog.V(1).Infof("info: getting kube config...")
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {
-		log.Fatalf("fatal: error receiving cluster id: %s", err)
+		glog.Fatalf("fatal: error receiving cluster id: %s", err)
 	}
 
 	return getClusterCertFromServiceProvider(kubeConfigParams, clusterID)
@@ -29,7 +29,7 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	filenameNewFile := "kubeConfig_new"
@@ -37,11 +37,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 	err = clientcmd.WriteToFile(kubeConfig, filenameNewFile)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	err = clientcmd.WriteToFile(*currentConfig, filenameCurrentFile)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	loadingRules := clientcmd.ClientConfigLoadingRules{
@@ -50,11 +50,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 	mergedConfig, err := loadingRules.Load()
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	err = clientcmd.WriteToFile(*mergedConfig, determineTargetLocation(configParams.TargetLocation))
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	_ = os.RemoveAll(filenameNewFile)
@@ -66,7 +66,7 @@ func determineTargetLocation(targetLocation string) string {
 	if targetLocation != "" {
 		err := os.MkdirAll(filepath.Dir(targetLocation), os.ModePerm)
 		if err != nil {
-			log.Fatal(err)
+			glog.Fatal(err)
 		}
 		return targetLocation
 	}

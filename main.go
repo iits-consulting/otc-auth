@@ -16,7 +16,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 package main
 
-import "otc-auth/cmd"
+import (
+	"otc-auth/cmd"
+
+	"github.com/golang/glog"
+)
 
 //nolint:gochecknoglobals // required to set the version and date by ldflags
 var (
@@ -25,6 +29,7 @@ var (
 )
 
 func main() {
+	defer glog.Flush()
 	cmd.SetVersionInfo(cmd.RootCmd, version, date)
 	cmd.Execute()
 }
