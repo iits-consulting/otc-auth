@@ -143,7 +143,7 @@ jobs:
       - name: Create repo structure
         run: |
           cp ~/.abuild/abuild.rsa.pub otc-auth.rsa.pub
-          echo -e "  # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n apk add curl \n curl -SsL -o /etc/apk/keys/otc-auth.rsa.pub https://iits-consulting.github.io/apk-repo otc-auth.rsa.pub \n apk add otc-auth --repository='https://iits-consulting.github.io/apk-repo' \`\`\`" > README.md;
+          echo -e "  # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n apk add curl \n curl -SsL -o /etc/apk/keys/otc-auth.rsa.pub https://iits-consulting.github.io/apk-repo otc-auth.rsa.pub \n apk add otc-auth --repository='https://iits-consulting.github.io/apk-repo' \n \`\`\`" > README.md;
 
       - name: Cleanup
         run: |
