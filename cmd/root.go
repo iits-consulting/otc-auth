@@ -394,7 +394,7 @@ func setupRootCmd() {
 	cceGetKubeConfigCmd.Flags().IntVarP(
 		&daysValid,
 		daysValidFlag,
-		daysValidShortFlag,
+		"",
 		daysValidDefaultValue,
 		daysValidUsage,
 	)
@@ -738,7 +738,6 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	clusterNameUsage                             = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv
 	daysValidFlag                                = "days-valid"
 	daysValidDefaultValue                        = 7
-	daysValidShortFlag                           = "v"
 	daysValidUsage                               = "Period (in days) that the config will be valid"
 	serverFlag                                   = "server"
 	serverShortFlag                              = "s"
