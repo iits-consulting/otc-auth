@@ -19,8 +19,9 @@ package cmd
 
 import (
 	"errors"
+	"flag"
+	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 
@@ -32,7 +33,9 @@ import (
 	"otc-auth/login"
 	"otc-auth/openstack"
 
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -54,10 +57,10 @@ var loginIamCmd = &cobra.Command{
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIamFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
 		if totp != "" && username != "" {
-			log.Fatal("when using MFA (totp), the userID should be given, not the username")
+			glog.Fatal("when using MFA (totp), the userID should be given, not the username")
 		}
 		if (userID != "" && username != "") || (userID == "" && username == "") {
-			log.Fatal("either the username or the userID must be set, not both")
+			glog.Fatal("either the username or the userID must be set, not both")
 		}
 		authInfo := common.AuthInfo{
 			AuthType:      "iam",
@@ -154,7 +157,7 @@ var cceListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			log.Fatalf(
+			glog.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
 			)
 		}
@@ -170,7 +173,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			log.Fatalf(
+			glog.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
 			)
 		}
@@ -214,7 +217,7 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 		if temporaryAccessTokenDurationSeconds < 900 || temporaryAccessTokenDurationSeconds > 86400 {
 			return errors.New("fatal: token duration must be between 900 and 86400 seconds (15m and 24h)")
 		}
-		err := accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds)
+		err := accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds, printAkSk)
 		if err != nil {
 			return err
 		}
@@ -235,11 +238,11 @@ var accessTokenCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			log.Fatalf(
+			glog.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
-		accesstoken.CreateAccessToken(accessTokenCreateDescription)
+		accesstoken.CreateAccessToken(accessTokenCreateDescription, printAkSk)
 	},
 }
 
@@ -249,26 +252,30 @@ var accessTokenListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			log.Fatalf(
+			glog.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
 		accessTokens, err2 := accesstoken.ListAccessToken()
 		if err2 != nil {
-			log.Fatal(err2)
+			glog.Fatal(err2)
 		}
 		if len(accessTokens) > 0 {
-			log.Println("\nAccess Tokens:")
+			output := "\nAccess Tokens:"
 			for _, aT := range accessTokens {
-				log.Printf("\nToken: \t\t%s\n"+
+				output += fmt.Sprintf("\nToken: \t\t%s\n"+
 					"Description: \t%s\n"+
 					"Created by: \t%s\n"+
 					"Last Used: \t%s\n"+
 					"Active: \t%s\n \n",
 					aT.AccessKey, aT.Description, aT.UserID, aT.LastUseTime, aT.Status)
 			}
+			_, err := log.Writer().Write([]byte(output))
+			if err != nil {
+				glog.Fatalf("fatal: couldn't write output: %v", err)
+			}
 		} else {
-			log.Println("No access-tokens found")
+			glog.V(1).Info("info: no access-tokens found")
 		}
 	},
 }
@@ -281,16 +288,16 @@ var accessTokenDeleteCmd = &cobra.Command{
 		config.LoadCloudConfig(domainName)
 
 		if !config.IsAuthenticationValid() {
-			log.Fatalf(
+			glog.Fatalf(
 				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
 		}
 
 		if token == "" {
-			log.Fatalf("fatal: argument token cannot be empty")
+			glog.Fatalf("fatal: argument token cannot be empty")
 		}
 		errDelete := accesstoken.DeleteAccessToken(token)
 		if errDelete != nil {
-			log.Fatal(errDelete)
+			glog.Fatal(errDelete)
 		}
 	},
 }
@@ -312,10 +319,12 @@ var openstackConfigCreateCmd = &cobra.Command{
 }
 
 func Execute() {
+	// Parse glog flags first
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	setupRootCmd()
 	err := RootCmd.Execute()
 	if err != nil {
-		os.Exit(1)
+		glog.Exitf("fatal: error executing root cmd: %v", err)
 	}
 }
 
@@ -385,7 +394,7 @@ func setupRootCmd() {
 	cceGetKubeConfigCmd.Flags().IntVarP(
 		&daysValid,
 		daysValidFlag,
-		daysValidShortFlag,
+		"",
 		daysValidDefaultValue,
 		daysValidUsage,
 	)
@@ -414,7 +423,8 @@ func setupRootCmd() {
 		15*60,
 		temporaryAccessTokenDurationSecondsUsage,
 	)
-
+	tempAccessTokenCreateCmd.Flags().BoolVarP(&printAkSk, printAkSkFlag, printAkSkShortFlag,
+		false, printAkSkUsage)
 	RootCmd.AddCommand(accessTokenCmd)
 	accessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
 	accessTokenCmd.AddCommand(accessTokenCreateCmd)
@@ -425,6 +435,8 @@ func setupRootCmd() {
 		"Token by otc-auth",
 		accessTokenDescriptionUsage,
 	)
+	accessTokenCreateCmd.Flags().BoolVarP(&printAkSk, printAkSkFlag, printAkSkShortFlag,
+		false, printAkSkUsage)
 
 	accessTokenCmd.AddCommand(accessTokenListCmd)
 	accessTokenCmd.AddCommand(accessTokenDeleteCmd)
@@ -496,6 +508,7 @@ var (
 	clientSecret                        string
 	clientID                            string
 	oidcScopes                          []string
+	printAkSk                           bool
 
 	rootFlagToEnv = map[string]string{
 		skipTLSFlag: skipTLSEnv,
@@ -716,13 +729,15 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	printKubeConfigFlag                          = "output"
 	printKubeConfigShortFlag                     = "o"
 	printKubeConfigUsage                         = "Output fetched kube config to stdout instead of merging it with your existing kube config"
+	printAkSkFlag                                = "output"
+	printAkSkShortFlag                           = "o"
+	printAkSkUsage                               = "Output contents of what would be written to ak-sk-env.sh to stdout instead"
 	clusterNameFlag                              = "cluster"
 	clusterNameShortFlag                         = "c"
 	clusterNameEnv                               = "CLUSTER_NAME"
 	clusterNameUsage                             = "Name of the clusterArg you want to access. Either provide this argument or set the environment variable " + clusterNameEnv
 	daysValidFlag                                = "days-valid"
 	daysValidDefaultValue                        = 7
-	daysValidShortFlag                           = "v"
 	daysValidUsage                               = "Period (in days) that the config will be valid"
 	serverFlag                                   = "server"
 	serverShortFlag                              = "s"

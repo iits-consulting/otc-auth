@@ -4,10 +4,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
+
+	"github.com/golang/glog"
 )
 
 func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
@@ -18,7 +19,7 @@ func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
 	httpClient := http.Client{Transport: tr}
 	response, err := httpClient.Do(request)
 	if err != nil {
-		log.Fatalf("fatal: error making a request %s", err)
+		glog.Fatalf("fatal: error making a request %s", err)
 	}
 
 	defer httpClient.CloseIdleConnections()
@@ -28,7 +29,7 @@ func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
 func GetRequest(method string, url string, body io.Reader) *http.Request {
 	request, err := http.NewRequest(method, url, body) //nolint:noctx // This method will be removed soon anyway
 	if err != nil {
-		log.Fatalf(
+		glog.Fatalf(
 			"fatal: error building %s request for url %s\ntrace: %s",
 			method, url, err)
 	}
@@ -42,7 +43,7 @@ func closeStreamCheckErr(body io.ReadCloser, err error) {
 		err = fmt.Errorf("fatal: %w\nfatal: error closing response body\n%w", err, errBodyClose)
 	}
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 }
 

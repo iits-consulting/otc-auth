@@ -143,7 +143,7 @@ jobs:
       - name: Create repo structure
         run: |
           cp ~/.abuild/abuild.rsa.pub otc-auth.rsa.pub
-          echo -e "  # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n apk add curl \n curl -SsL -o /etc/apk/keys/otc-auth.rsa.pub https://iits-consulting.github.io/apk-repo otc-auth.rsa.pub \n apk add otc-auth --repository='https://iits-consulting.github.io/apk-repo' \n \`\`\`" > README.md;
+          echo -e "  # <img src='https://github.com/iits-consulting/otc-auth/blob/main/static/images/iits-2024.svg' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n apk add curl \n curl -SsL -o /etc/apk/keys/otc-auth.rsa.pub https://iits-consulting.github.io/apk-repo otc-auth.rsa.pub \n apk add otc-auth --repository='https://iits-consulting.github.io/apk-repo' \n \`\`\`" > README.md;
 
       - name: Cleanup
         run: |
@@ -193,7 +193,7 @@ jobs:
           gpg --armor --export "mweya.ruider@iits-consulting.de" > KEY.gpg;
           cd ../../
           echo -e "[rpm-repo]\nname=otc-auth RPM repo\nbaseurl=http://iits-consulting.github.io/rpm-repo/packages\nenabled=1\ngpgcheck=1\ngpgkey=http://iits-consulting.github.io/rpm-repo/KEY.gpg" > rpm-repo.repo
-          echo -e " # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth RPM Repo \n This repo contains .rpm files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n yum-config-manager --add-repo https://iits-consulting.github.io/rpm-repo.repo \n yum install -y hello-world \n \`\`\`" > README.md;
+          echo -e " # <img src='https://github.com/iits-consulting/otc-auth/blob/main/static/images/iits-2024.svg' width="150"/> otc-auth RPM Repo \n This repo contains .rpm files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n yum-config-manager --add-repo https://iits-consulting.github.io/rpm-repo.repo \n yum install -y hello-world \n \`\`\`" > README.md;
         env:
           GPG_PPA_PRIV_KEY: ${{ secrets.GPG_PPA_PRIV_KEY }}
           GPG_PPA_PRIV_KEY_PASSPHRASE: ${{ secrets.GPG_PPA_PRIV_KEY_PASSPHRASE }}
@@ -225,7 +225,7 @@ jobs:
           gzip -k -f Packages;
           apt-ftparchive release . > Release;
           echo "deb [signed-by=/etc/apt/trusted.gpg.d/otc-auth_ppa.gpg] https://iits-consulting.github.io/ppa/debian ./" > otc-auth.list
-          echo -e " # <img src='https://iits-consulting.de/wp-content/uploads/2021/08/iits-logo-2021-red-square-xl.png' width="150"/> otc-auth PPA \n This repo (based on the one [here](https://github.com/assafmo/ppa)) contains .deb files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n sudo curl -SsL -o /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg https://iits-consulting.github.io/ppa/debian/KEY.gpg \n sudo curl -SsL -o /etc/apt/sources.list.d/otc-auth.list https://iits-consulting.github.io/ppa/debian/otc-auth.list \n cat /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg >/dev/null \n sudo apt update \n sudo apt install otc-auth \n \`\`\`" > README.md;
+          echo -e " # <img src='https://github.com/iits-consulting/otc-auth/blob/main/static/images/iits-2024.svg' width="150"/> otc-auth PPA \n This repo (based on the one [here](https://github.com/assafmo/ppa)) contains .deb files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n sudo curl -SsL -o /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg https://iits-consulting.github.io/ppa/debian/KEY.gpg \n sudo curl -SsL -o /etc/apt/sources.list.d/otc-auth.list https://iits-consulting.github.io/ppa/debian/otc-auth.list \n cat /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/otc-auth_ppa.gpg >/dev/null \n sudo apt update \n sudo apt install otc-auth \n \`\`\`" > README.md;
 
       - name: Generate keys
         run: |

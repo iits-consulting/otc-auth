@@ -2,13 +2,13 @@ package iam
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
+	"github.com/golang/glog"
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
@@ -26,12 +26,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	}
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	tokenResult := tokens.Create(client, &authOpts)
@@ -39,12 +39,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	var tokenMarshalledResult common.TokenResponse
 	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	token, err := tokenResult.ExtractToken()
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	tokenMarshalledResult.Token.Secret = token.ID
 	return tokenMarshalledResult
@@ -58,15 +58,15 @@ func GetScopedToken(projectName string) config.Token {
 
 		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
 		if tokenExpirationDate.After(time.Now()) {
-			log.Printf("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
+			glog.V(1).Infof("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
 			return token
 		}
 	}
 
-	log.Printf("info: attempting to request a scoped token for %s\n", projectName)
+	glog.V(1).Infof("info: attempting to request a scoped token for %s\n", projectName)
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
-	log.Println("info: scoped token acquired successfully")
+	glog.V(1).Info("info: scoped token acquired successfully")
 	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
 	return project.ScopedToken
 }
@@ -84,16 +84,16 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	scopedToken, err := tokens.Create(client, &authOpts).ExtractToken()
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	token := config.Token{
@@ -102,7 +102,7 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 	}
 	index := cloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
-		log.Fatalf(
+		glog.Fatalf(
 			"fatal: project with name %s not found.\n"+
 				"\nUse the cce list-projects command to get a list of projects",
 			projectName)

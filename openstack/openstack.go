@@ -1,7 +1,6 @@
 package openstack
 
 import (
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -9,6 +8,7 @@ import (
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
+	"github.com/golang/glog"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"gopkg.in/yaml.v2"
 )
@@ -49,7 +49,7 @@ func createOpenstackCloudConfig(project config.Project, domainName string, regio
 func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLocation string) {
 	contentAsBytes, err := yaml.Marshal(clouds)
 	if err != nil {
-		log.Fatalf("fatal: error encoding json.\ntrace: %s", err)
+		glog.Fatalf("fatal: error encoding json.\ntrace: %s", err)
 	}
 
 	if openStackConfigFileLocation == "" {
@@ -57,9 +57,9 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 	}
 	mkDirError := os.MkdirAll(filepath.Dir(openStackConfigFileLocation), os.ModePerm)
 	if mkDirError != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
 
-	log.Println("info: openstack clouds.yaml was updated")
+	glog.V(1).Info("info: openstack clouds.yaml was updated")
 }

@@ -11,6 +11,7 @@ import (
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
+	"github.com/golang/glog"
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
@@ -21,7 +22,7 @@ import (
 func GetClusterNames(projectName string) config.Clusters {
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	var clustersArr config.Clusters
@@ -34,7 +35,9 @@ func GetClusterNames(projectName string) config.Clusters {
 	}
 
 	config.UpdateClusters(clustersArr)
-	log.Printf("info: CCE clusters for project %s:\n%s", projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
+	glog.V(1).Infof(
+		"info: CCE clusters for project %s:\n%s",
+		projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
 
 	return clustersArr
 }
@@ -42,7 +45,7 @@ func GetClusterNames(projectName string) config.Clusters {
 func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeConfig bool) {
 	kubeConfig, err := getKubeConfig(configParams)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	if skipKubeTLS || configParams.Server != "" {
@@ -60,18 +63,18 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 	if printKubeConfig {
 		configBytes, errMarshal := json.Marshal(kubeConfig)
 		if errMarshal != nil {
-			log.Fatal(errMarshal)
+			glog.Fatal(errMarshal)
 		}
 		configBytes = append([]byte{'\n'}, configBytes...)
 		configBytes = append(configBytes, '\n', '\n')
 		_, errWriter := log.Writer().Write(configBytes)
 		if err != nil {
-			log.Fatal(errWriter)
+			glog.Fatal(errWriter)
 		}
-		log.Printf("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
+		glog.V(1).Info("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
 		mergeKubeConfig(configParams, kubeConfig)
-		log.Printf("info: successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
+		glog.V(1).Infof("info: successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
 	}
 }
 
@@ -104,24 +107,24 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams, cluste
 		TenantID:         project.ID,
 	})
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	var expOpts clusters.ExpirationOpts
 	expOpts.Duration, err = strconv.Atoi(kubeConfigParams.DaysValid)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
 	certWithContext := addContextInformationToKubeConfig(kubeConfigParams.ProjectName,
 		kubeConfigParams.ClusterName, string(cert))
 	extractedCert, err := clientcmd.NewClientConfigFromBytes([]byte(certWithContext))
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	return extractedCert.RawConfig()
 }
@@ -135,7 +138,7 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	var clusterArr config.Clusters
@@ -145,7 +148,7 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 			ID:   cluster.Metadata.Id,
 		})
 	}
-	log.Printf("info: clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
+	glog.V(1).Info("info: clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
 
 	config.UpdateClusters(clusterArr)
 	cloud = config.GetActiveCloudConfig()
