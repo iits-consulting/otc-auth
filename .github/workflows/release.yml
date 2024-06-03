@@ -138,7 +138,7 @@ jobs:
       - name: Make and sign apkindex
         run: |
           apk index -o APKINDEX.tar.gz *.apk
-          abuild-sign -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
+          abuild-sign -v -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
 
       - name: Create repo structure
         run: |
