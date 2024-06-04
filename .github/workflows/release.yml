@@ -129,7 +129,9 @@ jobs:
         run: |
           mkdir ~/.abuild
           echo "$APK_PACKAGE_RSA" > ~/.abuild/abuild.rsa
+          chmod 600 ~/.abuild/abuild.rsa
           openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
+          chmod 600 ~/.abuild/abuild.rsa.pub
           echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
           cp ~/.abuild/abuild.rsa.pub /etc/apk/keys/
         env:
