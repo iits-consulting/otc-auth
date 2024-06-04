@@ -124,7 +124,6 @@ jobs:
       - name: Install dependencies
         run: |
           apk add alpine-sdk openssl
-          apk fix --upgrade --allow-untrusted alpine-keys
 
       - name: Import keys
         run: |
@@ -139,7 +138,7 @@ jobs:
       - name: Make and sign apkindex
         run: |
           apk index -o APKINDEX.tar.gz *.apk
-          abuild-sign -v -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
+          abuild-sign -k ~/.abuild/abuild.rsa -p /etc/apk/keys/abuild.rsa.pub APKINDEX.tar.gz
 
       - name: Create repo structure
         run: |
