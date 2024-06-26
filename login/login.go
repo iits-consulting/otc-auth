@@ -21,7 +21,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
 		glog.V(1).Info(
 			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
-				"\nTo overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
+				"To overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
 		return
 	}
 

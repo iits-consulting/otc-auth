@@ -18,7 +18,7 @@ import (
 )
 
 func CreateAccessToken(tokenDescription string, printAkSk bool) {
-	glog.V(1).Infof("info: creating access token file with GTC...")
+	glog.V(1).Infof("info: creating access token file with GTC...\n")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
 		// A 404 error is thrown when trying to create a permanent AK/SK when logged in with OIDC or SAML
