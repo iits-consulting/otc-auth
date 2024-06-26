@@ -29,9 +29,10 @@ const (
 	localhost   = "localhost:8088"
 	redirectURL = "http://localhost:8088/oidc/auth"
 
-	queryState   = "state"
-	queryCode    = "code"
-	idTokenField = "id_token"
+	queryState             = "state"
+	queryCode              = "code"
+	idTokenField           = "id_token"
+	normalMaxIdTokenLength = 2300
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +72,9 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 		if !ok {
 			http.Error(w, "No id_token field in oauth2 token", http.StatusInternalServerError)
 			return
+		}
+		if len(idToken) > normalMaxIdTokenLength {
+			glog.Warningf("warning: id token longer than %d characters - consider removing some groups or roles", normalMaxIdTokenLength)
 		}
 		rawIDToken, err := idTokenVerifier.Verify(backgroundCtx, idToken)
 		if err != nil {
