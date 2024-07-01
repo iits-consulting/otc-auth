@@ -1,10 +1,9 @@
 package cce
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"os"
 	"strconv"
 	"strings"
 
@@ -61,15 +60,15 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 	}
 
 	if printKubeConfig {
-		configBytes, errMarshal := json.Marshal(kubeConfig)
+		// Create a configuration file in kubectl-compatible format
+		configBytes, errMarshal := clientcmd.Write(kubeConfig)
 		if errMarshal != nil {
 			glog.Fatal(errMarshal)
 		}
-		configBytes = append([]byte{'\n'}, configBytes...)
-		configBytes = append(configBytes, '\n', '\n')
-		_, errWriter := log.Writer().Write(configBytes)
+		// Output the YAML data to STDOUT, since STDERR already contains log messages
+		_, err = os.Stdout.Write(configBytes)
 		if err != nil {
-			glog.Fatal(errWriter)
+			glog.Fatal("Error writing YAML to STDOUT")
 		}
 		glog.V(1).Info("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
