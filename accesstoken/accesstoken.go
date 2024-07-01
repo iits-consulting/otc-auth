@@ -3,7 +3,7 @@ package accesstoken
 import (
 	"errors"
 	"fmt"
-	"log"
+	"os"
 	"strings"
 
 	"otc-auth/common"
@@ -64,9 +64,9 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 	}
 
 	if printAkSk {
-		_, errWriter := log.Writer().Write(append([]byte(accessKeyFileContent), '\n'))
-		if errWriter != nil {
-			glog.Fatal(errWriter)
+		_, err := os.Stdout.Write(append([]byte(accessKeyFileContent), '\n'))
+		if err != nil {
+			glog.Fatal(err)
 		}
 	} else {
 		common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
