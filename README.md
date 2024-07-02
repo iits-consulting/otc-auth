@@ -275,3 +275,5 @@ otc-auth login idp-oidc -v 1 --logtostderr=true
 
 The more advanced logging features (like logging to both a file and stderr, emitting a stack trace at a specific line, buffering log messages and more) 
 are described in the [glog documentation](https://pkg.go.dev/github.com/golang/glog#pkg-overview).
+
+Need a stacktrace? `-v 2` and higher will also print a stacktrace when something breaks.
