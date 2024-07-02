@@ -3,6 +3,7 @@ package saml
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -12,7 +13,6 @@ import (
 	header "otc-auth/common/xheaders"
 
 	"github.com/go-http-utils/headers"
-	"github.com/golang/glog"
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) (tokenResponse common.TokenResponse) {
@@ -24,7 +24,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) (to
 
 	err := xml.Unmarshal(bodyBytes, &assertionResult)
 	if err != nil {
-		glog.Fatalf("fatal: error deserializing xml.\ntrace: %s", err)
+		common.ThrowError(fmt.Errorf("fatal: error deserializing xml.\ntrace: %w", err))
 	}
 
 	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
@@ -33,7 +33,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) (to
 	defer func(Body io.ReadCloser) {
 		errClose := Body.Close()
 		if errClose != nil {
-			glog.Fatal(errClose)
+			common.ThrowError(errClose)
 		}
 	}(response.Body)
 

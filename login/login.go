@@ -1,6 +1,8 @@
 package login
 
 import (
+	"errors"
+
 	"otc-auth/common"
 	"otc-auth/config"
 	"otc-auth/iam"
@@ -36,20 +38,20 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
 		case protocolOIDC:
 			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 		default:
-			glog.Fatalf(
+			common.ThrowError(errors.New(
 				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
-					"Please provide a valid argument and try again")
+					"Please provide a valid argument and try again"))
 		}
 	case "iam":
 		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
 	default:
-		glog.Fatalf(
+		common.ThrowError(errors.New(
 			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
-				"Please provide a valid argument and try again")
+				"Please provide a valid argument and try again"))
 	}
 
 	if tokenResponse.Token.Secret == "" {
-		glog.Fatalf("Authorization did not succeed. Please try again")
+		common.ThrowError(errors.New("authorization did not succeed. please try again"))
 	}
 	updateOTCInfoFile(tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()
@@ -65,7 +67,7 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
 	cloud := config.GetActiveCloudConfig()
 	if cloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
 		// Sanity check: we're in the same cloud as the active cloud
-		glog.Fatalf("fatal: authorization made for wrong cloud configuration")
+		common.ThrowError(errors.New("fatal: authorization made for wrong cloud configuration"))
 	}
 	cloud.Domain.ID = tokenResponse.Token.User.Domain.ID
 	if cloud.Username != tokenResponse.Token.User.Name {

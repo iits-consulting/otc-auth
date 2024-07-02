@@ -2,11 +2,10 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"otc-auth/common"
-
-	"github.com/golang/glog"
 )
 
 type OtcConfigContent struct {
@@ -59,7 +58,7 @@ func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, er
 func (clouds *Clouds) GetActiveCloudIndex() int {
 	cloud, index, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil || cloud == nil || index == nil {
-		glog.Fatalf("fatal: invalid state %s", err)
+		common.ThrowError(fmt.Errorf("fatal: invalid state %w", err))
 	}
 
 	return *index
@@ -103,9 +102,10 @@ func (projects Projects) FindProjectByName(name string) *Project {
 func (projects Projects) GetProjectByNameOrThrow(name string) Project {
 	project := projects.FindProjectByName(name)
 	if project == nil {
-		glog.Fatalf(
-			"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
-				"get a list of projects", name)
+		common.ThrowError(
+			fmt.Errorf(
+				"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
+					"get a list of projects", name))
 	}
 	return *project
 }
@@ -143,9 +143,10 @@ func (clusters Clusters) GetClusterNames() []string {
 func (clusters Clusters) GetClusterByNameOrThrow(name string) Cluster {
 	cluster := clusters.FindClusterByName(name)
 	if cluster == nil {
-		glog.Fatalf(
-			"fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve "+
-				"a list of clusters", name)
+		common.ThrowError(
+			fmt.Errorf(
+				"fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve "+
+					"a list of clusters", name))
 	}
 	return *cluster
 }

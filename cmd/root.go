@@ -57,10 +57,10 @@ var loginIamCmd = &cobra.Command{
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIamFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
 		if totp != "" && username != "" {
-			glog.Fatal("when using MFA (totp), the userID should be given, not the username")
+			common.ThrowError(errors.New("when using MFA (totp), the userID should be given, not the username"))
 		}
 		if (userID != "" && username != "") || (userID == "" && username == "") {
-			glog.Fatal("either the username or the userID must be set, not both")
+			common.ThrowError(errors.New("either the username or the userID must be set, not both"))
 		}
 		authInfo := common.AuthInfo{
 			AuthType:      "iam",
@@ -157,9 +157,9 @@ var cceListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			glog.Fatalf(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
-			)
+			common.ThrowError(
+				errors.New("fatal: no valid unscoped token found." +
+					"\n\nPlease obtain an unscoped token by logging in first"))
 		}
 		cce.GetClusterNames(projectName)
 	},
@@ -173,9 +173,9 @@ var cceGetKubeConfigCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			glog.Fatalf(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first",
-			)
+			common.ThrowError(
+				errors.New("fatal: no valid unscoped token found." +
+					"\n\nPlease obtain an unscoped token by logging in first"))
 		}
 
 		daysValidString := strconv.Itoa(daysValid)
@@ -238,8 +238,9 @@ var accessTokenCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			glog.Fatalf(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
+			common.ThrowError(
+				errors.New(
+					"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first"))
 		}
 
 		accesstoken.CreateAccessToken(accessTokenCreateDescription, printAkSk)
@@ -252,13 +253,13 @@ var accessTokenListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config.LoadCloudConfig(domainName)
 		if !config.IsAuthenticationValid() {
-			glog.Fatalf(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
+			common.ThrowError(
+				errors.New("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first"))
 		}
 
-		accessTokens, err2 := accesstoken.ListAccessToken()
-		if err2 != nil {
-			glog.Fatal(err2)
+		accessTokens, errListToken := accesstoken.ListAccessToken()
+		if errListToken != nil {
+			common.ThrowError(errListToken)
 		}
 		if len(accessTokens) > 0 {
 			output := "\nAccess Tokens:"
@@ -272,7 +273,7 @@ var accessTokenListCmd = &cobra.Command{
 			}
 			_, err := log.Writer().Write([]byte(output))
 			if err != nil {
-				glog.Fatalf("fatal: couldn't write output: %v", err)
+				common.ThrowError(fmt.Errorf("fatal: couldn't write output: %w", err))
 			}
 		} else {
 			glog.V(1).Info("info: no access-tokens found")
@@ -288,16 +289,17 @@ var accessTokenDeleteCmd = &cobra.Command{
 		config.LoadCloudConfig(domainName)
 
 		if !config.IsAuthenticationValid() {
-			glog.Fatalf(
-				"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first")
+			common.ThrowError(
+				errors.New(
+					"fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first"))
 		}
 
 		if token == "" {
-			glog.Fatalf("fatal: argument token cannot be empty")
+			common.ThrowError(errors.New("fatal: argument token cannot be empty"))
 		}
 		errDelete := accesstoken.DeleteAccessToken(token)
 		if errDelete != nil {
-			glog.Fatal(errDelete)
+			common.ThrowError(errDelete)
 		}
 	},
 }

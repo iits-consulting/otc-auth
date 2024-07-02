@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"otc-auth/common"
 	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
@@ -21,7 +22,7 @@ import (
 func GetClusterNames(projectName string) config.Clusters {
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	var clustersArr config.Clusters
@@ -44,7 +45,7 @@ func GetClusterNames(projectName string) config.Clusters {
 func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeConfig bool) {
 	kubeConfig, err := getKubeConfig(configParams)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	if skipKubeTLS || configParams.Server != "" {
@@ -63,12 +64,12 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		// Create a configuration file in kubectl-compatible format
 		configBytes, errMarshal := clientcmd.Write(kubeConfig)
 		if errMarshal != nil {
-			glog.Fatal(errMarshal)
+			common.ThrowError(errMarshal)
 		}
 		// Output the YAML data to STDOUT, since STDERR already contains log messages
 		_, err = os.Stdout.Write(configBytes)
 		if err != nil {
-			glog.Fatal("Error writing YAML to STDOUT")
+			common.ThrowError(errors.New("error writing YAML to STDOUT"))
 		}
 		glog.V(1).Info("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
@@ -106,24 +107,24 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams, cluste
 		TenantID:         project.ID,
 	})
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	var expOpts clusters.ExpirationOpts
 	expOpts.Duration, err = strconv.Atoi(kubeConfigParams.DaysValid)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
 	certWithContext := addContextInformationToKubeConfig(kubeConfigParams.ProjectName,
 		kubeConfigParams.ClusterName, string(cert))
 	extractedCert, err := clientcmd.NewClientConfigFromBytes([]byte(certWithContext))
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	return extractedCert.RawConfig()
 }
@@ -137,7 +138,7 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	var clusterArr config.Clusters

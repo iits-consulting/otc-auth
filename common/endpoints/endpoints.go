@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang/glog"
+	"otc-auth/common"
 )
 
 const (
@@ -14,7 +14,7 @@ const (
 
 func BaseURLIam(region string) string {
 	if region == "" {
-		glog.Fatal(errors.New("empty region supplied, can't generate IAM URL"))
+		common.ThrowError(errors.New("empty region supplied, can't generate IAM URL"))
 	}
 	switch region {
 	case "eu-ch2":

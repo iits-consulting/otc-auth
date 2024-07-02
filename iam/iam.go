@@ -2,6 +2,7 @@ package iam
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"otc-auth/common"
@@ -26,12 +27,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	}
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	tokenResult := tokens.Create(client, &authOpts)
@@ -39,12 +40,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	var tokenMarshalledResult common.TokenResponse
 	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	token, err := tokenResult.ExtractToken()
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	tokenMarshalledResult.Token.Secret = token.ID
 	return tokenMarshalledResult
@@ -84,16 +85,16 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	scopedToken, err := tokens.Create(client, &authOpts).ExtractToken()
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	token := config.Token{
@@ -102,10 +103,10 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 	}
 	index := cloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
-		glog.Fatalf(
+		common.ThrowError(fmt.Errorf(
 			"fatal: project with name %s not found.\n"+
 				"\nUse the cce list-projects command to get a list of projects",
-			projectName)
+			projectName))
 	}
 	cloud.Projects[*index].ScopedToken = token
 	return cloud

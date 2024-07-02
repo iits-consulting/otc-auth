@@ -104,7 +104,7 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 
 	err := http.ListenAndServe(localhost, nil) //nolint:gosec,lll // Complains about not being able to set timeouts, but this function will be removed soon anyway
 	if err != nil {
-		glog.Fatalf("failed to start server at %s: %s", localhost, err)
+		common.ThrowError(fmt.Errorf("failed to start server at %s: %w", localhost, err))
 	}
 }
 
@@ -114,7 +114,7 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, params.IdpURL)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	oAuth2Config = oauth2.Config{
@@ -130,7 +130,7 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	return <-channel
