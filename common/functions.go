@@ -9,6 +9,8 @@ import (
 	"github.com/golang/glog"
 )
 
+const stacktraceLevel = 2
+
 func RemoveFromSliceAtIndex[T any](s []T, index int) []T {
 	s[index] = s[len(s)-1]
 	return s[:len(s)-1]
@@ -50,13 +52,12 @@ func DeserializeJSONForType[T any](data []byte) *T {
 }
 
 func ThrowError(err error) {
-	if glog.V(2) {
+	if glog.V(stacktraceLevel) {
 		// Also print stacktrace if verbosity is higher than 1
 		glog.Fatal(err)
 	} else {
 		glog.Error(err)
 		glog.Flush()
-		//nolint:gomnd // glog.Fatal() also uses 2
-		os.Exit(2)
+		os.Exit(2) //nolint:gomnd // glog.Fatal() also uses 2
 	}
 }
