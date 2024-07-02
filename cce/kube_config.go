@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"otc-auth/common"
 	"otc-auth/config"
 
 	"github.com/golang/glog"
@@ -20,7 +21,7 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {
-		glog.Fatalf("fatal: error receiving cluster id: %s", err)
+		common.ThrowError(fmt.Errorf("fatal: error receiving cluster id: %w", err))
 	}
 
 	return getClusterCertFromServiceProvider(kubeConfigParams, clusterID)
@@ -29,7 +30,7 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	filenameNewFile := "kubeConfig_new"
@@ -37,11 +38,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 	err = clientcmd.WriteToFile(kubeConfig, filenameNewFile)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	err = clientcmd.WriteToFile(*currentConfig, filenameCurrentFile)
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	loadingRules := clientcmd.ClientConfigLoadingRules{
@@ -50,11 +51,11 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 	mergedConfig, err := loadingRules.Load()
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	err = clientcmd.WriteToFile(*mergedConfig, determineTargetLocation(configParams.TargetLocation))
 	if err != nil {
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 
 	_ = os.RemoveAll(filenameNewFile)
@@ -66,7 +67,7 @@ func determineTargetLocation(targetLocation string) string {
 	if targetLocation != "" {
 		err := os.MkdirAll(filepath.Dir(targetLocation), os.ModePerm)
 		if err != nil {
-			glog.Fatal(err)
+			common.ThrowError(err)
 		}
 		return targetLocation
 	}

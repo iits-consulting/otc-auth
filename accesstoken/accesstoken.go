@@ -26,17 +26,17 @@ func CreateAccessToken(tokenDescription string, printAkSk bool) {
 		if errors.As(err, &notFound) &&
 			strings.Contains(notFound.URL, "OS-CREDENTIAL/credentials") &&
 			strings.Contains(string(notFound.Body), "Could not find user:") {
-			glog.Fatalf(
-				"fatal: cannot create permanent access token when logged in via OIDC or SAML")
+			common.ThrowError(errors.New(
+				"fatal: cannot create permanent access token when logged in via OIDC or SAML"))
 		}
-		glog.Fatal(err)
+		common.ThrowError(err)
 	}
 	makeAccessFile(resp, nil, printAkSk)
 }
 
 func makeAccessFile(resp *credentials.Credential, tempResp *credentials.TemporaryCredential, printAkSk bool) {
 	if resp == nil && tempResp == nil {
-		glog.Fatalf("fatal: no temporary or permanent access keys to write")
+		common.ThrowError(errors.New("fatal: no temporary or permanent access keys to write"))
 	}
 	var accessKeyFileContent string
 	if resp != nil {
@@ -66,7 +66,7 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 	if printAkSk {
 		_, err := os.Stdout.Write(append([]byte(accessKeyFileContent), '\n'))
 		if err != nil {
-			glog.Fatal(err)
+			common.ThrowError(err)
 		}
 	} else {
 		common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
