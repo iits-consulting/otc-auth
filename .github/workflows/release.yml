@@ -4,7 +4,6 @@ on:
     tags:
       - "*"
 jobs:
-
   goreleaser:
     runs-on: macos-13
     steps:
@@ -45,6 +44,14 @@ jobs:
         env:
           MAC_CERT_PASS: ${{ secrets.MAC_CERT_PASS }}
 
+      - name: Add APK Signing Key
+        run: |
+          mkdir -p ~/.abuild
+          echo "${{ secrets.APK_PACKAGE_RSA }}" > ~/.abuild/abuild.rsa
+          chmod 600 ~/.abuild/abuild.rsa
+        env:
+          APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3
         with:
@@ -53,6 +60,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTARYTOOL_PASS: ${{ secrets.NOTARYTOOL_PASS }}
+
+      - name: Remove APK key
+        run: rm -rf ~/.abuild
 
       - name: Read post build hook logs
         if: always()
