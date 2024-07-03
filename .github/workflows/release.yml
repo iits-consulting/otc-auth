@@ -108,7 +108,7 @@ jobs:
           # We simply imply that ref is always a valid tag for now.
           sed -e "s/__VERSION__/${GITHUB_REF_NAME}/" <PKGBUILD.template >PKGBUILD
       - name: Publish AUR package
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
         with:
           pkgname: otc-auth
           pkgbuild: ./PKGBUILD
@@ -116,7 +116,7 @@ jobs:
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Bump to ${{ github.github_ref_name }}"
-          ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
+          ssh_keyscan_types: rsa,ecdsa,ed25519
 
   apk-publish:
     runs-on: ubuntu-latest
