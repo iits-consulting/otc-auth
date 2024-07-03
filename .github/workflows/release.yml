@@ -46,10 +46,9 @@ jobs:
 
       - name: Add APK Signing Key
         run: |
-          mkdir -p ~/.abuild
-          echo "${{ secrets.APK_PACKAGE_RSA }}" > ~/.abuild/abuild.rsa
-          chmod 600 ~/.abuild/abuild.rsa
-          ls -l ~/.abuild/
+          echo "${{ secrets.APK_PACKAGE_RSA }}" > abuild.rsa
+          chmod 600 abuild.rsa
+          ls -l
         env:
           APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
 
@@ -63,7 +62,7 @@ jobs:
           NOTARYTOOL_PASS: ${{ secrets.NOTARYTOOL_PASS }}
 
       - name: Remove APK key
-        run: rm -rf ~/.abuild
+        run: rm -rf abuild.rsa
 
       - name: Read post build hook logs
         if: always()
