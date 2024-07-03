@@ -49,6 +49,7 @@ jobs:
           mkdir -p ~/.abuild
           echo "${{ secrets.APK_PACKAGE_RSA }}" > ~/.abuild/abuild.rsa
           chmod 600 ~/.abuild/abuild.rsa
+          ls -l ~/.abuild/
         env:
           APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
 
