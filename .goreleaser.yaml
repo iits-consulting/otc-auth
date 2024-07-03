@@ -60,3 +60,6 @@ nfpms:
       - deb
       - rpm
       - archlinux
+    apk:
+      signature:
+        key_file: ~/.abuild/abuild.rsa
