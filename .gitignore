@@ -333,3 +333,6 @@ tags
 
 /.run/
 /bin/
+
+# Potentially generated during CI
+*.rsa
