@@ -62,4 +62,4 @@ nfpms:
       - archlinux
     apk:
       signature:
-        key_file: ~/.abuild/abuild.rsa
+        key_file: abuild.rsa
