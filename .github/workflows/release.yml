@@ -4,7 +4,6 @@ on:
     tags:
       - "*"
 jobs:
-
   goreleaser:
     runs-on: macos-13
     steps:
@@ -134,6 +133,11 @@ jobs:
           cp ~/.abuild/abuild.rsa.pub /etc/apk/keys/
         env:
           APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
+
+      - name: Sign apks
+        run: |
+          abuild-sign -k ~/.abuild/abuild.rsa *.apk
+          apk verify *.apk
 
       - name: Make and sign apkindex
         run: |
