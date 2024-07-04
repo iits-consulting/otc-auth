@@ -338,6 +338,7 @@ jobs:
         with:
           repository: ${{github.repository}}.wiki
           path: markdown
+          ref: master
       - name: Push to wiki
         run: |
           cp -r generated-documentation.md markdown/
