@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
+func getKubeConfig(kubeConfigParams KubeConfigParams, alias string) (api.Config, error) {
 	glog.V(1).Infof("info: getting kube config...")
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
@@ -24,7 +24,7 @@ func getKubeConfig(kubeConfigParams KubeConfigParams) (api.Config, error) {
 		common.ThrowError(fmt.Errorf("fatal: error receiving cluster id: %w", err))
 	}
 
-	return getClusterCertFromServiceProvider(kubeConfigParams, clusterID)
+	return getClusterCertFromServiceProvider(kubeConfigParams, clusterID, alias)
 }
 
 func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
@@ -74,15 +74,20 @@ func determineTargetLocation(targetLocation string) string {
 	return defaultKubeConfigLocation
 }
 
-func addContextInformationToKubeConfig(projectName string, clusterName string, kubeConfigData string) string {
+func addContextInformationToKubeConfig(projectName string, clusterName string,
+	kubeConfigData string, alias string,
+) string {
 	cloud := config.GetActiveCloudConfig()
 
-	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internalCluster", fmt.Sprintf("%s/%s-intranet",
-		projectName, clusterName))
-	kubeConfigData = strings.ReplaceAll(kubeConfigData, "externalCluster", fmt.Sprintf("%s/%s", projectName, clusterName))
-	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internal", fmt.Sprintf("%s/%s-intranet", projectName,
-		clusterName))
-	kubeConfigData = strings.ReplaceAll(kubeConfigData, "external", fmt.Sprintf("%s/%s", projectName, clusterName))
+	if alias == "" {
+		alias = fmt.Sprintf("%s/%s", projectName, clusterName)
+	}
+
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internalCluster", fmt.Sprintf("%s-intranet",
+		alias))
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "externalCluster", alias)
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internal", fmt.Sprintf("%s-intranet", alias))
+	kubeConfigData = strings.ReplaceAll(kubeConfigData, "external", alias)
 	kubeConfigData = strings.ReplaceAll(kubeConfigData, ":\"user\"",
 		fmt.Sprintf(":\"%s-%s-%s\"", projectName, clusterName, cloud.Username))
 
