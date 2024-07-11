@@ -192,7 +192,7 @@ var cceGetKubeConfigCmd = &cobra.Command{
 			Server:         server,
 		}
 
-		cce.GetKubeConfig(kubeConfigParams, skipKubeTLS, printKubeConfig)
+		cce.GetKubeConfig(kubeConfigParams, skipKubeTLS, printKubeConfig, alias)
 	},
 }
 
@@ -391,6 +391,7 @@ func setupRootCmd() {
 	cceCmd.AddCommand(cceGetKubeConfigCmd)
 	cceGetKubeConfigCmd.Flags().BoolVarP(&printKubeConfig, printKubeConfigFlag, printKubeConfigShortFlag,
 		false, printKubeConfigUsage)
+	cceGetKubeConfigCmd.Flags().StringVarP(&alias, aliasFlag, aliasShortFlag, "", aliasUsage)
 	cceGetKubeConfigCmd.Flags().StringVarP(&clusterName, clusterNameFlag, clusterNameShortFlag, "", clusterNameUsage)
 	cceGetKubeConfigCmd.Flags().BoolVarP(&skipKubeTLS, skipKubeTLSFlag, "", false, skipKubeTLSUsage)
 	cceGetKubeConfigCmd.Flags().IntVarP(
@@ -507,6 +508,7 @@ var (
 	openStackConfigLocation             string
 	skipTLS                             bool
 	printKubeConfig                     bool
+	alias                               string
 	clientSecret                        string
 	clientID                            string
 	oidcScopes                          []string
@@ -705,6 +707,9 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	userIDEnv           = "OS_USER_DOMAIN_ID"
 	userIDUsage         = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userIDEnv
 	regionFlag          = "region"
+	aliasFlag           = "alias"
+	aliasShortFlag      = "a"
+	aliasUsage          = "Setting this changes the naming scheme for clusters in the Kube Config from {project name}/{cluster name} to the alias set"
 	skipKubeTLSFlag     = "skip-kube-tls"
 	skipKubeTLSUsage    = "Setting this adds the insecure-skip-tls-verify rule to the config for every cluster"
 	regionShortFlag     = "r"
