@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/gophercloud/utils v0.0.0-20230523080330-de873b9cf00d
 	github.com/opentelekomcloud/gophertelekomcloud v0.8.0
-	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
