@@ -53,7 +53,7 @@ jobs:
           APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: release --clean
