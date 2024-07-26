@@ -35,7 +35,7 @@ var documentationCmd = &cobra.Command{
 		}
 
 		documentation := "./generated-documentation.md"
-		return os.WriteFile(documentation, buf.Bytes(), 0o600) //nolint:mnd // These permissions are required
+		return os.WriteFile(documentation, buf.Bytes(), 0o600)
 	},
 }
 

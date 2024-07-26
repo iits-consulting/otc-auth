@@ -58,6 +58,6 @@ func ThrowError(err error) {
 	} else {
 		glog.Error(err)
 		glog.Flush()
-		os.Exit(2) //nolint:mnd // glog.Fatal() also uses 2
+		os.Exit(2)
 	}
 }
