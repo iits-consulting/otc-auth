@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gophercloud/utils/openstack/clientconfig"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
