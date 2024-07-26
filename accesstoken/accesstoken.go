@@ -146,7 +146,7 @@ func handlePotentialLimitError(err error,
 			return nil, listErr
 		}
 
-		//nolint:gomnd // The OpenTelekomCloud only lets users have up to two keys
+		//nolint:mnd // The OpenTelekomCloud only lets users have up to two keys
 		if len(accessTokens) == 2 {
 			glog.Warning("warning: hit the limit for access keys on OTC. You can only have 2. Removing keys made by otc-auth...")
 			return conditionallyReplaceAccessTokens(user, client, tokenDescription, accessTokens)

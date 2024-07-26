@@ -422,7 +422,7 @@ func setupRootCmd() {
 		&temporaryAccessTokenDurationSeconds,
 		temporaryAccessTokenDurationSecondsFlag,
 		temporaryAccessTokenDurationSecondsShortFlag,
-		//nolint:gomnd // default key pair lifetime is 15 minutes
+		//nolint:mnd // default key pair lifetime is 15 minutes
 		15*60,
 		temporaryAccessTokenDurationSecondsUsage,
 	)

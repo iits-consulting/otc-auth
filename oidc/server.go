@@ -42,7 +42,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	parts := strings.Split(rawAccessToken, " ")
-	if len(parts) != 2 { //nolint:gomnd // Bearer tokens need to be of the format "Bearer ey..."
+	if len(parts) != 2 { //nolint:mnd // Bearer tokens need to be of the format "Bearer ey..."
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
