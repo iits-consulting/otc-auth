@@ -39,7 +39,7 @@ jobs:
       - name: Build
         run: go build -v -o otc-auth .
       - name: Upload the built binary executable for testing
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: build
           path: otc-auth
