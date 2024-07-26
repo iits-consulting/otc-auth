@@ -126,7 +126,7 @@ jobs:
 
     steps:
       - name: Get latest apks
-        uses: robinraju/release-downloader@v1.8
+        uses: robinraju/release-downloader@v1.11
         with:
           latest: true
           fileName: "*.apk"
@@ -178,7 +178,7 @@ jobs:
 
     steps:
       - name: Get latest rpms
-        uses: robinraju/release-downloader@v1.8
+        uses: robinraju/release-downloader@v1.11
         with:
           latest: true
           fileName: "*.rpm"
@@ -224,7 +224,7 @@ jobs:
     needs: goreleaser
     steps:
       - name: Get latest debs
-        uses: robinraju/release-downloader@v1.8
+        uses: robinraju/release-downloader@v1.11
         with:
           latest: true
           fileName: "*.deb"
