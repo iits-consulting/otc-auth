@@ -197,6 +197,8 @@ github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjY
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/opentelekomcloud/gophertelekomcloud v0.8.0 h1:07sfUY2U4PROM5eYcAjGZsWT1AVUC3Rv7y87o5JWOSQ=
 github.com/opentelekomcloud/gophertelekomcloud v0.8.0/go.mod h1:9Deb3q2gJvq5dExV+aX+iO+G+mD9Zr9uFt+YY9ONmq0=
+github.com/opentelekomcloud/gophertelekomcloud v0.9.3 h1:zdttgRAWc4uHgJ3PX5hP8ulhT1VYBh2JeRsItNPp8dg=
+github.com/opentelekomcloud/gophertelekomcloud v0.9.3/go.mod h1:M1F6OfSRZRzAmAFKQqSLClX952at5hx5rHe4UTEykgg=
 github.com/pelletier/go-toml/v2 v2.1.0 h1:FnwAJ4oYMvbT/34k9zzHuZNrhlz48GB3/s6at6/MHO4=
 github.com/pelletier/go-toml/v2 v2.1.0/go.mod h1:tJU2Z3ZkXwnxa4DPO899bsyIoywizdUvyaeZurnPPDc=
 github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 h1:KoWmjvw+nsYOo29YJK9vDA65RGE3NrOnUtO7a+RF9HU=

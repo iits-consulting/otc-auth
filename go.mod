@@ -9,7 +9,7 @@ require (
 	github.com/golang/glog v1.2.1
 	github.com/google/uuid v1.3.1
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
-	github.com/opentelekomcloud/gophertelekomcloud v0.8.0
+	github.com/opentelekomcloud/gophertelekomcloud v0.9.3
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
