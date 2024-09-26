@@ -5,7 +5,7 @@ on:
 jobs:
   lint:
     name: Lint the otc-auth source code
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Setup Go environment
         uses: actions/setup-go@v5
@@ -21,7 +21,7 @@ jobs:
 
   build:
     name: Build the otc-auth
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Setup Go environment
         uses: actions/setup-go@v5
