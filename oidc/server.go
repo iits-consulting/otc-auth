@@ -3,8 +3,10 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"otc-auth/common"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
+	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 )
 
@@ -33,6 +36,9 @@ const (
 	queryCode              = "code"
 	idTokenField           = "id_token"
 	normalMaxIDTokenLength = 2300
+
+	rwTimeout   = 1 * time.Minute
+	idleTimeout = 2 * time.Minute
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -102,9 +108,24 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 		}
 	})
 
-	err := http.ListenAndServe(localhost, nil) //nolint:gosec,lll // Complains about not being able to set timeouts, but this function will be removed soon anyway
+	listener, err := net.Listen("tcp", localhost)
 	if err != nil {
-		common.ThrowError(fmt.Errorf("failed to start server at %s: %w", localhost, err))
+		common.ThrowError(
+			errors.Wrap(err,
+				fmt.Sprintf("can't listen on %s, something might already be using this port", localhost)))
+	}
+
+	server := &http.Server{
+		Handler:      nil,
+		ReadTimeout:  rwTimeout,
+		WriteTimeout: rwTimeout,
+		IdleTimeout:  idleTimeout,
+	}
+
+	err = server.Serve(listener)
+	if err != nil {
+		common.ThrowError(
+			fmt.Errorf("failed to start server at %s: %w", localhost, err))
 	}
 }
 
