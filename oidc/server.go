@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 
@@ -102,7 +103,12 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 		}
 	})
 
-	err := http.ListenAndServe(localhost, nil) //nolint:gosec,lll // Complains about not being able to set timeouts, but this function will be removed soon anyway
+	listener, err := net.Listen("tcp", localhost)
+	if err != nil {
+		common.ThrowError(fmt.Errorf("failed to listen on %s, something else might be using this port. thrown error: %v", localhost, err))
+	}
+
+	err = http.Serve(listener, nil)
 	if err != nil {
 		common.ThrowError(fmt.Errorf("failed to start server at %s: %w", localhost, err))
 	}
