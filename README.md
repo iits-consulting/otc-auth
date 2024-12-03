@@ -203,13 +203,13 @@ You can use the OTC-Auth tool to download permanent AK/SK pairs directly from th
 be created in the current directory. The file contains four environment variables.
 
 ```bash
-otc-auth access-token create --os-domain-name <os_domain_name> --region <region>
+otc-auth access-token create --os-domain-name <os_domain_name>
 ```
 
 If a temporary AK/SK pair is needed instead, use the following command:
 
 ```bash
-otc-auth temp-access-token create --os-domain-name <os_domain_name> --region <region> -t <lifetime in seconds>
+otc-auth temp-access-token create --os-domain-name <os_domain_name> -t <lifetime in seconds>
 ```
 
 This will generate a temporary AK/SK pair (valid for 15m by default, if the `-t` argument is not given), saved to "
