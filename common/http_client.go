@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -25,7 +26,7 @@ func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
 }
 
 func GetRequest(method string, url string, body io.Reader) *http.Request {
-	request, err := http.NewRequest(method, url, body) //nolint:noctx // This method will be removed soon anyway
+	request, err := http.NewRequestWithContext(context.Background(), method, url, body)
 	if err != nil {
 		ThrowError(fmt.Errorf(
 			"fatal: error building %s request for url %s\ntrace: %w",
