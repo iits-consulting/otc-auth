@@ -104,16 +104,17 @@ var loginIdpOidcCmd = &cobra.Command{
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpOidcFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
 		authInfo := common.AuthInfo{
-			AuthType:      "idp",
-			ClientID:      clientID,
-			ClientSecret:  clientSecret,
-			DomainName:    domainName,
-			IdpName:       idpName,
-			IdpURL:        idpURL,
-			AuthProtocol:  "oidc",
-			OverwriteFile: overwriteToken,
-			Region:        region,
-			OidcScopes:    oidcScopes,
+			AuthType:         "idp",
+			ClientID:         clientID,
+			ClientSecret:     clientSecret,
+			DomainName:       domainName,
+			IdpName:          idpName,
+			IdpURL:           idpURL,
+			AuthProtocol:     "oidc",
+			OverwriteFile:    overwriteToken,
+			Region:           region,
+			OidcScopes:       oidcScopes,
+			IsServiceAccount: isServiceAccount,
 		}
 		login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
 	},
@@ -375,6 +376,8 @@ func setupRootCmd() {
 	loginIdpOidcCmd.Flags().StringVarP(&clientID, clientIDFlag, clientIDShortFlag, "", clientIDUsage)
 	loginIdpOidcCmd.Flags().StringSliceVarP(&oidcScopes, oidcScopesFlag, oidcScopesShortFlag,
 		[]string{"openid"}, oidcScopesUsage)
+	loginIdpOidcCmd.Flags().BoolVarP(&isServiceAccount, isServiceAccountFlag, isServiceAccountShortFlag, false,
+		isServiceAccountUsage)
 
 	loginCmd.AddCommand(loginRemoveCmd)
 	loginRemoveCmd.Flags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
@@ -513,6 +516,7 @@ var (
 	clientID                            string
 	oidcScopes                          []string
 	printAkSk                           bool
+	isServiceAccount                    bool
 
 	rootFlagToEnv = map[string]string{
 		skipTLSFlag: skipTLSEnv,
@@ -692,33 +696,36 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	overwriteTokenFlag      = "overwrite-token"
 	overwriteTokenShortFlag = "o"
 	//nolint:gosec // This is not a hardcoded credential but a help message with a filename inside
-	overwriteTokenUsage = "Overrides .otc-info file"
-	idpNameFlag         = "idp-name"
-	idpNameShortFlag    = "i"
-	idpNameEnv          = "IDP_NAME"
-	idpNameUsage        = "Required for authentication with IdP"
-	idpURLFlag          = "idp-url"
-	idpURLEnv           = "IDP_URL"
-	idpURLUsage         = "Required for authentication with IdP"
-	totpFlag            = "totp"
-	totpShortFlag       = "t"
-	totpUsage           = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Needs to be used in conjunction with the " + userIDFlag + " flag or the " + userIDEnv + " environment variable"
-	userIDFlag          = "os-user-domain-id"
-	userIDEnv           = "OS_USER_DOMAIN_ID"
-	userIDUsage         = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userIDEnv
-	regionFlag          = "region"
-	aliasFlag           = "alias"
-	aliasShortFlag      = "a"
-	aliasUsage          = "Setting this changes the naming scheme for clusters in the Kube Config from {project name}/{cluster name} to the alias set"
-	skipKubeTLSFlag     = "skip-kube-tls"
-	skipKubeTLSUsage    = "Setting this adds the insecure-skip-tls-verify rule to the config for every cluster"
-	regionShortFlag     = "r"
-	regionEnv           = "REGION"
-	skipTLSEnv          = "SKIP_TLS_VERIFICATION"
-	oidcScopesEnv       = "OIDC_SCOPES"
-	oidcScopesFlag      = "oidc-scopes"
-	oidcScopesShortFlag = ""
-	oidcScopesUsage     = "Flag to set the scopes which are expected from the OIDC request. Either provide this argument or set the environment variable " + oidcScopesEnv
+	overwriteTokenUsage       = "Overrides .otc-info file"
+	idpNameFlag               = "idp-name"
+	idpNameShortFlag          = "i"
+	idpNameEnv                = "IDP_NAME"
+	idpNameUsage              = "Required for authentication with IdP"
+	idpURLFlag                = "idp-url"
+	idpURLEnv                 = "IDP_URL"
+	idpURLUsage               = "Required for authentication with IdP"
+	totpFlag                  = "totp"
+	totpShortFlag             = "t"
+	totpUsage                 = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Needs to be used in conjunction with the " + userIDFlag + " flag or the " + userIDEnv + " environment variable"
+	userIDFlag                = "os-user-domain-id"
+	userIDEnv                 = "OS_USER_DOMAIN_ID"
+	userIDUsage               = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userIDEnv
+	regionFlag                = "region"
+	aliasFlag                 = "alias"
+	aliasShortFlag            = "a"
+	aliasUsage                = "Setting this changes the naming scheme for clusters in the Kube Config from {project name}/{cluster name} to the alias set"
+	skipKubeTLSFlag           = "skip-kube-tls"
+	skipKubeTLSUsage          = "Setting this adds the insecure-skip-tls-verify rule to the config for every cluster"
+	regionShortFlag           = "r"
+	regionEnv                 = "REGION"
+	skipTLSEnv                = "SKIP_TLS_VERIFICATION"
+	oidcScopesEnv             = "OIDC_SCOPES"
+	oidcScopesFlag            = "oidc-scopes"
+	oidcScopesShortFlag       = ""
+	isServiceAccountFlag      = "service-account"
+	isServiceAccountShortFlag = ""
+	isServiceAccountUsage     = "Flag to be set when using a service account"
+	oidcScopesUsage           = "Flag to set the scopes which are expected from the OIDC request. Either provide this argument or set the environment variable " + oidcScopesEnv
 
 	clientIDEnv                                  = "CLIENT_ID"
 	clientIDFlag                                 = "client-id"

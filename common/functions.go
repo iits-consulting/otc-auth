@@ -17,11 +17,10 @@ func RemoveFromSliceAtIndex[T any](s []T, index int) []T {
 }
 
 func WriteStringToFile(filepath string, content string) {
-	outputFile, err := os.Create(filepath)
+	outputFile, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		ThrowError(fmt.Errorf("fatal: error creating output file.\ntrace: %w", err))
 	}
-
 	_, err = outputFile.WriteString(content)
 	if err != nil {
 		ThrowError(fmt.Errorf("fatal: error writing to file.\ntrace: %w", err))
