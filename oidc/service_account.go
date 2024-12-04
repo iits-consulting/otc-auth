@@ -39,7 +39,7 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) com
 		common.ThrowError(err)
 	}
 	request := createServiceAccountAuthenticateRequest(idpTokenURL, params.ClientID, params.ClientSecret)
-	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
+	response := common.HTTPClientMakeRequest(request, skipTLS)
 	bodyBytes := common.GetBodyBytesFromResponse(response)
 
 	var result ServiceAccountResponse
@@ -52,5 +52,9 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) com
 	serviceAccountCreds.BearerToken = result.IDToken
 	serviceAccountCreds.Claims.PreferredUsername = "ServiceAccount"
 
+	err = response.Body.Close()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	return serviceAccountCreds
 }

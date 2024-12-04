@@ -2,7 +2,6 @@ package oidc
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -37,15 +36,10 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 		headers.Authorization, oidcCredentials.BearerToken,
 	)
 
-	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
+	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // The body IS being closed in GetCloudCredentialsFromResponseOrThrow after being read, which might be worth refactoring later
 
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
 	tokenResponse.Token.User.Name = oidcCredentials.Claims.PreferredUsername
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			common.ThrowError(err)
-		}
-	}(response.Body)
+
 	return tokenResponse
 }

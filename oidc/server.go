@@ -19,7 +19,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-//nolint:gochecknoglobals // This file will be removed soon
+//nolint:gochecknoglobals // Works for now but needs a rewrite
 var (
 	backgroundCtx = context.Background()
 

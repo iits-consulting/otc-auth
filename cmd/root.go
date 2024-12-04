@@ -425,8 +425,7 @@ func setupRootCmd() {
 		&temporaryAccessTokenDurationSeconds,
 		temporaryAccessTokenDurationSecondsFlag,
 		temporaryAccessTokenDurationSecondsShortFlag,
-		//nolint:mnd // default key pair lifetime is 15 minutes
-		15*60,
+		tempAccessTokenLifetime,
 		temporaryAccessTokenDurationSecondsUsage,
 	)
 	tempAccessTokenCreateCmd.Flags().BoolVarP(&printAkSk, printAkSkFlag, printAkSkShortFlag,
@@ -578,7 +577,7 @@ var (
 	}
 )
 
-//nolint:lll // The long lines represent
+//nolint:lll // Long lines required for formatting reasons
 const (
 	loginCmdHelp       = "Login to the Open Telekom Cloud and receive an unscoped token"
 	loginIamCmdHelp    = "Login to the Open Telekom Cloud through its Identity and Access Management system and receive an unscoped token"
@@ -649,12 +648,12 @@ $ export OS_DOMAIN_NAME=MyDomain
 $ export OS_PROJECT_NAME=MyProject
 $ otc-auth cce get-kube-config`
 
-	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
+	//nolint:gosec // This is not a hardcoded credential but a help message containing "ak/sk"
 	accessTokenCmdHelp = "Manage AK/SK"
-	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
+	//nolint:gosec // This is not a hardcoded credential but a help message containing "ak/sk"
 	accessTokenCreateCmdHelp = "Create new AK/SK"
 
-	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
+	//nolint:gosec // This is not a hardcoded credential but a help message containing "ak/sk"
 	accessTokenCreateCmdExample = `$ otc-auth access-token create --description "Custom token description"
 
 $ otc-auth access-token create
@@ -663,7 +662,7 @@ $ export OS_DOMAIN_NAME=MyDomain
 $ otc-auth access-token create`
 	accessTokenListCmdHelp   = "List existing AK/SKs"
 	accessTokenDeleteCmdHelp = "Delete existing AK/SKs"
-	//nolint:gosec // This is not a hardcoded credential but a help message containing ak/sk
+	//nolint:gosec // This is not a hardcoded credential but a help message containing "ak/sk"
 	accessTokenDeleteCmdExample = `$ otc-auth access-token delete --token YourToken
 
 $ export OS_DOMAIN_NAME=YourDomain
@@ -773,4 +772,6 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	openstackConfigCreateConfigLocationFlag      = "config-location"
 	openstackConfigCreateConfigLocationShortFlag = "l"
 	openstackConfigCreateConfigLocationUsage     = "Where the config should be saved"
+
+	tempAccessTokenLifetime = 15 * 60 // 15 minutes
 )
