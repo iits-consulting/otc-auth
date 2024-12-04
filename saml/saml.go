@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"net/http"
 
 	"otc-auth/common"
@@ -27,15 +26,8 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) (to
 		common.ThrowError(fmt.Errorf("fatal: error deserializing xml.\ntrace: %w", err))
 	}
 
-	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
+	response := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes, skipTLS) //nolint:bodyclose,lll // The body IS closed later on after being read in GetCloudCredentialsFromResponseOrThrow. This isn't super neat and might be worth refactoring
 	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
-
-	defer func(Body io.ReadCloser) {
-		errClose := Body.Close()
-		if errClose != nil {
-			common.ThrowError(errClose)
-		}
-	}(response.Body)
 
 	return tokenResponse
 }
