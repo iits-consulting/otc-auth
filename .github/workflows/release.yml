@@ -133,17 +133,34 @@ jobs:
 
       - name: Install dependencies
         run: |
-          apk add alpine-sdk openssl
+          apk -U add alpine-sdk openssl
+
+      - name: Make and switch to packaging user
+        run: |
+          adduser -D packager
+          addgroup packager abuild
+          echo "packager    ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+      - name: Setup distfiles
+        run: |
+          mkdir -p /var/cache/distfiles
+          chgrp abuild /var/cache/distfiles
+          chmod g+w /var/cache/distfiles
 
       - name: Import keys
         run: |
-          mkdir ~/.abuild
+          mkdir -p ~/.abuild
           echo "$APK_PACKAGE_RSA" > ~/.abuild/abuild.rsa
           openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
           echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
+          chown -R packager:packager ~/.abuild/
           cp ~/.abuild/abuild.rsa.pub /etc/apk/keys/
         env:
           APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
+
+      - name: Switch to packaging user
+        run: | 
+          su packager
 
       - name: Make and sign apkindex
         run: |
@@ -157,6 +174,8 @@ jobs:
 
       - name: Cleanup
         run: |
+          exit
+          deluser packager
           rm -rf ~/.abuild
 
       - name: Push to APK repo
