@@ -46,11 +46,11 @@ jobs:
 
       - name: Add APK Signing Key
         run: |
-          echo "${{ secrets.APK_PACKAGE_RSA }}" > abuild.rsa
+          echo "${{ secrets.APK_PACKAGE_RSA_TEMP }}" > abuild.rsa
           chmod 600 abuild.rsa
           ls -l
         env:
-          APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
+          APK_PACKAGE_RSA_TEMP: ${{ secrets.APK_PACKAGE_RSA_TEMP }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -150,13 +150,13 @@ jobs:
       - name: Import keys
         run: |
           mkdir -p ~/.abuild
-          echo "$APK_PACKAGE_RSA" > ~/.abuild/abuild.rsa
+          echo "$APK_PACKAGE_RSA_TEMP" > ~/.abuild/abuild.rsa
           openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
           echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
           chown -R packager:packager ~/.abuild/
-          cp ~/.abuild/abuild.rsa.pub /etc/apk/keys/
+          cp ~/.abuild/*.pub /etc/apk/keys/
         env:
-          APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
+          APK_PACKAGE_RSA_TEMP: ${{ secrets.APK_PACKAGE_RSA_TEMP }}
 
       - name: Switch to packaging user
         run: | 
