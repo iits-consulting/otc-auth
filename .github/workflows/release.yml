@@ -119,6 +119,7 @@ jobs:
           ssh_keyscan_types: rsa,ecdsa,ed25519
 
   apk-publish:
+    if: false # TODO - This workflow has issues with creating the apk index (UNTRUSTED SIGNATURE) and the workflow for installing otc-auth doesn't work anymore
     runs-on: ubuntu-latest
     needs: goreleaser
     container:
