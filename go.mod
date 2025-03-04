@@ -2,7 +2,7 @@ module otc-auth
 
 go 1.22.0
 
-toolchain go1.22.5
+toolchain go1.24.1
 
 require (
 	github.com/coreos/go-oidc/v3 v3.11.0
