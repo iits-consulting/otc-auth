@@ -11,6 +11,7 @@ require (
 	github.com/golang/glog v1.2.3
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
+	github.com/imdario/mergo v0.3.16
 	github.com/opentelekomcloud/gophertelekomcloud v0.9.3
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
@@ -33,7 +34,6 @@ require (
 	github.com/gophercloud/gophercloud v1.6.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
