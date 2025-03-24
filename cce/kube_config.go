@@ -11,6 +11,7 @@ import (
 	"otc-auth/config"
 
 	"github.com/golang/glog"
+	"github.com/imdario/mergo"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
@@ -32,34 +33,15 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	if err != nil {
 		common.ThrowError(err)
 	}
-
-	filenameNewFile := "kubeConfig_new"
-	filenameCurrentFile := "kubeConfig_current"
-
-	err = clientcmd.WriteToFile(kubeConfig, filenameNewFile)
-	if err != nil {
-		common.ThrowError(err)
-	}
-	err = clientcmd.WriteToFile(*currentConfig, filenameCurrentFile)
+	err = mergo.Merge(currentConfig, kubeConfig, mergo.WithOverride)
 	if err != nil {
 		common.ThrowError(err)
 	}
 
-	loadingRules := clientcmd.ClientConfigLoadingRules{
-		Precedence: []string{filenameNewFile, filenameCurrentFile},
-	}
-
-	mergedConfig, err := loadingRules.Load()
+	err = clientcmd.WriteToFile(*currentConfig, determineTargetLocation(configParams.TargetLocation))
 	if err != nil {
 		common.ThrowError(err)
 	}
-	err = clientcmd.WriteToFile(*mergedConfig, determineTargetLocation(configParams.TargetLocation))
-	if err != nil {
-		common.ThrowError(err)
-	}
-
-	_ = os.RemoveAll(filenameNewFile)
-	_ = os.RemoveAll(filenameCurrentFile)
 }
 
 func determineTargetLocation(targetLocation string) string {

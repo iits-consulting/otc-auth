@@ -134,10 +134,20 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams,
 func getClusterID(clusterName string, projectName string) (clusterID string, err error) {
 	cloud := config.GetActiveCloudConfig()
 
+	clusterArr := getRefreshedClusterArr(projectName)
+
+	config.UpdateClusters(clusterArr)
+
 	if cloud.Clusters.ContainsClusterByName(clusterName) {
 		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
 	}
 
+	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s",
+		strings.Join(clusterArr.GetClusterNames(), ",\n"))
+	return clusterID, errors.New(errorMessage)
+}
+
+func getRefreshedClusterArr(projectName string) config.Clusters {
 	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
 		common.ThrowError(err)
@@ -151,15 +161,5 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 		})
 	}
 	glog.V(1).Info("info: clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
-
-	config.UpdateClusters(clusterArr)
-	cloud = config.GetActiveCloudConfig()
-
-	if cloud.Clusters.ContainsClusterByName(clusterName) {
-		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
-	}
-
-	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s",
-		strings.Join(clusterArr.GetClusterNames(), ",\n"))
-	return clusterID, errors.New(errorMessage)
+	return clusterArr
 }
