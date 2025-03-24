@@ -1,11 +1,15 @@
 package cce
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"otc-auth/common"
 	"otc-auth/common/endpoints"
@@ -60,6 +64,8 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		}
 	}
 
+	CheckAndWarnCertsValidity(kubeConfig)
+
 	if printKubeConfig {
 		// Create a configuration file in kubectl-compatible format
 		configBytes, errMarshal := clientcmd.Write(kubeConfig)
@@ -76,6 +82,71 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		mergeKubeConfig(configParams, kubeConfig)
 		glog.V(1).Infof("info: successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
 	}
+}
+
+func CheckAndWarnCertsValidity(kubeConfig api.Config) {
+	var certs []*x509.Certificate
+	issueFound := false
+
+	for _, authInfo := range kubeConfig.AuthInfos {
+		p, _ := pem.Decode(authInfo.ClientCertificateData)
+		if p == nil {
+			glog.Warningf("can't decode authInfo certificate during expiry check. authInfo: %+v", authInfo)
+			issueFound = true
+			continue
+		}
+		nCerts, certErr := x509.ParseCertificates(p.Bytes)
+		if certErr != nil {
+			common.ThrowError(certErr)
+		}
+		glog.V(2).Infof("found certs in authInfo. cert: %+v", nCerts)
+		certs = append(certs, nCerts...)
+	}
+
+	for _, cluster := range kubeConfig.Clusters {
+		p, _ := pem.Decode(cluster.CertificateAuthorityData)
+		if p == nil {
+			if cluster.InsecureSkipTLSVerify {
+				continue
+			}
+			glog.Warningf("can't decode cluster authority certificate during expiry check. cluster: %+v", cluster)
+			issueFound = true
+			continue
+		}
+		nCerts, certErr := x509.ParseCertificates(p.Bytes)
+		if certErr != nil {
+			common.ThrowError(certErr)
+		}
+		glog.V(2).Infof("found certs in cluster. cert: %+v", nCerts)
+		certs = append(certs, nCerts...)
+	}
+
+	for _, cert := range certs {
+		if cert == nil {
+			log.Println("failed to parse certificate")
+			continue
+		}
+
+		now := time.Now()
+		if now.Before(cert.NotBefore) {
+			glog.Warningf("certificate is not valid yet. certificate: %s", sprintCertInfo(cert))
+			issueFound = true
+		} else if now.After(cert.NotAfter) {
+			glog.Warningf("certificate expired. certificate: %s", sprintCertInfo(cert))
+			issueFound = true
+		} else {
+			glog.V(2).Infof("certificate and current time match. certificate: %s", sprintCertInfo(cert))
+		}
+	}
+
+	if issueFound {
+		glog.V(1).Info("issue found with kube config, please refresh it with `otc-auth cce get-kube-config`")
+	}
+}
+
+func sprintCertInfo(cert *x509.Certificate) string {
+	return fmt.Sprintf("&Cert{SignatureAlgorithm:%s, PublicKeyAlgorithm:%s, PublicKey:%d, Version:%d, SerialNumber:%s, Issuer:%s, Subject:%s}",
+		cert.SignatureAlgorithm, cert.PublicKeyAlgorithm, cert.PublicKey, cert.Version, cert.SerialNumber, cert.Issuer, cert.Subject)
 }
 
 func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {

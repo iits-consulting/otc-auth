@@ -21,6 +21,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"strconv"
 	"strings"
@@ -163,6 +164,22 @@ var cceListCmd = &cobra.Command{
 					"\n\nPlease obtain an unscoped token by logging in first"))
 		}
 		cce.GetClusterNames(projectName)
+	},
+}
+
+var cceCheckKubeConfigCmd = &cobra.Command{
+	Use:     "check-kube-certs",
+	Short:   cceCheckKubeCertsCmdHelp,
+	Example: cceCheckKubeCertsCmdExample,
+	Run: func(cmd *cobra.Command, args []string) {
+		currentConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().GetStartingConfig()
+		if err != nil {
+			common.ThrowError(err)
+		}
+		if currentConfig == nil {
+			common.ThrowError(errors.New(""))
+		}
+		cce.CheckAndWarnCertsValidity(*currentConfig)
 	},
 }
 
@@ -417,6 +434,7 @@ func setupRootCmd() {
 		"~/.kube/config",
 		targetLocationUsage,
 	)
+	cceCmd.AddCommand(cceCheckKubeConfigCmd)
 
 	RootCmd.AddCommand(tempAccessTokenCmd)
 	tempAccessTokenCmd.PersistentFlags().StringVarP(&domainName, domainNameFlag, domainNameShortFlag, "", domainNameUsage)
@@ -635,6 +653,13 @@ $ otc-auth cce list
 
 $ export OS_PROJECT_NAME=MyProject
 $ otc-auth cce list`
+	cceCheckKubeCertsCmdHelp    = "Reads KubeConfig and warns when malformed or expired certificates are found.\nThis does NOT check to make sure certs are correctly signed or that the hostnames are correct for your usecase."
+	cceCheckKubeCertsCmdExample = `$ otc-auth cce check-kube-certs --os-project-name MyProject
+
+$ export OS_DOMAIN_NAME=MyDomain
+$ export OS_PROJECT_NAME=MyProject
+$ otc-auth cce check-kube-certs
+`
 	cceGetKubeConfigCmdHelp    = "Get remote kube config and merge it with existing local config file"
 	cceGetKubeConfigCmdExample = `$ otc-auth cce get-kube-config --cluster MyCluster --target-location /path/to/config
 
