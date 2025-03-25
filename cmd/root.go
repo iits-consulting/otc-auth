@@ -21,7 +21,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"strconv"
 	"strings"
@@ -37,6 +36,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
 
