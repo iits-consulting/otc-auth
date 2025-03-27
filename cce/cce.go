@@ -80,7 +80,7 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		glog.V(1).Info("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
 		mergeKubeConfig(configParams, kubeConfig)
-		glog.V(1).Infof("info: successfully fetched and merge kube config for cce cluster %s. \n", configParams.ClusterName)
+		glog.V(1).Infof("info: successfully fetched and Merge kube config for cce cluster %s. \n", configParams.ClusterName)
 	}
 }
 

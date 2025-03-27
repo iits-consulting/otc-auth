@@ -1,12 +1,16 @@
-package cce
+package cce_test
 
 import (
-	"k8s.io/client-go/tools/clientcmd/api"
 	"reflect"
 	"testing"
+
+	"otc-auth/cce"
+
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func Test_merge(t *testing.T) {
+	t.Parallel()
 	knownConfigA := api.Config{
 		Clusters:       map[string]*api.Cluster{"cluster-a": {Server: "server-a"}},
 		AuthInfos:      map[string]*api.AuthInfo{"user-a": {Token: "token-a"}},
@@ -44,9 +48,9 @@ func Test_merge(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		currentConfig  *api.Config // Input - will be modified by merge()
+		currentConfig  *api.Config // Input - will be modified by Merge()
 		kubeConfig     api.Config  // Input
-		expectedConfig api.Config  // Expected state of currentConfig after merge
+		expectedConfig api.Config  // Expected state of currentConfig after Merge
 		wantErr        bool
 	}{
 		{
@@ -75,8 +79,8 @@ func Test_merge(t *testing.T) {
 		},
 		{
 			name: "Nil currentConfig should error",
-			// merge requires a non-nil currentConfig pointer because it merges data *into* the
-			// existing object it points to. A nil pointer references no object, making the merge impossible.
+			// Merge requires a non-nil currentConfig pointer because it merges data *into* the
+			// existing object it points to. A nil pointer references no object, making the Merge impossible.
 			// mergo.Merge(dst, ...) will return an error if dst is nil.
 			currentConfig:  nil,
 			kubeConfig:     knownConfigA,
@@ -87,10 +91,10 @@ func Test_merge(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := merge(tt.currentConfig, tt.kubeConfig)
+			err := cce.Merge(tt.currentConfig, tt.kubeConfig)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("merge() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Merge() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if tt.wantErr {
@@ -98,7 +102,7 @@ func Test_merge(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(*tt.currentConfig, tt.expectedConfig) {
-				t.Errorf("merge() resulting state mismatch:\ngot = %+v\nwant = %+v", *tt.currentConfig, tt.expectedConfig)
+				t.Errorf("Merge() resulting state mismatch:\ngot = %+v\nwant = %+v", *tt.currentConfig, tt.expectedConfig)
 			}
 		})
 	}
