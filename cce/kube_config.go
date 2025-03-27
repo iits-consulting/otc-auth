@@ -33,15 +33,19 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	if err != nil {
 		common.ThrowError(err)
 	}
-	err = mergo.Merge(currentConfig, kubeConfig, mergo.WithOverride)
+	err = merge(currentConfig, kubeConfig)
 	if err != nil {
 		common.ThrowError(err)
 	}
-
 	err = clientcmd.WriteToFile(*currentConfig, determineTargetLocation(configParams.TargetLocation))
 	if err != nil {
 		common.ThrowError(err)
 	}
+}
+
+func merge(currentConfig *api.Config, kubeConfig api.Config) error {
+	err := mergo.Merge(currentConfig, kubeConfig, mergo.WithOverride)
+	return err
 }
 
 func determineTargetLocation(targetLocation string) string {
