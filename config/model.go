@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"otc-auth/common"
@@ -140,15 +141,13 @@ func (clusters Clusters) GetClusterNames() []string {
 	return names
 }
 
-func (clusters Clusters) GetClusterByNameOrThrow(name string) Cluster {
+func (clusters Clusters) GetClusterByName(name string) (*Cluster, error) {
 	cluster := clusters.FindClusterByName(name)
 	if cluster == nil {
-		common.ThrowError(
-			fmt.Errorf(
-				"fatal: cluster with name %s not found.\nuse the cce list-clusters command to retrieve "+
-					"a list of clusters", name))
+		return nil, fmt.Errorf("cluster not found.\nhere's a list of valid clusters:\n%s",
+			strings.Join(clusters.GetClusterNames(), ",\n"))
 	}
-	return *cluster
+	return cluster, nil
 }
 
 func (clusters Clusters) FindClusterByName(name string) *Cluster {
