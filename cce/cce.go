@@ -228,11 +228,13 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 		config.UpdateClusters(clusterArr)
 		cloud = config.GetActiveCloudConfig()
 	}
-	return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
 
-	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s",
-		strings.Join(clusterArr.GetClusterNames(), ",\n"))
-	return clusterID, errors.New(errorMessage)
+	cluster, err := cloud.Clusters.GetClusterByName(clusterName)
+	if err != nil {
+		return "", err
+	}
+
+	return cluster.ID, nil
 }
 
 func getRefreshedClusterArr(projectName string) config.Clusters {
