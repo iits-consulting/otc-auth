@@ -224,15 +224,17 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 
 	clusterArr := getRefreshedClusterArr(projectName)
 
-	config.UpdateClusters(clusterArr)
-
-	if cloud.Clusters.ContainsClusterByName(clusterName) {
-		return cloud.Clusters.GetClusterByNameOrThrow(clusterName).ID, nil
+	if !cloud.Clusters.ContainsClusterByName(clusterName) {
+		config.UpdateClusters(clusterArr)
+		cloud = config.GetActiveCloudConfig()
 	}
 
-	errorMessage := fmt.Sprintf("cluster not found.\nhere's a list of valid clusters:\n%s",
-		strings.Join(clusterArr.GetClusterNames(), ",\n"))
-	return clusterID, errors.New(errorMessage)
+	cluster, err := cloud.Clusters.GetClusterByName(clusterName)
+	if err != nil {
+		return "", err
+	}
+
+	return cluster.ID, nil
 }
 
 func getRefreshedClusterArr(projectName string) config.Clusters {
