@@ -66,12 +66,12 @@ jobs:
             ## Code Coverage Report
             **Total Coverage:** ${{ env.COVERAGE }}
             <details>
-              <summary> Details </summary>
-              <blockquote>
+            <summary> Details </summary>
+            <blockquote>
             ```text
             ${{ env.COVERAGE_REPORT }}
             ```
-              </blockquote>
+            </blockquote>
             </details>
           edit-mode: replace
           comment-id: ${{ steps.fc.outputs.comment-id }}
