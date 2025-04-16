@@ -103,3 +103,57 @@ func assertCluster(t *testing.T, cluster *config.Cluster, expectedName string, e
 		t.Errorf("unexpected cluster name: got %q, want %q", cluster.Name, expectedName)
 	}
 }
+
+func TestClouds_ContainsCloud(t *testing.T) {
+	type args struct {
+		name string
+	}
+	testClouds := config.Clouds{
+		{Domain: config.NameAndIDResource{Name: "cloud1"}},
+		{Domain: config.NameAndIDResource{Name: "cloud2"}},
+	}
+	tests := []struct {
+		name   string
+		clouds config.Clouds
+		args   args
+		want   bool
+	}{
+		{
+			name:   "existing cloud",
+			clouds: testClouds,
+			args:   args{name: "cloud1"},
+			want:   true,
+		},
+		{
+			name:   "another existing cloud",
+			clouds: testClouds,
+			args:   args{name: "cloud2"},
+			want:   true,
+		},
+		{
+			name:   "non-existent cloud",
+			clouds: testClouds,
+			args:   args{name: "cloud3"},
+			want:   false,
+		},
+		{
+			name:   "empty clouds list",
+			clouds: config.Clouds{},
+			args:   args{name: "any"},
+			want:   false,
+		},
+		{
+			name:   "case sensitive match",
+			clouds: testClouds,
+			args:   args{name: "CLOUD1"}, // assuming case-sensitive comparison
+			want:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.clouds.ContainsCloud(tt.args.name); got != tt.want {
+				t.Errorf("ContainsCloud() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
