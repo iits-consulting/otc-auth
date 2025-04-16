@@ -50,65 +50,70 @@ jobs:
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
       - name: Format Coverage Report
         run: |
-          # Process coverage report into hierarchical markdown
-          FORMATTED_REPORT=$(echo "$COVERAGE_REPORT" | awk '
-          BEGIN {
-            print "## 📊 Code Coverage Report"
-            print "**Total Coverage:** '"$COVERAGE"'"
-            print ""
-            current_pkg = ""
-            current_file = ""
-          }
-          /^[^[:space:]]+/ {
-            # Parse line
-            split($1, parts, ":")
-            pkg_path = parts[1]
-            file = parts[2]
-            func = $2
-            cov = $3
+          # Initialize variables
+          current_pkg=""
+          current_file=""
 
-            # Extract package name
-            split(pkg_path, pkg_parts, "/")
-            pkg = pkg_parts[2]  # otc-auth/[pkg]/...
+          # Start building the report
+          REPORT="## 📊 Code Coverage Report\n"
+          REPORT+="**Total Coverage:** $COVERAGE\n\n"
+
+          # Process each line of the coverage report
+          while IFS= read -r line; do
+            # Skip empty lines and the total line (we already have it)
+            [[ -z "$line" || "$line" == total:* ]] && continue
+
+            # Parse the line into components
+            filepath=$(echo "$line" | awk '{print $1}')
+            func=$(echo "$line" | awk '{print $2}')
+            cov=$(echo "$line" | awk '{print $3}')
+
+            # Extract package and filename
+            pkg=$(echo "$filepath" | cut -d'/' -f2)
+            filename=$(echo "$filepath" | cut -d':' -f1 | xargs basename)
 
             # Determine coverage emoji
-            cov_value = cov
-            gsub(/%/, "", cov_value)
-            if (cov_value == 0) emoji = "⚪"
-            else if (cov_value < 50) emoji = "🔴"
-            else if (cov_value < 80) emoji = "🟡"
-            else emoji = "🟢"
+            cov_value=$(echo "$cov" | tr -d '%')
+            if (( $(echo "$cov_value == 0" | bc -l) )); then
+              emoji="⚪"
+            elif (( $(echo "$cov_value < 50" | bc -l) )); then
+              emoji="🔴"
+            elif (( $(echo "$cov_value < 80" | bc -l) )); then
+              emoji="🟡"
+            else
+              emoji="🟢"
+            fi
 
-            # Package level
-            if (pkg != current_pkg) {
-              if (current_pkg != "") print "</details>"
-              print "<details>"
-              print "<summary><b>📦 " pkg "</b></summary>"
-              current_pkg = pkg
-              current_file = ""
-            }
+            # Add package section if changed
+            if [[ "$pkg" != "$current_pkg" ]]; then
+              [[ -n "$current_pkg" ]] && REPORT+="</details>\n"
+              REPORT+="<details>\n<summary><b>📦 $pkg</b></summary>\n"
+              current_pkg="$pkg"
+              current_file=""
+            fi
 
-            # File level
-            if (file != current_file) {
-              if (current_file != "") print "</details>"
-              print "<details>"
-              print "<summary>📄 " file "</summary>"
-              current_file = file
-            }
+            # Add file section if changed
+            if [[ "$filename" != "$current_file" ]]; then
+              [[ -n "$current_file" ]] && REPORT+="</details>\n"
+              REPORT+="<details>\n<summary>📄 $filename</summary>\n"
+              current_file="$filename"
+            fi
 
-            # Function level
-            print emoji " " func ": " cov
-          }
-          END {
-            if (current_file != "") print "</details>"
-            if (current_pkg != "") print "</details>"
-          }
-          ')
+            # Add function line
+            REPORT+="$emoji $func: $cov\n"
+          done <<< "$COVERAGE_REPORT"
+
+          # Close any open sections
+          [[ -n "$current_file" ]] && REPORT+="</details>\n"
+          [[ -n "$current_pkg" ]] && REPORT+="</details>\n"
 
           # Store in environment variable
           echo "FORMATTED_COVERAGE<<EOF" >> $GITHUB_ENV
-          echo "$FORMATTED_REPORT" >> $GITHUB_ENV
+          echo -e "$REPORT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+
+          # For debugging
+          echo -e "Generated report:\n$REPORT"
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
