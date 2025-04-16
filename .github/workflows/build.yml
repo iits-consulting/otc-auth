@@ -48,6 +48,67 @@ jobs:
           echo "$COVERAGE_REPORT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+      - name: Format Coverage Report
+        run: |
+          # Process coverage report into hierarchical markdown
+          FORMATTED_REPORT=$(echo "$COVERAGE_REPORT" | awk '
+          BEGIN {
+            print "## 📊 Code Coverage Report"
+            print "**Total Coverage:** '"$COVERAGE"'"
+            print ""
+            current_pkg = ""
+            current_file = ""
+          }
+          /^[^[:space:]]+/ {
+            # Parse line
+            split($1, parts, ":")
+            pkg_path = parts[1]
+            file = parts[2]
+            func = $2
+            cov = $3
+
+            # Extract package name
+            split(pkg_path, pkg_parts, "/")
+            pkg = pkg_parts[2]  # otc-auth/[pkg]/...
+
+            # Determine coverage emoji
+            cov_value = cov
+            gsub(/%/, "", cov_value)
+            if (cov_value == 0) emoji = "⚪"
+            else if (cov_value < 50) emoji = "🔴"
+            else if (cov_value < 80) emoji = "🟡"
+            else emoji = "🟢"
+
+            # Package level
+            if (pkg != current_pkg) {
+              if (current_pkg != "") print "</details>"
+              print "<details>"
+              print "<summary><b>📦 " pkg "</b></summary>"
+              current_pkg = pkg
+              current_file = ""
+            }
+
+            # File level
+            if (file != current_file) {
+              if (current_file != "") print "</details>"
+              print "<details>"
+              print "<summary>📄 " file "</summary>"
+              current_file = file
+            }
+
+            # Function level
+            print emoji " " func ": " cov
+          }
+          END {
+            if (current_file != "") print "</details>"
+            if (current_pkg != "") print "</details>"
+          }
+          ')
+
+          # Store in environment variable
+          echo "FORMATTED_COVERAGE<<EOF" >> $GITHUB_ENV
+          echo "$FORMATTED_REPORT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
@@ -55,11 +116,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ## Code Coverage Report
-            ```
-            ${{ env.COVERAGE_REPORT }}
-            ```
-            **Total Coverage:** ${{ env.COVERAGE }}
+            ${{ env.FORMATTED_REPORT }}
           edit-mode: replace
       - name: Build
         run: go build -v -o otc-auth .
