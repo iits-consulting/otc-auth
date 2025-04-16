@@ -66,11 +66,11 @@ jobs:
             ## Code Coverage Report
             **Total Coverage:** ${{ env.COVERAGE }}
             <details>
-            <summary> Details </summary>
+            <summary>Details</summary>
             <blockquote>
-            ```text
+            ````text
             ${{ env.COVERAGE_REPORT }}
-            ```
+            ````
             </blockquote>
             </details>
           edit-mode: replace
