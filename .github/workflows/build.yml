@@ -55,8 +55,7 @@ jobs:
           current_file=""
 
           # Start building the report
-          REPORT="## 📊 Code Coverage Report\n"
-          REPORT+="**Total Coverage:** $COVERAGE\n\n"
+          REPORT="**Total Coverage:** $COVERAGE\n\n"
 
           # Process each line of the coverage report
           while IFS= read -r line; do
@@ -111,9 +110,6 @@ jobs:
           echo "FORMATTED_COVERAGE<<EOF" >> $GITHUB_ENV
           echo -e "$REPORT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
-          # For debugging
-          echo -e "Generated report:\n$REPORT"
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
@@ -121,7 +117,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ${{ env.FORMATTED_REPORT }}
+            ## 📊 Code Coverage Report
+            ${{ env.REPORT }}
           edit-mode: replace
       - name: Build
         run: go build -v -o otc-auth .
