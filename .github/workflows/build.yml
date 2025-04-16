@@ -37,7 +37,24 @@ jobs:
               dep ensure
           fi
       - name: Test
-        run: go test -v ./...
+        run: |
+          go test -v ./...
+          COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          echo "COVERAGE_REPORT=$(go tool cover -func=coverage.out)" >> $GITHUB_ENV
+      - name: Create or update coverage comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Code Coverage Report
+            ```
+            ${{ env.COVERAGE_REPORT }}
+            ```
+            **Total Coverage:** ${{ env.COVERAGE }}
+          edit-mode: replace
       - name: Build
         run: go build -v -o otc-auth .
       - name: Upload the built binary executable for testing
