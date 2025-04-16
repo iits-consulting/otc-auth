@@ -2,8 +2,6 @@ name: Build
 on:
   pull_request:
   push:
-    branches:
-      - '**'  # Match all branches except those excluded below
     branches-ignore:
       - main  # Explicitly ignore main branch pushes
 
