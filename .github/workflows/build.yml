@@ -56,8 +56,9 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ## Code Coverage Report
+            **Total Coverage:** ${{ env.COVERAGE }}
             <details>
-              <summary> **Total Coverage:** ${{ env.COVERAGE }} </summary>
+              <summary> Details </summary>
               <blockquote>
                 ```text
                 ${{ env.COVERAGE_REPORT }}
