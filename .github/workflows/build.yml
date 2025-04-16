@@ -43,7 +43,7 @@ jobs:
         run: |
           go test -coverprofile=coverage.out -v ./...
           COVERAGE_REPORT=$(go tool cover -func=coverage.out 2>/dev/null || echo "No coverage data")
-          COVERAGE=$(echo "$COVERAGE_REPORT" | grep -oP '^total:.*\K[0-9.]+%$' || echo "0%")
+          COVERAGE=$(echo "$COVERAGE_REPORT" | grep '^total:' <<< "$COVERAGE_REPORT" | grep -oE '[0-9]+\.[0-9]+%|[0-9]+%' || echo "0%")
           echo "COVERAGE_REPORT<<EOF" >> $GITHUB_ENV
           echo "$COVERAGE_REPORT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
