@@ -59,12 +59,13 @@ jobs:
             <details>
               <summary> **Total Coverage:** ${{ env.COVERAGE }} </summary>
               <blockquote>
-              ```
-                  ${{ env.COVERAGE_REPORT }}
-              ```
+                ```text
+                ${{ env.COVERAGE_REPORT }}
+                ```
               </blockquote>
             </details>
           edit-mode: replace
+          comment-id: ${{ github.event.pull_request.number }}
       - name: Build
         run: go build -v -o otc-auth .
       - name: Upload the built binary executable for testing
