@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -275,6 +276,83 @@ func TestClouds_SetActiveByName(t *testing.T) {
 				if cloud.Active != tt.want[i] {
 					t.Errorf("Cloud %d Active = %v, want %v", i, cloud.Active, tt.want[i])
 				}
+			}
+		})
+	}
+}
+
+func TestClouds_FindActiveCloudConfigOrNil(t *testing.T) {
+	// Helper function to create int pointer
+	intPtr := func(i int) *int { return &i }
+
+	tests := []struct {
+		name      string
+		clouds    config.Clouds
+		wantCloud *config.Cloud
+		wantIndex *int
+		wantErr   bool
+	}{
+		{
+			name:      "no clouds",
+			clouds:    config.Clouds{},
+			wantCloud: nil,
+			wantIndex: nil,
+			wantErr:   true,
+		},
+		{
+			name: "single active cloud",
+			clouds: config.Clouds{
+				{Region: "east", Active: true},
+			},
+			wantCloud: &config.Cloud{Region: "east", Active: true},
+			wantIndex: intPtr(0),
+			wantErr:   false,
+		},
+		{
+			name: "multiple clouds with one active",
+			clouds: config.Clouds{
+				{Region: "west", Active: false},
+				{Region: "east", Active: true},
+				{Region: "north", Active: false},
+			},
+			wantCloud: &config.Cloud{Region: "east", Active: true},
+			wantIndex: intPtr(1),
+			wantErr:   false,
+		},
+		{
+			name: "no active cloud",
+			clouds: config.Clouds{
+				{Region: "west", Active: false},
+				{Region: "east", Active: false},
+			},
+			wantCloud: nil,
+			wantIndex: nil,
+			wantErr:   true,
+		},
+		{
+			name: "multiple active clouds",
+			clouds: config.Clouds{
+				{Region: "west", Active: true},
+				{Region: "east", Active: true},
+			},
+			wantCloud: nil,
+			wantIndex: nil,
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotCloud, gotIndex, err := tt.clouds.FindActiveCloudConfigOrNil()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FindActiveCloudConfigOrNil() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotCloud, tt.wantCloud) {
+				t.Errorf("FindActiveCloudConfigOrNil() gotCloud = %v, want %v", gotCloud, tt.wantCloud)
+			}
+			if !reflect.DeepEqual(gotIndex, tt.wantIndex) {
+				t.Errorf("FindActiveCloudConfigOrNil() gotIndex = %v, want %v", gotIndex, tt.wantIndex)
 			}
 		})
 	}
