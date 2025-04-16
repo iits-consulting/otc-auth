@@ -145,7 +145,7 @@ func TestClouds_ContainsCloud(t *testing.T) {
 		{
 			name:   "case sensitive match",
 			clouds: testClouds,
-			args:   args{name: "CLOUD1"}, // assuming case-sensitive comparison
+			args:   args{name: "CLOUD1"},
 			want:   false,
 		},
 	}
@@ -159,7 +159,6 @@ func TestClouds_ContainsCloud(t *testing.T) {
 }
 
 func TestClouds_RemoveCloudByNameIfExists(t *testing.T) {
-	// Test helper function to create a cloud with a name
 	makeCloud := func(name string) config.Cloud {
 		return config.Cloud{Domain: config.NameAndIDResource{Name: name}}
 	}
@@ -211,6 +210,70 @@ func TestClouds_RemoveCloudByNameIfExists(t *testing.T) {
 				if cloud.Domain.Name != tt.expected[i].Domain.Name {
 					t.Errorf("at index %d: expected %s, got %s",
 						i, tt.expected[i].Domain.Name, cloud.Domain.Name)
+				}
+			}
+		})
+	}
+}
+
+func TestClouds_SetActiveByName(t *testing.T) {
+	type args struct {
+		name string
+	}
+	cloud1 := config.Cloud{Domain: config.NameAndIDResource{Name: "cloud1"}, Active: false}
+	cloud2 := config.Cloud{Domain: config.NameAndIDResource{Name: "cloud2"}, Active: true}
+	cloud3 := config.Cloud{Domain: config.NameAndIDResource{Name: "cloud3"}, Active: false}
+
+	tests := []struct {
+		name   string
+		clouds config.Clouds
+		args   args
+		want   []bool // Expected Active statuses in order
+	}{
+		{
+			name:   "set existing cloud active",
+			clouds: config.Clouds{cloud1, cloud2, cloud3},
+			args:   args{name: "cloud2"},
+			want:   []bool{false, true, false},
+		},
+		{
+			name:   "set first cloud active",
+			clouds: config.Clouds{cloud1, cloud2, cloud3},
+			args:   args{name: "cloud1"},
+			want:   []bool{true, false, false},
+		},
+		{
+			name:   "set last cloud active",
+			clouds: config.Clouds{cloud1, cloud2, cloud3},
+			args:   args{name: "cloud3"},
+			want:   []bool{false, false, true},
+		},
+		{
+			name:   "non-existent cloud name",
+			clouds: config.Clouds{cloud1, cloud2, cloud3},
+			args:   args{name: "unknown"},
+			want:   []bool{false, false, false},
+		},
+		{
+			name:   "empty clouds list",
+			clouds: config.Clouds{},
+			args:   args{name: "any"},
+			want:   []bool{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Make a copy of the original slice for testing
+			cloudsCopy := make(config.Clouds, len(tt.clouds))
+			copy(cloudsCopy, tt.clouds)
+
+			cloudsCopy.SetActiveByName(tt.args.name)
+
+			// Verify Active statuses
+			for i, cloud := range cloudsCopy {
+				if cloud.Active != tt.want[i] {
+					t.Errorf("Cloud %d Active = %v, want %v", i, cloud.Active, tt.want[i])
 				}
 			}
 		})
