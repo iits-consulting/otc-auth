@@ -1,7 +1,12 @@
 name: Build
 on:
-  - pull_request
-  - push
+  pull_request:
+  push:
+    branches:
+      - '**'  # Match all branches except those excluded below
+    branches-ignore:
+      - main  # Explicitly ignore main branch pushes
+
 jobs:
   lint:
     name: Lint the otc-auth source code
@@ -39,8 +44,8 @@ jobs:
       - name: Test
         run: |
           go test -v ./...
-          COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}')
-          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          go test -coverprofile=coverage.out ./...
+          echo "COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}')" >> $GITHUB_ENV
           echo "COVERAGE_REPORT=$(go tool cover -func=coverage.out)" >> $GITHUB_ENV
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
