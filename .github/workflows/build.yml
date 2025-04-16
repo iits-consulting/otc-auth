@@ -48,6 +48,13 @@ jobs:
           echo "$COVERAGE_REPORT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+      - name: Find Comment
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: "## Code Coverage Report"
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
@@ -66,7 +73,7 @@ jobs:
               </blockquote>
             </details>
           edit-mode: replace
-          comment-id: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
       - name: Build
         run: go build -v -o otc-auth .
       - name: Upload the built binary executable for testing
