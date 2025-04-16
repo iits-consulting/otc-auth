@@ -43,10 +43,9 @@ jobs:
           fi
       - name: Test
         run: |
-          go test -v ./...
-          go test -coverprofile=coverage.out ./...
-          echo "COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}')" >> $GITHUB_ENV
+          go test -coverprofile=coverage.out -v ./...
           echo "COVERAGE_REPORT=$(go tool cover -func=coverage.out)" >> $GITHUB_ENV
+          echo "COVERAGE=$(echo COVERAGE_REPORT | grep total: | awk '{print $3}')" >> $GITHUB_ENV
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
