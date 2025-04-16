@@ -157,3 +157,62 @@ func TestClouds_ContainsCloud(t *testing.T) {
 		})
 	}
 }
+
+func TestClouds_RemoveCloudByNameIfExists(t *testing.T) {
+	// Test helper function to create a cloud with a name
+	makeCloud := func(name string) config.Cloud {
+		return config.Cloud{Domain: config.NameAndIDResource{Name: name}}
+	}
+
+	type args struct {
+		name string
+	}
+	tests := []struct {
+		name     string
+		clouds   config.Clouds
+		args     args
+		expected config.Clouds
+	}{
+		{
+			name:     "empty clouds",
+			clouds:   config.Clouds{},
+			args:     args{name: "test"},
+			expected: config.Clouds{},
+		},
+		{
+			name:     "cloud not found",
+			clouds:   config.Clouds{makeCloud("cloud1"), makeCloud("cloud2")},
+			args:     args{name: "nonexistent"},
+			expected: config.Clouds{makeCloud("cloud1"), makeCloud("cloud2")},
+		},
+		{
+			name:     "remove single cloud",
+			clouds:   config.Clouds{makeCloud("cloud1"), makeCloud("cloud2")},
+			args:     args{name: "cloud1"},
+			expected: config.Clouds{makeCloud("cloud2")},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Make a copy of the original slice
+			original := make(config.Clouds, len(tt.clouds))
+			copy(original, tt.clouds)
+
+			// Execute the function
+			original.RemoveCloudByNameIfExists(tt.args.name)
+
+			// Verify the result
+			if len(original) != len(tt.expected) {
+				t.Errorf("expected length %d, got %d", len(tt.expected), len(original))
+			}
+
+			for i, cloud := range original {
+				if cloud.Domain.Name != tt.expected[i].Domain.Name {
+					t.Errorf("at index %d: expected %s, got %s",
+						i, tt.expected[i].Domain.Name, cloud.Domain.Name)
+				}
+			}
+		})
+	}
+}
