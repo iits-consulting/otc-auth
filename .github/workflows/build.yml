@@ -67,11 +67,9 @@ jobs:
             **Total Coverage:** ${{ env.COVERAGE }}
             <details>
             <summary>Details</summary>
-            <blockquote>
-            ````text
-            ${{ env.COVERAGE_REPORT }}
-            ````
-            </blockquote>
+            >```text
+            >${{ env.COVERAGE_REPORT }}
+            >```
             </details>
           edit-mode: replace
           comment-id: ${{ steps.fc.outputs.comment-id }}
