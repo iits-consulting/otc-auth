@@ -67,9 +67,9 @@ jobs:
             <details>
               <summary> Details </summary>
               <blockquote>
-                ```text
-                ${{ env.COVERAGE_REPORT }}
-                ```
+            ```text
+            ${{ env.COVERAGE_REPORT }}
+            ```
               </blockquote>
             </details>
           edit-mode: replace
