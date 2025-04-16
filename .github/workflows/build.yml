@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
     branches-ignore:
-      - main  # Explicitly ignore main branch pushes
+      - main
 
 jobs:
   lint:
@@ -42,8 +42,10 @@ jobs:
       - name: Test
         run: |
           go test -coverprofile=coverage.out -v ./...
-          echo "COVERAGE_REPORT=$(go tool cover -func=coverage.out)" >> $GITHUB_ENV
-          echo "COVERAGE=$(echo COVERAGE_REPORT | grep total: | awk '{print $3}')" >> $GITHUB_ENV
+          COVERAGE_REPORT=$(go tool cover -func=coverage.out)
+          COVERAGE=$(echo "$COVERAGE_REPORT" | grep total: | awk '{print $3}')
+          echo "COVERAGE_REPORT=$COVERAGE_REPORT" >> $GITHUB_ENV
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
