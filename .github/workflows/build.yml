@@ -87,7 +87,7 @@ jobs:
             # Package section handling
             if [[ "$pkg" != "$current_pkg" ]]; then
               # Close previous file and package if they exist
-              [[ -n "$current_file" ]] && REPORT+="</details>\n"
+              [[ -n "$current_file" ]] && REPORT+="\`\`\`\n</details>\n"
               [[ -n "$current_pkg" ]] && REPORT+="</details>\n"
           
               # Open new package
@@ -100,25 +100,29 @@ jobs:
             # File section handling
             if [[ "$filename" != "$current_file" ]]; then
               # Close previous file if it exists
-              [[ -n "$current_file" ]] && REPORT+="</details>\n"
+              [[ -n "$current_file" ]] && REPORT+="\`\`\`\n</details>\n"
           
               # Open new file
               REPORT+="<details>\n"
               REPORT+="<summary>📄 $filename</summary>\n"
+              REPORT+="\`\`\`\n"
               current_file="$filename"
             fi
           
-            # Add function line (indented for better readability)
-            REPORT+="  $emoji $func: $cov\n"
+            # Add function line
+            REPORT+="$emoji $func: $cov\n"
           done <<< "$COVERAGE_REPORT"
           
           # Close any remaining open sections
-          [[ -n "$current_file" ]] && REPORT+="</details>\n"
+          [[ -n "$current_file" ]] && REPORT+="\`\`\`\n</details>\n"
           [[ -n "$current_pkg" ]] && REPORT+="</details>\n"
           
-          echo "FORMATTED_COVERAGE<<EOF" >> $GITHUB_ENV
+          # Store in environment variable with proper newline handling
+          DELIMITER="cov-report-$(date +%s)"
+          echo "FORMATTED_COVERAGE<<$DELIMITER" >> $GITHUB_ENV
           echo -e "$REPORT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "$DELIMITER" >> $GITHUB_ENV
+
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
@@ -126,9 +130,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ## 📊 Code Coverage Report
             ${{ env.FORMATTED_COVERAGE }}
           edit-mode: replace
+          comment-id: code-coverage-report
       - name: Build
         run: go build -v -o otc-auth .
       - name: Upload the built binary executable for testing
