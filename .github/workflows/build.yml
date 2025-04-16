@@ -53,24 +53,25 @@ jobs:
           # Initialize variables
           current_pkg=""
           current_file=""
-
+          
           # Start building the report
-          REPORT="**Total Coverage:** $COVERAGE\n\n"
-
+          REPORT="## 📊 Code Coverage Report\n"
+          REPORT+="**Total Coverage:** $COVERAGE\n\n"
+          
           # Process each line of the coverage report
           while IFS= read -r line; do
-            # Skip empty lines and the total line (we already have it)
+            # Skip empty lines and the total line
             [[ -z "$line" || "$line" == total:* ]] && continue
-
+          
             # Parse the line into components
             filepath=$(echo "$line" | awk '{print $1}')
             func=$(echo "$line" | awk '{print $2}')
             cov=$(echo "$line" | awk '{print $3}')
-
+          
             # Extract package and filename
             pkg=$(echo "$filepath" | cut -d'/' -f2)
             filename=$(echo "$filepath" | cut -d':' -f1 | xargs basename)
-
+          
             # Determine coverage emoji
             cov_value=$(echo "$cov" | tr -d '%')
             if (( $(echo "$cov_value == 0" | bc -l) )); then
@@ -82,31 +83,39 @@ jobs:
             else
               emoji="🟢"
             fi
-
-            # Add package section if changed
+          
+            # Package section handling
             if [[ "$pkg" != "$current_pkg" ]]; then
+              # Close previous file and package if they exist
+              [[ -n "$current_file" ]] && REPORT+="</details>\n"
               [[ -n "$current_pkg" ]] && REPORT+="</details>\n"
-              REPORT+="<details>\n<summary><b>📦 $pkg</b></summary>\n"
+          
+              # Open new package
+              REPORT+="<details>\n"
+              REPORT+="<summary><b>📦 $pkg</b></summary>\n"
               current_pkg="$pkg"
               current_file=""
             fi
-
-            # Add file section if changed
+          
+            # File section handling
             if [[ "$filename" != "$current_file" ]]; then
+              # Close previous file if it exists
               [[ -n "$current_file" ]] && REPORT+="</details>\n"
-              REPORT+="<details>\n<summary>📄 $filename</summary>\n"
+          
+              # Open new file
+              REPORT+="<details>\n"
+              REPORT+="<summary>📄 $filename</summary>\n"
               current_file="$filename"
             fi
-
-            # Add function line
-            REPORT+="$emoji $func: $cov\n"
+          
+            # Add function line (indented for better readability)
+            REPORT+="  $emoji $func: $cov\n"
           done <<< "$COVERAGE_REPORT"
-
-          # Close any open sections
+          
+          # Close any remaining open sections
           [[ -n "$current_file" ]] && REPORT+="</details>\n"
           [[ -n "$current_pkg" ]] && REPORT+="</details>\n"
-
-          # Store in environment variable
+          
           echo "FORMATTED_COVERAGE<<EOF" >> $GITHUB_ENV
           echo -e "$REPORT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
