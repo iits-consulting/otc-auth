@@ -57,12 +57,12 @@ jobs:
           body: |
             ## Code Coverage Report
             <details>
-            <summary> **Total Coverage:** ${{ env.COVERAGE }} </summary>
-            <blockquote>
-            ```
-                ${{ env.COVERAGE_REPORT }}
-            ```
-            </blockquote>
+              <summary> **Total Coverage:** ${{ env.COVERAGE }} </summary>
+              <blockquote>
+              ```
+                  ${{ env.COVERAGE_REPORT }}
+              ```
+              </blockquote>
             </details>
           edit-mode: replace
       - name: Build
