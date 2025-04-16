@@ -42,9 +42,11 @@ jobs:
       - name: Test
         run: |
           go test -coverprofile=coverage.out -v ./...
-          COVERAGE_REPORT=$(go tool cover -func=coverage.out)
-          COVERAGE=$(echo "$COVERAGE_REPORT" | grep total: | awk '{print $3}')
-          echo "COVERAGE_REPORT=$COVERAGE_REPORT" >> $GITHUB_ENV
+          COVERAGE_REPORT=$(go tool cover -func=coverage.out 2>/dev/null || echo "No coverage data")
+          COVERAGE=$(echo "$COVERAGE_REPORT" | grep -oP 'total:\s*\K[0-9.]+%' || echo "0%")
+          echo "COVERAGE_REPORT<<EOF" >> $GITHUB_ENV
+          echo "$COVERAGE_REPORT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
       - name: Create or update coverage comment
         if: github.event_name == 'pull_request'
