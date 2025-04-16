@@ -118,7 +118,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ## 📊 Code Coverage Report
-            ${{ env.REPORT }}
+            ${{ env.FORMATTED_COVERAGE }}
           edit-mode: replace
       - name: Build
         run: go build -v -o otc-auth .
