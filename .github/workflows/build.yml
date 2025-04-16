@@ -49,6 +49,7 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
       - name: Find Comment
+        if: github.event_name == 'pull_request'
         uses: peter-evans/find-comment@v3
         id: fc
         with:
