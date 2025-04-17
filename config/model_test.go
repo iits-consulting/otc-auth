@@ -406,27 +406,28 @@ func TestClouds_GetActiveCloudIndex(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if r := recover(); r != nil {
-				if !tt.wantErr {
+			defer func() {
+				if r := recover(); r != nil && !tt.wantErr {
 					t.Errorf("GetActiveCloudIndex() panicked unexpectedly: %v", r)
 				}
-				return
-			}
+			}()
 
 			got, err := tt.clouds.GetActiveCloudIndex()
-			if err != nil {
-				if !tt.wantErr {
-					t.Errorf("Got an error when we didn't want one (wantErr:%v): %v", tt.wantErr, err)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Expected error but got none")
 				}
+				return
+			} else if err != nil {
+				t.Errorf("Unexpected error: %v", err)
 				return
 			}
 
-			if tt.wantErr {
-				t.Errorf("Wanted an error got none. wantErr: %v, err: %v", tt.wantErr, err)
-			}
-
-			if *got != tt.want {
-				t.Errorf("GetActiveCloudIndex() = %v, want %v", got, tt.want)
+			if got == nil {
+				t.Error("Unexpected nil result")
+			} else if *got != tt.want {
+				t.Errorf("GetActiveCloudIndex() = %v, want %v", *got, tt.want)
 			}
 		})
 	}
