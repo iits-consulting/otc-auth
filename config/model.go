@@ -3,11 +3,12 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/golang/glog"
 	"strings"
 	"time"
 
 	"otc-auth/common"
+
+	"github.com/golang/glog"
 )
 
 type OtcConfigContent struct {
