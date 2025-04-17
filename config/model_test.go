@@ -674,3 +674,50 @@ func TestProjects_FindProjectIndexByName(t *testing.T) {
 		})
 	}
 }
+
+func TestProjects_GetProjectNames(t *testing.T) {
+	tests := []struct {
+		name     string
+		projects config.Projects
+		want     []string
+	}{
+		{
+			name:     "empty projects",
+			projects: config.Projects{},
+			want:     nil, // Reminder that []string{} != nil
+		},
+		{
+			name: "single project",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-1"}},
+			},
+			want: []string{"project-1"},
+		},
+		{
+			name: "multiple projects",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-1"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-2"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-3"}},
+			},
+			want: []string{"project-1", "project-2", "project-3"},
+		},
+		{
+			name: "projects with empty names",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: ""}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-2"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: ""}},
+			},
+			want: []string{"", "project-2", ""},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.projects.GetProjectNames(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetProjectNames() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
