@@ -721,3 +721,53 @@ func TestProjects_GetProjectNames(t *testing.T) {
 		})
 	}
 }
+
+func TestClusters_ContainsClusterByName(t *testing.T) {
+	tests := []struct {
+		name        string
+		clusters    config.Clusters
+		clusterName string
+		want        bool
+	}{
+		{
+			name:        "empty clusters",
+			clusters:    config.Clusters{},
+			clusterName: "test",
+			want:        false,
+		},
+		{
+			name: "cluster exists",
+			clusters: config.Clusters{
+				{Name: "cluster1"},
+				{Name: "cluster2"},
+			},
+			clusterName: "cluster1",
+			want:        true,
+		},
+		{
+			name: "cluster does not exist",
+			clusters: config.Clusters{
+				{Name: "cluster1"},
+				{Name: "cluster2"},
+			},
+			clusterName: "cluster3",
+			want:        false,
+		},
+		{
+			name: "case sensitive comparison",
+			clusters: config.Clusters{
+				{Name: "Cluster1"},
+			},
+			clusterName: "cluster1",
+			want:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.clusters.ContainsClusterByName(tt.clusterName); got != tt.want {
+				t.Errorf("ContainsClusterByName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
