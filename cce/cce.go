@@ -167,7 +167,10 @@ func sprintCertInfo(cert *x509.Certificate) string {
 }
 
 func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {
-	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	project, err := config.GetActiveCloudConfig().Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	cloud := config.GetActiveCloudConfig()
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
@@ -188,7 +191,10 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams,
 	clusterID string, alias string,
 ) (api.Config, error) {
-	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(kubeConfigParams.ProjectName)
+	project, err := config.GetActiveCloudConfig().Projects.GetProjectByName(kubeConfigParams.ProjectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	cloud := config.GetActiveCloudConfig()
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),

@@ -52,8 +52,10 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 }
 
 func GetScopedToken(projectName string) config.Token {
-	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
-
+	project, err := config.GetActiveCloudConfig().Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	if project.ScopedToken.IsTokenValid() {
 		token := project.ScopedToken
 
@@ -68,18 +70,24 @@ func GetScopedToken(projectName string) config.Token {
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
 	glog.V(1).Info("info: scoped token acquired successfully")
-	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	project, err = config.GetActiveCloudConfig().Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	return project.ScopedToken
 }
 
 func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud {
 	cloud := config.GetActiveCloudConfig()
-	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).ID
+	project, err := cloud.Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	authOpts := golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
 		TokenID:          cloud.UnscopedToken.Secret,
-		TenantID:         projectID,
+		TenantID:         project.ID,
 		DomainName:       cloud.Domain.Name,
 	}
 

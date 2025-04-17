@@ -100,15 +100,14 @@ func (projects Projects) FindProjectByName(name string) *Project {
 	return nil
 }
 
-func (projects Projects) GetProjectByNameOrThrow(name string) Project {
+func (projects Projects) GetProjectByName(name string) (*Project, error) {
 	project := projects.FindProjectByName(name)
 	if project == nil {
-		common.ThrowError(
-			fmt.Errorf(
-				"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
-					"get a list of projects", name))
+		return nil, fmt.Errorf(
+			"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
+				"get a list of projects", name)
 	}
-	return *project
+	return project, nil
 }
 
 func (projects Projects) FindProjectIndexByName(name string) *int {

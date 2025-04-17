@@ -533,3 +533,65 @@ func TestProjects_FindProjectByName(t *testing.T) {
 		})
 	}
 }
+
+func TestProjects_GetProjectByName(t *testing.T) {
+	// Setup test projects
+	existingProject := &config.Project{NameAndIDResource: config.NameAndIDResource{Name: "existing"}}
+	projects := config.Projects{*existingProject}
+
+	type args struct {
+		name string
+	}
+
+	tests := []struct {
+		name     string
+		projects config.Projects
+		args     args
+		want     *config.Project
+		wantErr  bool
+	}{
+		{
+			name:     "project exists",
+			projects: projects,
+			args:     args{name: "existing"},
+			want:     existingProject,
+			wantErr:  false,
+		},
+		{
+			name:     "project does not exist",
+			projects: projects,
+			args:     args{name: "nonexistent"},
+			want:     nil,
+			wantErr:  true,
+		},
+		{
+			name:     "empty projects list",
+			projects: config.Projects{},
+			args:     args{name: "any"},
+			want:     nil,
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.projects.GetProjectByName(tt.args.name)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetProjectByName() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetProjectByName() got = %v, want %v", got, tt.want)
+			}
+			// Additional error message check for error cases
+			if tt.wantErr && err != nil {
+				if !strings.Contains(err.Error(), tt.args.name) {
+					t.Errorf("Error message should contain project name, got: %v", err.Error())
+				}
+				if !strings.Contains(err.Error(), "cce list-projects") {
+					t.Errorf("Error message should mention 'cce list-projects', got: %v", err.Error())
+				}
+			}
+		})
+	}
+}
