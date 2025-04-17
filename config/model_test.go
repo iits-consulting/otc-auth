@@ -835,3 +835,89 @@ func TestToken_IsTokenValid(t *testing.T) {
 		})
 	}
 }
+
+func TestToken_UpdateToken(t *testing.T) {
+	type fields struct {
+		Secret    string
+		IssuedAt  string
+		ExpiresAt string
+	}
+	type args struct {
+		updatedToken config.Token
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   config.Token
+	}{
+		{
+			name: "update all fields",
+			fields: fields{
+				Secret:    "old_secret",
+				IssuedAt:  "old_issued",
+				ExpiresAt: "old_expires",
+			},
+			args: args{
+				updatedToken: config.Token{
+					Secret:    "new_secret",
+					IssuedAt:  "new_issued",
+					ExpiresAt: "new_expires",
+				},
+			},
+			want: config.Token{
+				Secret:    "new_secret",
+				IssuedAt:  "new_issued",
+				ExpiresAt: "new_expires",
+			},
+		},
+		{
+			name: "update partial fields",
+			fields: fields{
+				Secret:    "old_secret",
+				IssuedAt:  "old_issued",
+				ExpiresAt: "old_expires",
+			},
+			args: args{
+				updatedToken: config.Token{
+					Secret: "new_secret",
+					// IssuedAt and ExpiresAt left as zero values
+				},
+			},
+			want: config.Token{
+				Secret:    "new_secret",
+				IssuedAt:  "", // Should be updated to zero value
+				ExpiresAt: "", // Should be updated to zero value
+			},
+		},
+		{
+			name:   "update empty token",
+			fields: fields{}, // Original token is empty
+			args: args{
+				updatedToken: config.Token{
+					Secret:    "new_secret",
+					IssuedAt:  "new_issued",
+					ExpiresAt: "new_expires",
+				},
+			},
+			want: config.Token{
+				Secret:    "new_secret",
+				IssuedAt:  "new_issued",
+				ExpiresAt: "new_expires",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := &config.Token{
+				Secret:    tt.fields.Secret,
+				IssuedAt:  tt.fields.IssuedAt,
+				ExpiresAt: tt.fields.ExpiresAt,
+			}
+			if got := token.UpdateToken(tt.args.updatedToken); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("UpdateToken() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
