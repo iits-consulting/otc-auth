@@ -595,3 +595,81 @@ func TestProjects_GetProjectByName(t *testing.T) {
 		})
 	}
 }
+
+func TestProjects_FindProjectIndexByName(t *testing.T) {
+	// Helper variables for pointer returns
+	zero := 0
+	one := 1
+	two := 2
+
+	type args struct {
+		name string
+	}
+	tests := []struct {
+		name     string
+		projects config.Projects
+		args     args
+		want     *int
+	}{
+		{
+			name:     "empty projects",
+			projects: config.Projects{},
+			args:     args{name: "test"},
+			want:     nil,
+		},
+		{
+			name: "project found at index 0",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "test"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "other"}},
+			},
+			args: args{name: "test"},
+			want: &zero,
+		},
+		{
+			name: "project found at middle index",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "first"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "test"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "last"}},
+			},
+			args: args{name: "test"},
+			want: &one,
+		},
+		{
+			name: "project found at last index",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "first"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "second"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "test"}},
+			},
+			args: args{name: "test"},
+			want: &two,
+		},
+		{
+			name: "project not found",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "first"}},
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "second"}},
+			},
+			args: args{name: "test"},
+			want: nil,
+		},
+		{
+			name: "case sensitive matching",
+			projects: config.Projects{
+				config.Project{NameAndIDResource: config.NameAndIDResource{Name: "Test"}},
+			},
+			args: args{name: "test"},
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.projects.FindProjectIndexByName(tt.args.name); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindProjectIndexByName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
