@@ -477,3 +477,59 @@ func TestClouds_NumberOfActiveCloudConfigs(t *testing.T) {
 		})
 	}
 }
+
+func TestProjects_FindProjectByName(t *testing.T) {
+	// Sample projects for testing
+	p1 := config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-1"}}
+	p2 := config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-2"}}
+	p3 := config.Project{NameAndIDResource: config.NameAndIDResource{Name: "project-3"}}
+
+	type args struct {
+		name string
+	}
+	tests := []struct {
+		name     string
+		projects config.Projects
+		args     args
+		want     *config.Project
+	}{
+		{
+			name:     "found at beginning",
+			projects: config.Projects{p1, p2, p3},
+			args:     args{name: "project-1"},
+			want:     &p1,
+		},
+		{
+			name:     "found in middle",
+			projects: config.Projects{p1, p2, p3},
+			args:     args{name: "project-2"},
+			want:     &p2,
+		},
+		{
+			name:     "found at end",
+			projects: config.Projects{p1, p2, p3},
+			args:     args{name: "project-3"},
+			want:     &p3,
+		},
+		{
+			name:     "not found",
+			projects: config.Projects{p1, p2, p3},
+			args:     args{name: "non-existent"},
+			want:     nil,
+		},
+		{
+			name:     "empty projects",
+			projects: config.Projects{},
+			args:     args{name: "any"},
+			want:     nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.projects.FindProjectByName(tt.args.name); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindProjectByName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
