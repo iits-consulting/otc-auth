@@ -85,22 +85,31 @@ func RemoveCloudConfig(domainName string) {
 
 func UpdateClusters(clusters Clusters) {
 	otcConfig := getOtcConfig()
-	cloudIndex := otcConfig.Clouds.GetActiveCloudIndex()
-	otcConfig.Clouds[cloudIndex].Clusters = clusters
+	cloudIndex, err := otcConfig.Clouds.GetActiveCloudIndex()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	otcConfig.Clouds[*cloudIndex].Clusters = clusters
 	writeOtcConfigContentToFile(otcConfig)
 }
 
 func UpdateProjects(projects Projects) {
 	otcConfig := getOtcConfig()
-	cloudIndex := otcConfig.Clouds.GetActiveCloudIndex()
-	otcConfig.Clouds[cloudIndex].Projects = projects
+	cloudIndex, err := otcConfig.Clouds.GetActiveCloudIndex()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	otcConfig.Clouds[*cloudIndex].Projects = projects
 	writeOtcConfigContentToFile(otcConfig)
 }
 
 func UpdateCloudConfig(updatedCloud Cloud) {
 	otcConfig := getOtcConfig()
-	index := otcConfig.Clouds.GetActiveCloudIndex()
-	otcConfig.Clouds[index] = updatedCloud
+	index, err := otcConfig.Clouds.GetActiveCloudIndex()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	otcConfig.Clouds[*index] = updatedCloud
 
 	writeOtcConfigContentToFile(otcConfig)
 }

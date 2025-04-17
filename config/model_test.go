@@ -357,3 +357,77 @@ func TestClouds_FindActiveCloudConfigOrNil(t *testing.T) {
 		})
 	}
 }
+
+func TestClouds_GetActiveCloudIndex(t *testing.T) {
+	tests := []struct {
+		name    string
+		clouds  config.Clouds
+		want    int
+		wantErr bool
+	}{
+		{
+			name: "single active cloud",
+			clouds: config.Clouds{
+				config.Cloud{Active: true},
+			},
+			want: 0,
+		},
+		{
+			name: "multiple clouds with second active",
+			clouds: config.Clouds{
+				config.Cloud{Active: false},
+				config.Cloud{Active: true},
+				config.Cloud{Active: false},
+			},
+			want: 1,
+		},
+		{
+			name: "no active cloud",
+			clouds: config.Clouds{
+				config.Cloud{Active: false},
+				config.Cloud{Active: false},
+			},
+			wantErr: true,
+		},
+		{
+			name:    "empty clouds",
+			clouds:  config.Clouds{},
+			wantErr: true,
+		},
+		{
+			name: "multiple active clouds (invalid state)",
+			clouds: config.Clouds{
+				config.Cloud{Active: true},
+				config.Cloud{Active: true},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if r := recover(); r != nil {
+				if !tt.wantErr {
+					t.Errorf("GetActiveCloudIndex() panicked unexpectedly: %v", r)
+				}
+				return
+			}
+
+			got, err := tt.clouds.GetActiveCloudIndex()
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("Got an error when we didn't want one (wantErr:%v): %v", tt.wantErr, err)
+				}
+				return
+			}
+
+			if tt.wantErr {
+				t.Errorf("Wanted an error got none. wantErr: %v, err: %v", tt.wantErr, err)
+			}
+
+			if *got != tt.want {
+				t.Errorf("GetActiveCloudIndex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

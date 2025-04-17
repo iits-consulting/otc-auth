@@ -56,13 +56,13 @@ func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, er
 	return nil, nil, errors.New("no active cloud")
 }
 
-func (clouds *Clouds) GetActiveCloudIndex() int {
+func (clouds *Clouds) GetActiveCloudIndex() (*int, error) {
 	cloud, index, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil || cloud == nil || index == nil {
-		common.ThrowError(fmt.Errorf("fatal: invalid state %w", err))
+		return nil, fmt.Errorf("fatal: invalid state %w", err)
 	}
 
-	return *index
+	return index, nil
 }
 
 func (clouds *Clouds) NumberOfActiveCloudConfigs() int {
