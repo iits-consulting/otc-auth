@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"otc-auth/config"
 )
@@ -767,6 +768,69 @@ func TestClusters_ContainsClusterByName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.clusters.ContainsClusterByName(tt.clusterName); got != tt.want {
 				t.Errorf("ContainsClusterByName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestToken_IsTokenValid(t *testing.T) {
+	now := time.Now()
+	type fields struct {
+		Secret    string
+		IssuedAt  string
+		ExpiresAt string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "valid future expiration",
+			fields: fields{
+				ExpiresAt: now.Add(1 * time.Hour).Format(time.RFC3339),
+			},
+			want: true,
+		},
+		{
+			name: "expired token",
+			fields: fields{
+				ExpiresAt: now.Add(-1 * time.Hour).Format(time.RFC3339),
+			},
+			want: false,
+		},
+		{
+			name: "just expired token",
+			fields: fields{
+				ExpiresAt: now.Add(-1 * time.Second).Format(time.RFC3339),
+			},
+			want: false,
+		},
+		{
+			name: "empty expiration time",
+			fields: fields{
+				ExpiresAt: "",
+			},
+			want: false,
+		},
+		{
+			name: "malformed expiration time",
+			fields: fields{
+				ExpiresAt: "invalid-time-format",
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := &config.Token{
+				Secret:    tt.fields.Secret,
+				IssuedAt:  tt.fields.IssuedAt,
+				ExpiresAt: tt.fields.ExpiresAt,
+			}
+			if got := token.IsTokenValid(); got != tt.want {
+				t.Errorf("IsTokenValid() = %v, want %v", got, tt.want)
 			}
 		})
 	}

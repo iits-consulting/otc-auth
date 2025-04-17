@@ -38,14 +38,14 @@ func GetCloudCredentialsFromResponseOrThrow(response *http.Response) TokenRespon
 	return tokenResponse
 }
 
-func ParseTimeOrThrow(timeString string) time.Time {
+func ParseTime(timeString string) (*time.Time, error) {
 	if timeString == "" {
-		return time.Time{}
+		return &time.Time{}, nil
 	}
 	parsedTime, err := time.Parse(time.RFC3339, timeString)
 	if err != nil {
-		ThrowError(fmt.Errorf("fatal: error parsing time from token %w", err))
+		return nil, fmt.Errorf("fatal: error parsing time from token %w", err)
 	}
 
-	return parsedTime
+	return &parsedTime, nil
 }

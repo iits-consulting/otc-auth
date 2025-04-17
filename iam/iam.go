@@ -59,7 +59,10 @@ func GetScopedToken(projectName string) config.Token {
 	if project.ScopedToken.IsTokenValid() {
 		token := project.ScopedToken
 
-		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
+		tokenExpirationDate, parseErr := common.ParseTime(token.ExpiresAt)
+		if parseErr != nil {
+			common.ThrowError(parseErr)
+		}
 		if tokenExpirationDate.After(time.Now()) {
 			glog.V(1).Infof("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
 			return token

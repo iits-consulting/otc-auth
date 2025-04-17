@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/golang/glog"
 	"strings"
 	"time"
 
@@ -174,7 +175,12 @@ type Token struct {
 }
 
 func (token *Token) IsTokenValid() bool {
-	return common.ParseTimeOrThrow(token.ExpiresAt).After(time.Now())
+	timePTR, err := common.ParseTime(token.ExpiresAt)
+	if err != nil {
+		glog.Warningf("couldn't parse token expires_at: %s", err)
+		return false
+	}
+	return timePTR.After(time.Now())
 }
 
 func (token *Token) UpdateToken(updatedToken Token) Token {

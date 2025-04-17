@@ -55,7 +55,10 @@ func IsAuthenticationValid() bool {
 
 	unscopedToken := cloud.UnscopedToken
 
-	tokenExpirationDate := common.ParseTimeOrThrow(unscopedToken.ExpiresAt)
+	tokenExpirationDate, err := common.ParseTime(unscopedToken.ExpiresAt)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	if tokenExpirationDate.After(time.Now()) {
 		// token still valid
 		glog.V(1).Infof("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat))
