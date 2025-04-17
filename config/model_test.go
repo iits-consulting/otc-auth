@@ -431,3 +431,49 @@ func TestClouds_GetActiveCloudIndex(t *testing.T) {
 		})
 	}
 }
+
+func TestClouds_NumberOfActiveCloudConfigs(t *testing.T) {
+	tests := []struct {
+		name   string
+		clouds config.Clouds
+		want   int
+	}{
+		{
+			name:   "empty clouds",
+			clouds: config.Clouds{},
+			want:   0,
+		},
+		{
+			name: "no active clouds",
+			clouds: config.Clouds{
+				{Active: false},
+				{Active: false},
+			},
+			want: 0,
+		},
+		{
+			name: "some active clouds",
+			clouds: config.Clouds{
+				{Active: true},
+				{Active: false},
+				{Active: true},
+			},
+			want: 2,
+		},
+		{
+			name: "all active clouds",
+			clouds: config.Clouds{
+				{Active: true},
+				{Active: true},
+			},
+			want: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.clouds.NumberOfActiveCloudConfigs(); got != tt.want {
+				t.Errorf("NumberOfActiveCloudConfigs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
