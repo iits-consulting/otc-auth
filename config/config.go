@@ -58,7 +58,10 @@ func registerNewCloud(domainName string) Clouds {
 }
 
 func IsAuthenticationValid() bool {
-	cloud := GetActiveCloudConfig()
+	cloud, err := GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	if !cloud.UnscopedToken.IsTokenValid() {
 		return false
@@ -149,20 +152,20 @@ func UpdateCloudConfig(updatedCloud Cloud) {
 	}
 }
 
-func GetActiveCloudConfig() Cloud {
+func GetActiveCloudConfig() (*Cloud, error) {
 	otcConfig, err := getOtcConfig()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
 	clouds := otcConfig.Clouds
 	cloud, _, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil {
-		common.ThrowError(
+		return nil,
 			fmt.Errorf(
 				"fatal: %w.\n\nPlease use the cloud-config register or the cloud-config load command "+
-					"to set an active cloud configuration", err))
+					"to set an active cloud configuration", err)
 	}
-	return *cloud
+	return cloud, nil
 }
 
 func OtcConfigFileExists() bool {

@@ -16,7 +16,10 @@ import (
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
-	cloudConfig := config.GetActiveCloudConfig()
+	cloudConfig, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	domainName := cloudConfig.Domain.Name
 	clouds := make(map[string]clientconfig.Cloud)
 	for _, project := range cloudConfig.Projects {

@@ -167,14 +167,17 @@ func sprintCertInfo(cert *x509.Certificate) string {
 }
 
 func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {
-	project, err := config.GetActiveCloudConfig().Projects.GetProjectByName(projectName)
+	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
 		common.ThrowError(err)
 	}
-	cloud := config.GetActiveCloudConfig()
+	project, err := activeCloud.Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
-		DomainID:         cloud.Domain.ID,
+		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
+		DomainID:         activeCloud.Domain.ID,
 		TokenID:          project.ScopedToken.Secret,
 		TenantID:         project.ID,
 	})
@@ -191,14 +194,17 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams,
 	clusterID string, alias string,
 ) (api.Config, error) {
-	project, err := config.GetActiveCloudConfig().Projects.GetProjectByName(kubeConfigParams.ProjectName)
+	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
 		common.ThrowError(err)
 	}
-	cloud := config.GetActiveCloudConfig()
+	project, err := activeCloud.Projects.GetProjectByName(kubeConfigParams.ProjectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
-		DomainID:         cloud.Domain.ID,
+		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
+		DomainID:         activeCloud.Domain.ID,
 		TokenID:          project.ScopedToken.Secret,
 		TenantID:         project.ID,
 	})
@@ -226,16 +232,22 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams,
 }
 
 func getClusterID(clusterName string, projectName string) (clusterID string, err error) {
-	cloud := config.GetActiveCloudConfig()
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	clusterArr := getRefreshedClusterArr(projectName)
 
-	if !cloud.Clusters.ContainsClusterByName(clusterName) {
+	if !activeCloud.Clusters.ContainsClusterByName(clusterName) {
 		config.UpdateClusters(clusterArr)
-		cloud = config.GetActiveCloudConfig()
+		activeCloud, err = config.GetActiveCloudConfig()
+		if err != nil {
+			common.ThrowError(err)
+		}
 	}
 
-	cluster, err := cloud.Clusters.GetClusterByName(clusterName)
+	cluster, err := activeCloud.Clusters.GetClusterByName(clusterName)
 	if err != nil {
 		return "", err
 	}

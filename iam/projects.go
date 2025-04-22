@@ -35,13 +35,16 @@ func CreateScopedTokenForEveryProject(projectNames []string) {
 }
 
 func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
-	cloud := config.GetActiveCloudConfig()
-	glog.V(1).Infof("info: fetching projects for cloud %s \n", cloud.Domain.Name)
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	glog.V(1).Infof("info: fetching projects for cloud %s \n", activeCloud.Domain.Name)
 
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
-		DomainID:         cloud.Domain.ID,
-		TokenID:          cloud.UnscopedToken.Secret,
+		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
+		DomainID:         activeCloud.Domain.ID,
+		TokenID:          activeCloud.UnscopedToken.Secret,
 	})
 	if err != nil {
 		common.ThrowError(err)

@@ -67,28 +67,31 @@ func createScopedTokenForEveryProject() {
 }
 
 func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
-	cloud := config.GetActiveCloudConfig()
-	if cloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	if activeCloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
 		// Sanity check: we're in the same cloud as the active cloud
 		common.ThrowError(errors.New("fatal: authorization made for wrong cloud configuration"))
 	}
-	cloud.Domain.ID = tokenResponse.Token.User.Domain.ID
-	if cloud.Username != tokenResponse.Token.User.Name {
-		for i, project := range cloud.Projects {
-			cloud.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{
+	activeCloud.Domain.ID = tokenResponse.Token.User.Domain.ID
+	if activeCloud.Username != tokenResponse.Token.User.Name {
+		for i, project := range activeCloud.Projects {
+			activeCloud.Projects[i].ScopedToken = project.ScopedToken.UpdateToken(config.Token{
 				Secret:    "",
 				IssuedAt:  "",
 				ExpiresAt: "",
 			})
 		}
 	}
-	cloud.Username = tokenResponse.Token.User.Name
+	activeCloud.Username = tokenResponse.Token.User.Name
 	token := config.Token{
 		Secret:    tokenResponse.Token.Secret,
 		IssuedAt:  tokenResponse.Token.IssuedAt,
 		ExpiresAt: tokenResponse.Token.ExpiresAt,
 	}
-	cloud.Region = regionCode
-	cloud.UnscopedToken = token
-	config.UpdateCloudConfig(cloud)
+	activeCloud.Region = regionCode
+	activeCloud.UnscopedToken = token
+	config.UpdateCloudConfig(*activeCloud)
 }

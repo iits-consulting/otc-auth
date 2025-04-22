@@ -52,7 +52,11 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 }
 
 func GetScopedToken(projectName string) config.Token {
-	project, err := config.GetActiveCloudConfig().Projects.GetProjectByName(projectName)
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	project, err := activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
 		common.ThrowError(err)
 	}
@@ -73,7 +77,7 @@ func GetScopedToken(projectName string) config.Token {
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
 	glog.V(1).Info("info: scoped token acquired successfully")
-	project, err = config.GetActiveCloudConfig().Projects.GetProjectByName(projectName)
+	project, err = activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
 		common.ThrowError(err)
 	}
@@ -81,17 +85,20 @@ func GetScopedToken(projectName string) config.Token {
 }
 
 func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud {
-	cloud := config.GetActiveCloudConfig()
-	project, err := cloud.Projects.GetProjectByName(projectName)
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	project, err := activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
 		common.ThrowError(err)
 	}
 
 	authOpts := golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
-		TokenID:          cloud.UnscopedToken.Secret,
+		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
+		TokenID:          activeCloud.UnscopedToken.Secret,
 		TenantID:         project.ID,
-		DomainName:       cloud.Domain.Name,
+		DomainName:       activeCloud.Domain.Name,
 	}
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
@@ -112,13 +119,13 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 		Secret:    scopedToken.ID,
 		ExpiresAt: scopedToken.ExpiresAt.Format(time.RFC3339),
 	}
-	index := cloud.Projects.FindProjectIndexByName(projectName)
+	index := activeCloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
 		common.ThrowError(fmt.Errorf(
 			"fatal: project with name %s not found.\n"+
 				"\nUse the cce list-projects command to get a list of projects",
 			projectName))
 	}
-	cloud.Projects[*index].ScopedToken = token
-	return cloud
+	activeCloud.Projects[*index].ScopedToken = token
+	return *activeCloud
 }
