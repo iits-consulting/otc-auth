@@ -1,9 +1,6 @@
-name: Build
+name: Build for PR
 on:
   pull_request:
-  push:
-    branches-ignore:
-      - main
 
 jobs:
   lint:
@@ -51,7 +48,6 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
       - name: Find Comment
-        if: github.event_name == 'pull_request'
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -59,7 +55,6 @@ jobs:
           comment-author: 'github-actions[bot]'
           body-includes: "## Code Coverage Report"
       - name: Create or update coverage comment
-        if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
