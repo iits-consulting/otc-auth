@@ -1,12 +1,14 @@
+//nolint:testpackage // We use whitebox tests here to validate internal logic like createOpenstackCloudConfig
 package openstack
 
 import (
 	"encoding/json"
-	"github.com/gophercloud/utils/openstack/clientconfig"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gophercloud/utils/openstack/clientconfig"
 
 	"otc-auth/config"
 )
