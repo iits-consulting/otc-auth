@@ -61,7 +61,10 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 	if mkDirError != nil {
 		common.ThrowError(err)
 	}
-	config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
+	err = config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	glog.V(1).Info("info: openstack clouds.yaml was updated")
 }

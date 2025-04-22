@@ -18,7 +18,10 @@ const (
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
-	config.LoadCloudConfig(authInfo.DomainName)
+	err := config.LoadCloudConfig(authInfo.DomainName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
 		glog.V(1).Info(

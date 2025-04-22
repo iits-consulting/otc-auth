@@ -9,7 +9,10 @@ import (
 const firstDomain = "firstDomain"
 
 func TestLoadCloudConfig_init(t *testing.T) {
-	config.LoadCloudConfig(firstDomain)
+	err := config.LoadCloudConfig(firstDomain)
+	if err != nil {
+		t.Errorf("could not load cloud config: %v", err)
+	}
 
 	result := config.GetActiveCloudConfig().Domain
 	if result.Name != firstDomain {
@@ -20,8 +23,14 @@ func TestLoadCloudConfig_init(t *testing.T) {
 func TestLoadCloudConfig_two_domains(t *testing.T) {
 	secondDomain := "second"
 
-	config.LoadCloudConfig(firstDomain)
-	config.LoadCloudConfig(secondDomain)
+	err := config.LoadCloudConfig(firstDomain)
+	if err != nil {
+		t.Errorf("Error loading first cloud: %s", err)
+	}
+	err = config.LoadCloudConfig(secondDomain)
+	if err != nil {
+		t.Errorf("Error loading second cloud: %s", err)
+	}
 
 	result := config.GetActiveCloudConfig().Domain
 	if result.Name != secondDomain {
@@ -30,8 +39,14 @@ func TestLoadCloudConfig_two_domains(t *testing.T) {
 }
 
 func TestLoadCloudConfig_make_domain_twice_active(t *testing.T) {
-	config.LoadCloudConfig(firstDomain)
-	config.LoadCloudConfig(firstDomain)
+	err := config.LoadCloudConfig(firstDomain)
+	if err != nil {
+		t.Errorf("Error loading first cloud: %s", err)
+	}
+	err = config.LoadCloudConfig(firstDomain)
+	if err != nil {
+		t.Errorf("Error loading second cloud: %s", err)
+	}
 
 	result := config.GetActiveCloudConfig().Domain
 	if result.Name != firstDomain {

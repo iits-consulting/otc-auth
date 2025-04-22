@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -13,21 +14,31 @@ import (
 	"github.com/golang/glog"
 )
 
-func LoadCloudConfig(domainName string) {
-	otcConfig := getOtcConfig()
+func LoadCloudConfig(domainName string) error {
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		return err
+	}
 	clouds := otcConfig.Clouds
 	if !clouds.ContainsCloud(domainName) {
 		clouds = registerNewCloud(domainName)
 	}
 	clouds.SetActiveByName(domainName)
 	otcConfig.Clouds = clouds
-	writeOtcConfigContentToFile(otcConfig)
+	err = writeOtcConfigContentToFile(*otcConfig)
+	if err != nil {
+		return err
+	}
 
 	glog.V(1).Infof("info: cloud %s loaded successfully and set to active.\n", domainName)
+	return nil
 }
 
 func registerNewCloud(domainName string) Clouds {
-	otcConfig := getOtcConfig()
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	clouds := otcConfig.Clouds
 
 	newCloud := Cloud{
@@ -71,7 +82,10 @@ func IsAuthenticationValid() bool {
 }
 
 func RemoveCloudConfig(domainName string) {
-	otcConfig := getOtcConfig()
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	if !otcConfig.Clouds.ContainsCloud(domainName) {
 		common.ThrowError(
 			fmt.Errorf(
@@ -80,45 +94,66 @@ func RemoveCloudConfig(domainName string) {
 
 	removeCloudConfig(domainName)
 
-	_, err := fmt.Fprintf(os.Stdout, "Cloud %s deleted successfully", domainName)
+	_, err = fmt.Fprintf(os.Stdout, "Cloud %s deleted successfully", domainName)
 	if err != nil {
 		common.ThrowError(err)
 	}
 }
 
 func UpdateClusters(clusters Clusters) {
-	otcConfig := getOtcConfig()
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	cloudIndex, err := otcConfig.Clouds.GetActiveCloudIndex()
 	if err != nil {
 		common.ThrowError(err)
 	}
 	otcConfig.Clouds[*cloudIndex].Clusters = clusters
-	writeOtcConfigContentToFile(otcConfig)
+	err = writeOtcConfigContentToFile(*otcConfig)
+	if err != nil {
+		common.ThrowError(err)
+	}
 }
 
 func UpdateProjects(projects Projects) {
-	otcConfig := getOtcConfig()
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	cloudIndex, err := otcConfig.Clouds.GetActiveCloudIndex()
 	if err != nil {
 		common.ThrowError(err)
 	}
 	otcConfig.Clouds[*cloudIndex].Projects = projects
-	writeOtcConfigContentToFile(otcConfig)
+	err = writeOtcConfigContentToFile(*otcConfig)
+	if err != nil {
+		common.ThrowError(err)
+	}
 }
 
 func UpdateCloudConfig(updatedCloud Cloud) {
-	otcConfig := getOtcConfig()
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	index, err := otcConfig.Clouds.GetActiveCloudIndex()
 	if err != nil {
 		common.ThrowError(err)
 	}
 	otcConfig.Clouds[*index] = updatedCloud
 
-	writeOtcConfigContentToFile(otcConfig)
+	err = writeOtcConfigContentToFile(*otcConfig)
+	if err != nil {
+		common.ThrowError(err)
+	}
 }
 
 func GetActiveCloudConfig() Cloud {
-	otcConfig := getOtcConfig()
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	clouds := otcConfig.Clouds
 	cloud, _, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil {
@@ -139,7 +174,7 @@ func OtcConfigFileExists() bool {
 	return !fileInfo.IsDir()
 }
 
-func getOtcConfig() OtcConfigContent {
+func getOtcConfig() (*OtcConfigContent, error) {
 	if !OtcConfigFileExists() {
 		createConfigFileWithCloudConfig(OtcConfigContent{})
 		glog.V(1).Info("info: cloud config created")
@@ -150,9 +185,9 @@ func getOtcConfig() OtcConfigContent {
 
 	err := json.Unmarshal([]byte(content), &otcConfig)
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error deserializing json.\ntrace: %w", err))
+		return nil, fmt.Errorf("fatal: error deserializing json.\ntrace: %w", err)
 	}
-	return otcConfig
+	return &otcConfig, nil
 }
 
 func GetHomeFolder() (homeFolder string) {
@@ -165,16 +200,21 @@ func GetHomeFolder() (homeFolder string) {
 }
 
 func createConfigFileWithCloudConfig(content OtcConfigContent) {
-	writeOtcConfigContentToFile(content)
+	err := writeOtcConfigContentToFile(content)
+	if err != nil {
+		common.ThrowError(err)
+	}
 }
 
-func writeOtcConfigContentToFile(content OtcConfigContent) {
+func writeOtcConfigContentToFile(content OtcConfigContent) error {
 	contentAsBytes, err := json.Marshal(content)
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error encoding json.\ntrace: %w", err))
+		err = errors.Join(err, errors.New("fatal: error encoding json"))
 	}
 
-	WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), path.Join(GetHomeFolder(), ".otc-auth-config"))
+	writeErr := WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes),
+		path.Join(GetHomeFolder(), ".otc-auth-config"))
+	return errors.Join(err, writeErr)
 }
 
 func readFileContent() string {
@@ -201,26 +241,33 @@ func readFileContent() string {
 	return content
 }
 
-func WriteConfigFile(content string, configPath string) {
+func WriteConfigFile(content string, configPath string) error {
 	file, err := os.Create(configPath)
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error reading config file.\ntrace: %w", err))
+		return fmt.Errorf("fatal: error reading config file.\ntrace: %w", err)
 	}
 
 	_, err = file.WriteString(content)
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error writing to config file.\ntrace: %w", err))
+		return fmt.Errorf("fatal: error writing to config file.\ntrace: %w", err)
 	}
 
 	err = file.Close()
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error saving config file.\ntrace: %w", err))
+		return fmt.Errorf("fatal: error saving config file.\ntrace: %w", err)
 	}
+	return nil
 }
 
 func removeCloudConfig(name string) {
-	otcConfig := getOtcConfig()
+	otcConfig, err := getOtcConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	otcConfig.Clouds.RemoveCloudByNameIfExists(name)
-	writeOtcConfigContentToFile(otcConfig)
+	err = writeOtcConfigContentToFile(*otcConfig)
+	if err != nil {
+		common.ThrowError(err)
+	}
 }
