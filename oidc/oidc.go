@@ -24,7 +24,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) com
 
 //nolint:lll // This function will be removed soon
 func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo, skipTLS bool) common.TokenResponse {
-	var tokenResponse common.TokenResponse
+	var tokenResponse *common.TokenResponse
 	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol, authInfo.Region)
 
 	request := common.GetRequest(http.MethodPost, url, nil)
@@ -36,10 +36,13 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 		headers.Authorization, oidcCredentials.BearerToken,
 	)
 
-	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // The body IS being closed in GetCloudCredentialsFromResponseOrThrow after being read, which might be worth refactoring later
+	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // The body IS being closed in GetCloudCredentialsFromResponse after being read, which might be worth refactoring later
 
-	tokenResponse = common.GetCloudCredentialsFromResponseOrThrow(response)
+	tokenResponse, err := common.GetCloudCredentialsFromResponse(response)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	tokenResponse.Token.User.Name = oidcCredentials.Claims.PreferredUsername
 
-	return tokenResponse
+	return *tokenResponse
 }

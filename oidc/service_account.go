@@ -40,7 +40,10 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) com
 	}
 	request := createServiceAccountAuthenticateRequest(idpTokenURL, params.ClientID, params.ClientSecret)
 	response := common.HTTPClientMakeRequest(request, skipTLS)
-	bodyBytes := common.GetBodyBytesFromResponse(response)
+	bodyBytes, err := common.GetBodyBytesFromResponse(response)
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	var result ServiceAccountResponse
 	err = json.Unmarshal(bodyBytes, &result)

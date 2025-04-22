@@ -9,6 +9,7 @@ require (
 	github.com/gavv/cobradoc v1.1.0
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/golang/glog v1.2.3
+	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/imdario/mergo v0.3.16
