@@ -176,7 +176,10 @@ func OtcConfigFileExists() bool {
 
 func getOtcConfig() (*OtcConfigContent, error) {
 	if !OtcConfigFileExists() {
-		createConfigFileWithCloudConfig(OtcConfigContent{})
+		err := createConfigFileWithCloudConfig(OtcConfigContent{})
+		if err != nil {
+			return nil, err
+		}
 		glog.V(1).Info("info: cloud config created")
 	}
 
@@ -199,11 +202,12 @@ func GetHomeFolder() (homeFolder string) {
 	return homeFolder
 }
 
-func createConfigFileWithCloudConfig(content OtcConfigContent) {
+func createConfigFileWithCloudConfig(content OtcConfigContent) error {
 	err := writeOtcConfigContentToFile(content)
 	if err != nil {
-		common.ThrowError(err)
+		return err
 	}
+	return nil
 }
 
 func writeOtcConfigContentToFile(content OtcConfigContent) error {
