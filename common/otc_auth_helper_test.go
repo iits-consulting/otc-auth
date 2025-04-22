@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"otc-auth/common"
 	"otc-auth/common/xheaders"
@@ -124,6 +125,63 @@ func TestGetCloudCredentialsFromResponse(t *testing.T) {
 
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("GetCloudCredentialsFromResponse() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestParseTime(t *testing.T) {
+	// Reference time for comparison
+	refTime, _ := time.Parse(time.RFC3339, "2023-01-02T15:04:05Z")
+
+	type args struct {
+		timeString string
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		want    *time.Time
+		wantErr bool
+	}{
+		{
+			name:    "empty string",
+			args:    args{timeString: ""},
+			want:    &time.Time{},
+			wantErr: false,
+		},
+		{
+			name:    "valid RFC3339 time",
+			args:    args{timeString: "2023-01-02T15:04:05Z"},
+			want:    &refTime,
+			wantErr: false,
+		},
+		{
+			name:    "invalid time format",
+			args:    args{timeString: "Jan 2, 2023 at 3:04pm"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "malformed RFC3339",
+			args:    args{timeString: "2023-01-02T15:04:05"}, // Missing timezone
+			want:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := common.ParseTime(tt.args.timeString)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseTime() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErr {
+				return // Don't check time value if we expected an error
+			}
+			if !got.Equal(*tt.want) {
+				t.Errorf("ParseTime() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
