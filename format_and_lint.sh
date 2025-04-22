@@ -4,6 +4,7 @@ PATH="$PATH:$HOME/go/bin"
 
 reset
 go mod tidy
+go test -v ./...
 gci write .
 go vet .
 goimports -w .

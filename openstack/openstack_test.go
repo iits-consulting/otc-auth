@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gophercloud/utils/openstack/clientconfig"
-
 	"otc-auth/config"
+
+	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
 func TestWriteOpenStackCloudsYaml(t *testing.T) {
@@ -46,7 +46,7 @@ func TestWriteOpenStackCloudsYaml(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			content, _ := json.Marshal(tt.config)
-			_ = os.WriteFile(filepath.Join(config.GetHomeFolder(), ".otc-auth-config"), content, 0644)
+			_ = os.WriteFile(filepath.Join(config.GetHomeFolder(), ".otc-auth-config"), content, 0o644)
 			defer os.Remove(filepath.Join(config.GetHomeFolder(), ".otc-auth-config"))
 
 			WriteOpenStackCloudsYaml(tt.outputFile)
