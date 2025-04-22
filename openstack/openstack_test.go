@@ -1,14 +1,12 @@
-package openstack_test
+package openstack
 
 import (
 	"encoding/json"
+	"github.com/gophercloud/utils/openstack/clientconfig"
 	"os"
-	"otc-auth/openstack"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/gophercloud/utils/openstack/clientconfig"
 
 	"otc-auth/config"
 )
@@ -49,7 +47,7 @@ func TestWriteOpenStackCloudsYaml(t *testing.T) {
 			_ = os.WriteFile(filepath.Join(config.GetHomeFolder(), ".otc-auth-config"), content, 0644)
 			defer os.Remove(filepath.Join(config.GetHomeFolder(), ".otc-auth-config"))
 
-			openstack.WriteOpenStackCloudsYaml(tt.outputFile)
+			WriteOpenStackCloudsYaml(tt.outputFile)
 			defer os.Remove(tt.outputFile)
 
 			if _, err := os.Stat(tt.outputFile); (err == nil) != tt.expectFileExists {
@@ -87,7 +85,7 @@ func TestCreateOpenstackCloudConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := openstack.CreateOpenstackCloudConfig(tt.project, tt.domain, tt.region)
+			result := createOpenstackCloudConfig(tt.project, tt.domain, tt.region)
 
 			if result.Cloud != tt.expectedName {
 				t.Errorf("unexpected Cloud name: got %q, want %q", result.Cloud, tt.expectedName)
@@ -137,7 +135,7 @@ func TestCreateOpenstackCloudsYAML(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			defer os.Remove(tt.outputPath)
-			openstack.CreateOpenstackCloudsYAML(tt.clouds, tt.outputPath)
+			createOpenstackCloudsYAML(tt.clouds, tt.outputPath)
 
 			content, err := os.ReadFile(tt.outputPath)
 			if tt.expectError && err == nil {

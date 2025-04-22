@@ -21,13 +21,13 @@ func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
 	clouds := make(map[string]clientconfig.Cloud)
 	for _, project := range cloudConfig.Projects {
 		cloudName := domainName + "_" + project.Name
-		clouds[cloudName] = CreateOpenstackCloudConfig(project, domainName, cloudConfig.Region)
+		clouds[cloudName] = createOpenstackCloudConfig(project, domainName, cloudConfig.Region)
 	}
 
-	CreateOpenstackCloudsYAML(clientconfig.Clouds{Clouds: clouds}, openStackConfigFileLocation)
+	createOpenstackCloudsYAML(clientconfig.Clouds{Clouds: clouds}, openStackConfigFileLocation)
 }
 
-func CreateOpenstackCloudConfig(project config.Project, domainName string, regionCode string) clientconfig.Cloud {
+func createOpenstackCloudConfig(project config.Project, domainName string, regionCode string) clientconfig.Cloud {
 	projectName := project.Name
 	cloudName := domainName + "_" + projectName
 
@@ -48,7 +48,7 @@ func CreateOpenstackCloudConfig(project config.Project, domainName string, regio
 	return openstackCloudConfig
 }
 
-func CreateOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLocation string) {
+func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLocation string) {
 	contentAsBytes, err := yaml.Marshal(clouds)
 	if err != nil {
 		common.ThrowError(fmt.Errorf("fatal: error encoding json.\ntrace: %w", err))
