@@ -1,10 +1,9 @@
-package cce_test
+//nolint:testpackage // whitebox testing
+package cce
 
 import (
 	"reflect"
 	"testing"
-
-	"otc-auth/cce"
 
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -91,7 +90,7 @@ func Test_merge(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := cce.Merge(tt.currentConfig, tt.kubeConfig)
+			err := merge(tt.currentConfig, tt.kubeConfig)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Merge() error = %v, wantErr %v", err, tt.wantErr)

@@ -33,7 +33,7 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	if err != nil {
 		common.ThrowError(err)
 	}
-	err = Merge(currentConfig, kubeConfig)
+	err = merge(currentConfig, kubeConfig)
 	if err != nil {
 		common.ThrowError(err)
 	}
@@ -43,7 +43,7 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	}
 }
 
-func Merge(currentConfig *api.Config, kubeConfig api.Config) error {
+func merge(currentConfig *api.Config, kubeConfig api.Config) error {
 	err := mergo.Merge(currentConfig, kubeConfig, mergo.WithOverride)
 	return err
 }
