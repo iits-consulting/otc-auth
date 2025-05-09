@@ -14,6 +14,27 @@ import (
 	"github.com/golang/glog"
 )
 
+const configFileName = ".otc-auth-config"
+
+var configFilePath string //nolint:gochecknoglobals // TODO - Consider DI?
+
+func SetCustomConfigFilePath(path string) {
+	configFilePath = path
+}
+
+func effectiveConfigPath() (string, error) {
+	if configFilePath != "" {
+		return path.Join(configFilePath, configFileName), nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("error retrieving home directory: %w", err)
+	}
+
+	return path.Join(homeDir, configFileName), nil
+}
+
 func LoadCloudConfig(domainName string) error {
 	otcConfig, err := getOtcConfig()
 	if err != nil {
@@ -168,18 +189,26 @@ func GetActiveCloudConfig() (*Cloud, error) {
 	return cloud, nil
 }
 
-func OtcConfigFileExists() bool {
-	fileInfo, err := os.Stat(path.Join(GetHomeFolder(), ".otc-auth-config"))
+func OtcConfigFileExists() (bool, error) {
+	path, err := effectiveConfigPath()
+	if err != nil {
+		return false, err
+	}
+	fileInfo, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
-		return false
+		return false, nil
 	}
 
-	return !fileInfo.IsDir()
+	return !fileInfo.IsDir(), nil
 }
 
 func getOtcConfig() (*OtcConfigContent, error) {
-	if !OtcConfigFileExists() {
-		err := createConfigFileWithCloudConfig(OtcConfigContent{})
+	exists, err := OtcConfigFileExists()
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		err = createConfigFileWithCloudConfig(OtcConfigContent{})
 		if err != nil {
 			return nil, err
 		}
@@ -187,22 +216,16 @@ func getOtcConfig() (*OtcConfigContent, error) {
 	}
 
 	var otcConfig OtcConfigContent
-	content := readFileContent()
+	content, err := readFileContent()
+	if err != nil {
+		return nil, err
+	}
 
-	err := json.Unmarshal([]byte(content), &otcConfig)
+	err = json.Unmarshal([]byte(*content), &otcConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fatal: error deserializing json.\ntrace: %w", err)
 	}
 	return &otcConfig, nil
-}
-
-func GetHomeFolder() (homeFolder string) {
-	homeFolder, err := os.UserHomeDir()
-	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error retrieving home directory.\ntrace: %w", err))
-	}
-
-	return homeFolder
 }
 
 func createConfigFileWithCloudConfig(content OtcConfigContent) error {
@@ -217,22 +240,28 @@ func writeOtcConfigContentToFile(content OtcConfigContent) error {
 	contentAsBytes, err := json.Marshal(content)
 	if err != nil {
 		err = errors.Join(err, errors.New("fatal: error encoding json"))
+		return err
 	}
 
-	writeErr := WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes),
-		path.Join(GetHomeFolder(), ".otc-auth-config"))
+	path, err := effectiveConfigPath()
+	writeErr := WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), path)
 	return errors.Join(err, writeErr)
 }
 
-func readFileContent() string {
-	file, err := os.Open(path.Join(GetHomeFolder(), ".otc-auth-config"))
+func readFileContent() (*string, error) {
+	path, err := effectiveConfigPath()
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error opening config file.\ntrace: %w", err))
+		return nil, err
 	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("fatal: error opening config file.\ntrace: %w", err)
+	}
+	var errClose error
 	defer func(file *os.File) {
-		errClose := file.Close()
+		errClose = file.Close()
 		if errClose != nil {
-			common.ThrowError(fmt.Errorf("fatal: error saving config file.\ntrace: %w", errClose))
+			errClose = fmt.Errorf("fatal: error saving config file.\ntrace: %w", errClose)
 		}
 	}(file)
 
@@ -245,7 +274,7 @@ func readFileContent() string {
 		common.ThrowError(fmt.Errorf("fatal: error reading config file.\ntrace: %w", errScanner))
 	}
 
-	return content
+	return &content, errClose
 }
 
 func WriteConfigFile(content string, configPath string) error {

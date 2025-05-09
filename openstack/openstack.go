@@ -57,8 +57,13 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 		common.ThrowError(fmt.Errorf("fatal: error encoding json.\ntrace: %w", err))
 	}
 
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		common.ThrowError(fmt.Errorf("couldn't get user home dir: %w", err))
+	}
+
 	if openStackConfigFileLocation == "" {
-		openStackConfigFileLocation = path.Join(config.GetHomeFolder(), ".config", "openstack", "clouds.yaml")
+		openStackConfigFileLocation = path.Join(dir, ".config", "openstack", "clouds.yaml")
 	}
 	mkDirError := os.MkdirAll(filepath.Dir(openStackConfigFileLocation), os.ModePerm)
 	if mkDirError != nil {
