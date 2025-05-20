@@ -129,13 +129,13 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 	}
 }
 
-func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse {
+func authenticateWithIdp(params common.AuthInfo) (*common.OidcCredentialsResponse, error) {
 	channel := make(chan common.OidcCredentialsResponse)
 	go startAndListenHTTPServer(channel)
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, params.IdpURL)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
 
 	oAuth2Config = oauth2.Config{
@@ -151,8 +151,9 @@ func authenticateWithIdp(params common.AuthInfo) common.OidcCredentialsResponse 
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
 
-	return <-channel
+	resp := <-channel
+	return &resp, nil
 }
