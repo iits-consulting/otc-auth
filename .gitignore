@@ -336,3 +336,9 @@ tags
 
 # Potentially generated during CI
 *.rsa
+*.rsa.pub
+
+packages
+.jj
+
+*.tar

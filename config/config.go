@@ -23,16 +23,18 @@ func SetCustomConfigFilePath(path string) {
 }
 
 func effectiveConfigPath() (string, error) {
-	if configFilePath != "" {
-		return path.Join(configFilePath, configFileName), nil
+	configPath := configFilePath
+
+	if configFilePath == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("error retrieving home directory: %w", err)
+		}
+
+		configPath = homeDir
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("error retrieving home directory: %w", err)
-	}
-
-	return path.Join(homeDir, configFileName), nil
+	return path.Join(configPath, configFileName), nil
 }
 
 func LoadCloudConfig(domainName string) error {
@@ -111,9 +113,8 @@ func RemoveCloudConfig(domainName string) {
 		common.ThrowError(err)
 	}
 	if !otcConfig.Clouds.ContainsCloud(domainName) {
-		common.ThrowError(
-			fmt.Errorf(
-				"fatal: cloud with name %s does not exist in the config file", domainName))
+		glog.Warning("warning: cloud with name %s doesn't exist.\n", domainName)
+		return
 	}
 
 	removeCloudConfig(domainName)

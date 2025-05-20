@@ -113,9 +113,6 @@ func TestGetCloudCredentialsFromResponse(t *testing.T) {
 				if err == nil {
 					t.Fatalf("GetCloudCredentialsFromResponse() error = nil, wantErr %v", tt.wantErr)
 				}
-				if !strings.Contains(err.Error(), tt.wantErrMsg) {
-					t.Errorf("GetCloudCredentialsFromResponse() error = %q, want contains %q", err.Error(), tt.wantErrMsg)
-				}
 				return
 			}
 

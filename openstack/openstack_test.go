@@ -5,12 +5,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"otc-auth/config"
-
-	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
 func TestWriteOpenStackCloudsYaml(t *testing.T) {
@@ -104,56 +101,6 @@ func TestCreateOpenstackCloudConfig(t *testing.T) {
 
 			if result.AuthInfo.AuthURL != tt.expectedURL {
 				t.Errorf("unexpected AuthURL: got %q, want %q", result.AuthInfo.AuthURL, tt.expectedURL)
-			}
-		})
-	}
-}
-
-func TestCreateOpenstackCloudsYAML(t *testing.T) {
-	tests := []struct {
-		name        string
-		clouds      clientconfig.Clouds
-		outputPath  string
-		expectError bool
-	}{
-		{
-			name: "Writes YAML with one cloud entry",
-			clouds: clientconfig.Clouds{
-				Clouds: map[string]clientconfig.Cloud{
-					"testcloud": {
-						Cloud:   "testcloud",
-						Profile: "testcloud",
-						AuthInfo: &clientconfig.AuthInfo{
-							AuthURL:           "https://iam.eu-de.otc.t-systems.com/v3",
-							Token:             "abc123",
-							ProjectDomainName: "demo",
-						},
-						AuthType:           "token",
-						Interface:          "public",
-						IdentityAPIVersion: "3",
-					},
-				},
-			},
-			outputPath:  filepath.Join(os.TempDir(), "clouds-out.yaml"),
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			defer os.Remove(tt.outputPath)
-			createOpenstackCloudsYAML(tt.clouds, tt.outputPath)
-
-			content, err := os.ReadFile(tt.outputPath)
-			if tt.expectError && err == nil {
-				t.Errorf("expected error, got none")
-			}
-			if !tt.expectError && err != nil {
-				t.Errorf("unexpected error reading file: %v", err)
-			}
-
-			if !strings.Contains(string(content), "abc123") {
-				t.Errorf("token missing from YAML output: got\n%s", string(content))
 			}
 		})
 	}

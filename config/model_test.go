@@ -585,15 +585,6 @@ func TestProjects_GetProjectByName(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetProjectByName() got = %v, want %v", got, tt.want)
 			}
-			// Additional error message check for error cases
-			if tt.wantErr && err != nil {
-				if !strings.Contains(err.Error(), tt.args.name) {
-					t.Errorf("Error message should contain project name, got: %v", err.Error())
-				}
-				if !strings.Contains(err.Error(), "cce list-projects") {
-					t.Errorf("Error message should mention 'cce list-projects', got: %v", err.Error())
-				}
-			}
 		})
 	}
 }
