@@ -52,12 +52,21 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 }
 
 func GetScopedToken(projectName string) config.Token {
-	project := config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
-
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	project, err := activeCloud.Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	if project.ScopedToken.IsTokenValid() {
 		token := project.ScopedToken
 
-		tokenExpirationDate := common.ParseTimeOrThrow(token.ExpiresAt)
+		tokenExpirationDate, parseErr := common.ParseTime(token.ExpiresAt)
+		if parseErr != nil {
+			common.ThrowError(parseErr)
+		}
 		if tokenExpirationDate.After(time.Now()) {
 			glog.V(1).Infof("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
 			return token
@@ -68,19 +77,28 @@ func GetScopedToken(projectName string) config.Token {
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
 	glog.V(1).Info("info: scoped token acquired successfully")
-	project = config.GetActiveCloudConfig().Projects.GetProjectByNameOrThrow(projectName)
+	project, err = activeCloud.Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	return project.ScopedToken
 }
 
 func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud {
-	cloud := config.GetActiveCloudConfig()
-	projectID := cloud.Projects.GetProjectByNameOrThrow(projectName).ID
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	project, err := activeCloud.Projects.GetProjectByName(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	authOpts := golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(cloud.Region),
-		TokenID:          cloud.UnscopedToken.Secret,
-		TenantID:         projectID,
-		DomainName:       cloud.Domain.Name,
+		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
+		TokenID:          activeCloud.UnscopedToken.Secret,
+		TenantID:         project.ID,
+		DomainName:       activeCloud.Domain.Name,
 	}
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
@@ -101,13 +119,13 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 		Secret:    scopedToken.ID,
 		ExpiresAt: scopedToken.ExpiresAt.Format(time.RFC3339),
 	}
-	index := cloud.Projects.FindProjectIndexByName(projectName)
+	index := activeCloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
 		common.ThrowError(fmt.Errorf(
 			"fatal: project with name %s not found.\n"+
 				"\nUse the cce list-projects command to get a list of projects",
 			projectName))
 	}
-	cloud.Projects[*index].ScopedToken = token
-	return cloud
+	activeCloud.Projects[*index].ScopedToken = token
+	return *activeCloud
 }

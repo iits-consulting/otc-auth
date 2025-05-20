@@ -33,7 +33,7 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	if err != nil {
 		common.ThrowError(err)
 	}
-	err = Merge(currentConfig, kubeConfig)
+	err = merge(currentConfig, kubeConfig)
 	if err != nil {
 		common.ThrowError(err)
 	}
@@ -43,7 +43,7 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 	}
 }
 
-func Merge(currentConfig *api.Config, kubeConfig api.Config) error {
+func merge(currentConfig *api.Config, kubeConfig api.Config) error {
 	err := mergo.Merge(currentConfig, kubeConfig, mergo.WithOverride)
 	return err
 }
@@ -63,7 +63,10 @@ func determineTargetLocation(targetLocation string) string {
 func addContextInformationToKubeConfig(projectName string, clusterName string,
 	kubeConfigData string, alias string,
 ) string {
-	cloud := config.GetActiveCloudConfig()
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	if alias == "" {
 		alias = fmt.Sprintf("%s/%s", projectName, clusterName)
@@ -75,7 +78,7 @@ func addContextInformationToKubeConfig(projectName string, clusterName string,
 	kubeConfigData = strings.ReplaceAll(kubeConfigData, "internal", fmt.Sprintf("%s-intranet", alias))
 	kubeConfigData = strings.ReplaceAll(kubeConfigData, "external", alias)
 	kubeConfigData = strings.ReplaceAll(kubeConfigData, ":\"user\"",
-		fmt.Sprintf(":\"%s-%s-%s\"", projectName, clusterName, cloud.Username))
+		fmt.Sprintf(":\"%s-%s-%s\"", projectName, clusterName, activeCloud.Username))
 
 	return kubeConfigData
 }

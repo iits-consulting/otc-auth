@@ -16,7 +16,10 @@ import (
 )
 
 func WriteOpenStackCloudsYaml(openStackConfigFileLocation string) {
-	cloudConfig := config.GetActiveCloudConfig()
+	cloudConfig, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	domainName := cloudConfig.Domain.Name
 	clouds := make(map[string]clientconfig.Cloud)
 	for _, project := range cloudConfig.Projects {
@@ -54,14 +57,22 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 		common.ThrowError(fmt.Errorf("fatal: error encoding json.\ntrace: %w", err))
 	}
 
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		common.ThrowError(fmt.Errorf("couldn't get user home dir: %w", err))
+	}
+
 	if openStackConfigFileLocation == "" {
-		openStackConfigFileLocation = path.Join(config.GetHomeFolder(), ".config", "openstack", "clouds.yaml")
+		openStackConfigFileLocation = path.Join(dir, ".config", "openstack", "clouds.yaml")
 	}
 	mkDirError := os.MkdirAll(filepath.Dir(openStackConfigFileLocation), os.ModePerm)
 	if mkDirError != nil {
 		common.ThrowError(err)
 	}
-	config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
+	err = config.WriteConfigFile(string(contentAsBytes), openStackConfigFileLocation)
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	glog.V(1).Info("info: openstack clouds.yaml was updated")
 }

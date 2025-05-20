@@ -91,7 +91,11 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	if err != nil {
 		return nil, err
 	}
-	user, err := tokens.Get(client, config.GetActiveCloudConfig().UnscopedToken.Secret).ExtractUser()
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	user, err := tokens.Get(client, activeCloud.UnscopedToken.Secret).ExtractUser()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
@@ -119,7 +123,11 @@ func getAccessTokenFromServiceProvider(tokenDescription string) (*credentials.Cr
 	if err != nil {
 		return nil, err
 	}
-	user, err := tokens.Get(client, config.GetActiveCloudConfig().UnscopedToken.Secret).ExtractUser()
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
+	user, err := tokens.Get(client, activeCloud.UnscopedToken.Secret).ExtractUser()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
@@ -190,10 +198,14 @@ func DeleteAccessToken(token string) error {
 }
 
 func getIdentityServiceClient() (*golangsdk.ServiceClient, error) {
+	activeCloud, err := config.GetActiveCloudConfig()
+	if err != nil {
+		common.ThrowError(err)
+	}
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(config.GetActiveCloudConfig().Region),
-		DomainID:         config.GetActiveCloudConfig().Domain.ID,
-		TokenID:          config.GetActiveCloudConfig().UnscopedToken.Secret,
+		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
+		DomainID:         activeCloud.Domain.ID,
+		TokenID:          activeCloud.UnscopedToken.Secret,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get provider: %w", err)

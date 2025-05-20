@@ -157,7 +157,10 @@ var cceListCmd = &cobra.Command{
 	Example: cceListCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(cceListFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
-		config.LoadCloudConfig(domainName)
+		err := config.LoadCloudConfig(domainName)
+		if err != nil {
+			common.ThrowError(errors.New("fatal: couldn't load cloud config: " + err.Error()))
+		}
 		if !config.IsAuthenticationValid() {
 			common.ThrowError(
 				errors.New("fatal: no valid unscoped token found." +
@@ -189,7 +192,10 @@ var cceGetKubeConfigCmd = &cobra.Command{
 	Example: cceGetKubeConfigCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(cceGetKubeConfigFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
-		config.LoadCloudConfig(domainName)
+		err := config.LoadCloudConfig(domainName)
+		if err != nil {
+			common.ThrowError(errors.New("fatal: couldn't load cloud config: " + err.Error()))
+		}
 		if !config.IsAuthenticationValid() {
 			common.ThrowError(
 				errors.New("fatal: no valid unscoped token found." +
@@ -225,7 +231,10 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 	Short:   tempAccessTokenCreateCmdHelp,
 	Example: tempAccessTokenCreateCmdExample,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config.LoadCloudConfig(domainName)
+		err := config.LoadCloudConfig(domainName)
+		if err != nil {
+			common.ThrowError(errors.New("fatal: couldn't load cloud config: " + err.Error()))
+		}
 		if !config.IsAuthenticationValid() {
 			return errors.New(
 				"fatal: no valid unscoped token found, please obtain an unscoped token by logging in first",
@@ -235,7 +244,7 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 		if temporaryAccessTokenDurationSeconds < 900 || temporaryAccessTokenDurationSeconds > 86400 {
 			return errors.New("fatal: token duration must be between 900 and 86400 seconds (15m and 24h)")
 		}
-		err := accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds, printAkSk)
+		err = accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds, printAkSk)
 		if err != nil {
 			return err
 		}
@@ -254,7 +263,10 @@ var accessTokenCreateCmd = &cobra.Command{
 	Short:   accessTokenCreateCmdHelp,
 	Example: accessTokenCreateCmdExample,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.LoadCloudConfig(domainName)
+		err := config.LoadCloudConfig(domainName)
+		if err != nil {
+			common.ThrowError(errors.New("fatal: couldn't load cloud config: " + err.Error()))
+		}
 		if !config.IsAuthenticationValid() {
 			common.ThrowError(
 				errors.New(
@@ -269,7 +281,10 @@ var accessTokenListCmd = &cobra.Command{
 	Use:   "list",
 	Short: accessTokenListCmdHelp,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.LoadCloudConfig(domainName)
+		err := config.LoadCloudConfig(domainName)
+		if err != nil {
+			common.ThrowError(errors.New("fatal: couldn't load cloud config: " + err.Error()))
+		}
 		if !config.IsAuthenticationValid() {
 			common.ThrowError(
 				errors.New("fatal: no valid unscoped token found.\n\nPlease obtain an unscoped token by logging in first"))
@@ -289,9 +304,9 @@ var accessTokenListCmd = &cobra.Command{
 					"Active: \t%s\n \n",
 					aT.AccessKey, aT.Description, aT.UserID, aT.LastUseTime, aT.Status)
 			}
-			_, err := log.Writer().Write([]byte(output))
-			if err != nil {
-				common.ThrowError(fmt.Errorf("fatal: couldn't write output: %w", err))
+			_, wErr := log.Writer().Write([]byte(output))
+			if wErr != nil {
+				common.ThrowError(fmt.Errorf("fatal: couldn't write output: %w", wErr))
 			}
 		} else {
 			glog.V(1).Info("info: no access-tokens found")
@@ -304,7 +319,10 @@ var accessTokenDeleteCmd = &cobra.Command{
 	Short:   accessTokenDeleteCmdHelp,
 	Example: accessTokenDeleteCmdExample,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.LoadCloudConfig(domainName)
+		err := config.LoadCloudConfig(domainName)
+		if err != nil {
+			common.ThrowError(errors.New("fatal: couldn't load cloud config: " + err.Error()))
+		}
 
 		if !config.IsAuthenticationValid() {
 			common.ThrowError(

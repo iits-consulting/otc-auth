@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"otc-auth/common"
+
+	"github.com/golang/glog"
 )
 
 type OtcConfigContent struct {
@@ -56,13 +58,13 @@ func (clouds *Clouds) FindActiveCloudConfigOrNil() (cloud *Cloud, index *int, er
 	return nil, nil, errors.New("no active cloud")
 }
 
-func (clouds *Clouds) GetActiveCloudIndex() int {
+func (clouds *Clouds) GetActiveCloudIndex() (*int, error) {
 	cloud, index, err := clouds.FindActiveCloudConfigOrNil()
 	if err != nil || cloud == nil || index == nil {
-		common.ThrowError(fmt.Errorf("fatal: invalid state %w", err))
+		return nil, fmt.Errorf("fatal: invalid state %w", err)
 	}
 
-	return *index
+	return index, nil
 }
 
 func (clouds *Clouds) NumberOfActiveCloudConfigs() int {
@@ -100,15 +102,14 @@ func (projects Projects) FindProjectByName(name string) *Project {
 	return nil
 }
 
-func (projects Projects) GetProjectByNameOrThrow(name string) Project {
+func (projects Projects) GetProjectByName(name string) (*Project, error) {
 	project := projects.FindProjectByName(name)
 	if project == nil {
-		common.ThrowError(
-			fmt.Errorf(
-				"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
-					"get a list of projects", name))
+		return nil, fmt.Errorf(
+			"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
+				"get a list of projects", name)
 	}
-	return *project
+	return project, nil
 }
 
 func (projects Projects) FindProjectIndexByName(name string) *int {
@@ -175,7 +176,12 @@ type Token struct {
 }
 
 func (token *Token) IsTokenValid() bool {
-	return common.ParseTimeOrThrow(token.ExpiresAt).After(time.Now())
+	timePTR, err := common.ParseTime(token.ExpiresAt)
+	if err != nil {
+		glog.Warningf("couldn't parse token expires_at: %s", err)
+		return false
+	}
+	return timePTR.After(time.Now())
 }
 
 func (token *Token) UpdateToken(updatedToken Token) Token {
