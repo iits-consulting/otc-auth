@@ -12,14 +12,19 @@ import (
 )
 
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) common.TokenResponse {
-	var oidcCredentials common.OidcCredentialsResponse
+	var oidcCredentials *common.OidcCredentialsResponse
+	var err error
 	if authInfo.IsServiceAccount {
-		oidcCredentials = authenticateServiceAccountWithIdp(authInfo, skipTLS)
+		oidcCredentials, err = authenticateServiceAccountWithIdp(authInfo, skipTLS)
 	} else {
-		oidcCredentials = authenticateWithIdp(authInfo)
+		oidcCredentials, err = authenticateWithIdp(authInfo)
 	}
 
-	return authenticateWithServiceProvider(oidcCredentials, authInfo, skipTLS)
+	if err != nil {
+		common.ThrowError(err)
+	}
+
+	return authenticateWithServiceProvider(*oidcCredentials, authInfo, skipTLS)
 }
 
 //nolint:lll // This function will be removed soon
