@@ -26,11 +26,6 @@ func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
 				clientID:     "myclient",
 				clientSecret: "mysecret",
 			},
-			// Construct the expected http.Request manually for comparison.
-			// Note: reflect.DeepEqual on http.Request is notoriously difficult and often unreliable
-			// due to internal state, unexported fields, and the Body field (io.ReadCloser).
-			// A more robust test might check specific fields (Method, URL, Header, Body content)
-			// or use a test HTTP server. However, following the provided skeleton's structure:
 			want: func() *http.Request {
 				expectedURL := "http://example.com/token"
 				data := url.Values{}
