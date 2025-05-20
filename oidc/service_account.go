@@ -33,22 +33,22 @@ type ServiceAccountResponse struct {
 	Scope            string `json:"scope"`
 }
 
-func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) common.OidcCredentialsResponse {
+func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) (*common.OidcCredentialsResponse, error) {
 	idpTokenURL, err := url.JoinPath(params.IdpURL, "protocol/openid-connect/token")
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
 	request := createServiceAccountAuthenticateRequest(idpTokenURL, params.ClientID, params.ClientSecret)
 	response := common.HTTPClientMakeRequest(request, skipTLS)
 	bodyBytes, err := common.GetBodyBytesFromResponse(response)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
 
 	var result ServiceAccountResponse
 	err = json.Unmarshal(bodyBytes, &result)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
 
 	serviceAccountCreds := common.OidcCredentialsResponse{}
@@ -57,7 +57,7 @@ func authenticateServiceAccountWithIdp(params common.AuthInfo, skipTLS bool) com
 
 	err = response.Body.Close()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
-	return serviceAccountCreds
+	return &serviceAccountCreds, nil
 }
