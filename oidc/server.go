@@ -79,6 +79,7 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 			http.Error(w, "No id_token field in oauth2 token", http.StatusInternalServerError)
 			return
 		}
+		glog.V(2).Infof("got id_token: %s", idToken)
 		if len(idToken) > normalMaxIDTokenLength {
 			glog.Warningf("warning: id token longer than %d characters"+
 				" - consider removing some groups or roles", normalMaxIDTokenLength)
