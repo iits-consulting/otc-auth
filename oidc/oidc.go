@@ -15,7 +15,7 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) com
 	var oidcCredentials *common.OidcCredentialsResponse
 	var err error
 	if authInfo.IsServiceAccount {
-		oidcCredentials, err = authenticateServiceAccountWithIdp(authInfo, skipTLS)
+		oidcCredentials, err = authenticateServiceAccountWithIdp(authInfo, skipTLS, common.HTTPClientImpl{})
 	} else {
 		oidcCredentials, err = authenticateWithIdp(authInfo)
 	}
@@ -24,11 +24,11 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) com
 		common.ThrowError(err)
 	}
 
-	return authenticateWithServiceProvider(*oidcCredentials, authInfo, skipTLS)
+	return authenticateWithServiceProvider(*oidcCredentials, authInfo, skipTLS, common.HTTPClientImpl{})
 }
 
 //nolint:lll // This function will be removed soon
-func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo, skipTLS bool) common.TokenResponse {
+func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo, skipTLS bool, client common.HTTPClient) common.TokenResponse {
 	var tokenResponse *common.TokenResponse
 	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol, authInfo.Region)
 
@@ -41,9 +41,11 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 		headers.Authorization, oidcCredentials.BearerToken,
 	)
 
-	response := common.HTTPClientMakeRequest(request, skipTLS) //nolint:bodyclose,lll // The body IS being closed in GetCloudCredentialsFromResponse after being read, which might be worth refactoring later
-
-	tokenResponse, err := common.GetCloudCredentialsFromResponse(response)
+	response, err := client.MakeRequest(request, skipTLS) //nolint:bodyclose,lll // The body IS being closed in GetCloudCredentialsFromResponse after being read, which might be worth refactoring later
+	if err != nil {
+		common.ThrowError(err)
+	}
+	tokenResponse, err = common.GetCloudCredentialsFromResponse(response)
 	if err != nil {
 		common.ThrowError(err)
 	}

@@ -2,9 +2,12 @@ package oidc
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
+	"otc-auth/common"
+	"reflect"
 	"testing"
 )
 
@@ -81,4 +84,128 @@ func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+type mockHTTPClient struct {
+	MakeRequestFunc func(request *http.Request, skipTLS bool) (*http.Response, error)
+}
+
+func (m mockHTTPClient) MakeRequest(request *http.Request, skipTLS bool) (*http.Response, error) {
+	return m.MakeRequestFunc(request, skipTLS)
+}
+
+func Test_authenticateServiceAccountWithIdp(t *testing.T) {
+	validURL := "http://valid.idp"
+	validAuth := common.AuthInfo{
+		IdpURL:       validURL,
+		ClientID:     "client",
+		ClientSecret: "secret",
+	}
+
+	tests := []struct {
+		name    string
+		client  common.HTTPClient
+		params  common.AuthInfo
+		want    *common.OidcCredentialsResponse
+		wantErr bool
+	}{
+		{
+			name: "invalid URL",
+			params: common.AuthInfo{
+				IdpURL: "http://invalid url",
+			},
+			client:  common.HTTPClientImpl{},
+			wantErr: true,
+		},
+		{
+			name:   "HTTP request failure",
+			params: validAuth,
+			client: mockHTTPClient{
+				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: 500,
+						Body:       io.NopCloser(bytes.NewBufferString("")),
+					}, nil
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:   "body read error",
+			params: validAuth,
+			client: mockHTTPClient{
+				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: 200,
+						Body:       io.NopCloser(errorReader{}),
+					}, nil
+				}},
+			wantErr: true,
+		},
+		{
+			name:   "invalid JSON response",
+			params: validAuth,
+			client: mockHTTPClient{
+				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: 200,
+						Body:       io.NopCloser(bytes.NewBufferString("{invalid json}")),
+					}, nil
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:   "successful authentication",
+			params: validAuth,
+			client: mockHTTPClient{
+				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+					if req.URL.String() != "http://valid.idp/protocol/openid-connect/token" {
+						t.Errorf("Unexpected URL: %s", req.URL.String())
+					}
+					if req.Method != "POST" {
+						t.Errorf("Unexpected method: %s", req.Method)
+					}
+
+					// Return valid response
+					return &http.Response{
+						StatusCode: 200,
+						Body:       io.NopCloser(bytes.NewBufferString(`{"id_token":"test-token"}`)),
+					}, nil
+				},
+			},
+			want: &common.OidcCredentialsResponse{
+				BearerToken: "test-token",
+				Claims: struct {
+					PreferredUsername string `json:"preferred_username"`
+				}(struct {
+					PreferredUsername string
+				}{PreferredUsername: "ServiceAccount"}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := tt.client
+			if client == nil {
+				client = common.HTTPClientImpl{}
+			}
+
+			got, err := authenticateServiceAccountWithIdp(tt.params, false, client)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type errorReader struct{}
+
+func (errorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("simulated read error")
 }

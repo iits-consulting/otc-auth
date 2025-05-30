@@ -11,19 +11,20 @@ import (
 	"strconv"
 )
 
-func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
+type HTTPClient interface {
+	MakeRequest(request *http.Request, skipTLS bool) (*http.Response, error)
+}
+
+type HTTPClientImpl struct{}
+
+func (c HTTPClientImpl) MakeRequest(request *http.Request, skipTLS bool) (*http.Response, error) {
 	tr := &http.Transport{
 		//nolint:gosec // Needs to be explicitly set to true via a flag to skip TLS verification.
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLS},
 	}
 	httpClient := http.Client{Transport: tr}
-	response, err := httpClient.Do(request)
-	if err != nil {
-		ThrowError(fmt.Errorf("fatal: error making a request %w", err))
-	}
-
 	defer httpClient.CloseIdleConnections()
-	return response
+	return httpClient.Do(request)
 }
 
 func GetRequest(method string, url string, body io.Reader) *http.Request {
