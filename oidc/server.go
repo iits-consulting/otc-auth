@@ -108,7 +108,9 @@ func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
 		}
 	})
 
-	listener, err := net.Listen("tcp", localhost)
+	lc := net.ListenConfig{}
+
+	listener, err := lc.Listen(context.Background(), "tcp", localhost)
 	if err != nil {
 		common.ThrowError(
 			errors.Wrap(err,
