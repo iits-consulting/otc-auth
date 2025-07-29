@@ -123,7 +123,7 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 	if index == nil {
 		common.ThrowError(fmt.Errorf(
 			"fatal: project with name %s not found.\n"+
-				"\nUse the cce list-projects command to get a list of projects",
+				"\nUse the projects list command to get a list of projects",
 			projectName))
 	}
 	activeCloud.Projects[*index].ScopedToken = token

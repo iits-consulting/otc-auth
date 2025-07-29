@@ -166,7 +166,9 @@ var cceListCmd = &cobra.Command{
 				errors.New("fatal: no valid unscoped token found." +
 					"\n\nPlease obtain an unscoped token by logging in first"))
 		}
-		cce.GetClusterNames(projectName)
+		fmt.Printf(
+			"CCE clusters for project %s:\n%s\n",
+			projectName, strings.Join(cce.GetClusterNames(projectName).GetClusterNames(), "\n")) // TODO - naming
 	},
 }
 
