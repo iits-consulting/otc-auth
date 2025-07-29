@@ -74,8 +74,11 @@ func GetScopedToken(projectName string) config.Token {
 	}
 
 	glog.V(1).Infof("info: attempting to request a scoped token for %s\n", projectName)
-	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
-	config.UpdateCloudConfig(cloud)
+	cloud, err := getCloudWithScopedTokenFromServiceProvider(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
+	config.UpdateCloudConfig(*cloud)
 	glog.V(1).Info("info: scoped token acquired successfully")
 	project, err = activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
@@ -84,7 +87,7 @@ func GetScopedToken(projectName string) config.Token {
 	return project.ScopedToken
 }
 
-func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud {
+func getCloudWithScopedTokenFromServiceProvider(projectName string) (*config.Cloud, error) {
 	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
 		common.ThrowError(err)
@@ -120,12 +123,12 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 		ExpiresAt: scopedToken.ExpiresAt.Format(time.RFC3339),
 	}
 	index := activeCloud.Projects.FindProjectIndexByName(projectName)
-	if index == nil {
-		common.ThrowError(fmt.Errorf(
-			"fatal: project with name %s not found.\n"+
-				"\nUse the cce list-projects command to get a list of projects",
-			projectName))
+	if index != nil {
+		activeCloud.Projects[*index].ScopedToken = token
+		return activeCloud, nil
 	}
-	activeCloud.Projects[*index].ScopedToken = token
-	return *activeCloud
+	return nil, fmt.Errorf(
+		"fatal: project with name %s not found.\n"+
+			"\nUse the projects list command to get a list of projects",
+		projectName)
 }
