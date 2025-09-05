@@ -244,11 +244,7 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 		if temporaryAccessTokenDurationSeconds < 900 || temporaryAccessTokenDurationSeconds > 86400 {
 			return errors.New("fatal: token duration must be between 900 and 86400 seconds (15m and 24h)")
 		}
-		err = accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds, printAkSk)
-		if err != nil {
-			return err
-		}
-		return nil
+		return accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds, printAkSk)
 	},
 }
 

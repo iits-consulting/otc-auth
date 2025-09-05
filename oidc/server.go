@@ -22,10 +22,6 @@ import (
 //nolint:gochecknoglobals // Works for now but needs a rewrite
 var (
 	backgroundCtx = context.Background()
-
-	oAuth2Config    oauth2.Config
-	state           string
-	idTokenVerifier *oidc.IDTokenVerifier
 )
 
 const (
@@ -41,10 +37,20 @@ const (
 	idleTimeout = 2 * time.Minute
 )
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
+type IVerifier interface {
+	Verify(ctx context.Context, rawIDToken string) (*oidc.IDToken, error)
+}
+
+type authFlow struct {
+	oAuth2Config    oauth2.Config
+	idTokenVerifier IVerifier
+	state           string
+}
+
+func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
 	rawAccessToken := r.Header.Get(headers.Authorization)
 	if rawAccessToken == "" {
-		http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
+		http.Redirect(w, r, a.oAuth2Config.AuthCodeURL(a.state), http.StatusFound)
 		return
 	}
 	parts := strings.Split(rawAccessToken, " ")
@@ -52,102 +58,116 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	_, err := idTokenVerifier.Verify(backgroundCtx, parts[1])
+	_, err := a.idTokenVerifier.Verify(backgroundCtx, parts[1])
 	if err != nil {
-		http.Redirect(w, r, oAuth2Config.AuthCodeURL(state), http.StatusFound)
+		http.Redirect(w, r, a.oAuth2Config.AuthCodeURL(a.state), http.StatusFound)
 		return
 	}
 }
 
-func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse) {
-	http.HandleFunc("/", handleRoot)
+func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse, a *authFlow) {
+	registerHandlers(channel, a)
 
-	http.HandleFunc("/oidc/auth", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get(queryState) != state {
-			http.Error(w, "state does not match", http.StatusBadRequest)
-			return
-		}
+	listener := createListener(localhost)
 
-		oauth2Token, err := oAuth2Config.Exchange(backgroundCtx, r.URL.Query().Get(queryCode))
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to exchange token: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		idToken, ok := oauth2Token.Extra(idTokenField).(string)
-		if !ok {
-			http.Error(w, "No id_token field in oauth2 token", http.StatusInternalServerError)
-			return
-		}
-		if len(idToken) > normalMaxIDTokenLength {
-			glog.Warningf("warning: id token longer than %d characters"+
-				" - consider removing some groups or roles", normalMaxIDTokenLength)
-		}
-		rawIDToken, err := idTokenVerifier.Verify(backgroundCtx, idToken)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to verify ID Token: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-
-		oidcUsernameAndToken := common.OidcCredentialsResponse{}
-		err = rawIDToken.Claims(&oidcUsernameAndToken.Claims)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		_, err = w.Write([]byte(common.SuccessPageHTML))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if idToken != "" {
-			oidcUsernameAndToken.BearerToken = fmt.Sprintf("Bearer %s", idToken)
-			channel <- oidcUsernameAndToken
-		}
-	})
-
-	listener, err := net.Listen("tcp", localhost)
-	if err != nil {
-		common.ThrowError(
-			errors.Wrap(err,
-				fmt.Sprintf("can't listen on %s, something might already be using this port", localhost)))
-	}
-
-	server := &http.Server{
-		Handler:      nil,
-		ReadTimeout:  rwTimeout,
-		WriteTimeout: rwTimeout,
-		IdleTimeout:  idleTimeout,
-	}
-
-	err = server.Serve(listener)
-	if err != nil {
-		common.ThrowError(
-			fmt.Errorf("failed to start server at %s: %w", localhost, err))
+	server := newHTTPServer(rwTimeout, rwTimeout, idleTimeout)
+	if err := server.Serve(listener); err != nil {
+		common.ThrowError(fmt.Errorf("failed to start server at %s: %w", localhost, err))
 	}
 }
 
+func registerHandlers(channel chan common.OidcCredentialsResponse, a *authFlow) {
+	http.HandleFunc("/", a.handleRoot)
+	http.HandleFunc("/oidc/auth", func(w http.ResponseWriter, r *http.Request) {
+		handleOIDCAuth(w, r, channel, a)
+	})
+}
+
+func handleOIDCAuth(w http.ResponseWriter, r *http.Request, channel chan common.OidcCredentialsResponse, a *authFlow) {
+	if r.URL.Query().Get(queryState) != a.state {
+		http.Error(w, "state does not match", http.StatusBadRequest)
+		return
+	}
+
+	oauth2Token, err := a.oAuth2Config.Exchange(backgroundCtx, r.URL.Query().Get(queryCode))
+	if err != nil {
+		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	idToken, ok := oauth2Token.Extra(idTokenField).(string)
+	if !ok {
+		http.Error(w, "No id_token field in oauth2 token", http.StatusInternalServerError)
+		return
+	}
+
+	if len(idToken) > normalMaxIDTokenLength {
+		glog.Warningf(
+			"warning: id token longer than %d characters – consider removing some groups or roles",
+			normalMaxIDTokenLength,
+		)
+	}
+
+	rawIDToken, err := a.idTokenVerifier.Verify(backgroundCtx, idToken)
+	if err != nil {
+		http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var creds common.OidcCredentialsResponse
+	if err = rawIDToken.Claims(&creds.Claims); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err = w.Write([]byte(common.SuccessPageHTML)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if idToken != "" {
+		creds.BearerToken = fmt.Sprintf("Bearer %s", idToken)
+		channel <- creds
+	}
+}
+
+func createListener(address string) net.Listener {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		common.ThrowError(
+			errors.Wrap(err, fmt.Sprintf("can't listen on %s, something might already be using this port", address)),
+		)
+	}
+	return listener
+}
+
+func newHTTPServer(readTimeout, writeTimeout, idleTimeout time.Duration) *http.Server {
+	return &http.Server{
+		Handler:      nil,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
+	}
+}
 func authenticateWithIdp(params common.AuthInfo) (*common.OidcCredentialsResponse, error) {
-	channel := make(chan common.OidcCredentialsResponse)
-	go startAndListenHTTPServer(channel)
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, params.IdpURL)
 	if err != nil {
 		return nil, err
 	}
-
-	oAuth2Config = oauth2.Config{
-		ClientID:     params.ClientID,
-		ClientSecret: params.ClientSecret,
-		RedirectURL:  redirectURL,
-		Endpoint:     provider.Endpoint(),
-		Scopes:       params.OidcScopes,
+	a := authFlow{
+		oAuth2Config: oauth2.Config{
+			ClientID:     params.ClientID,
+			ClientSecret: params.ClientSecret,
+			RedirectURL:  redirectURL,
+			Endpoint:     provider.Endpoint(),
+			Scopes:       params.OidcScopes,
+		},
+		idTokenVerifier: provider.Verifier(&oidc.Config{ClientID: params.ClientID}),
+		state:           uuid.New().String(),
 	}
-
-	idTokenVerifier = provider.Verifier(&oidc.Config{ClientID: params.ClientID})
-	state = uuid.New().String()
+	channel := make(chan common.OidcCredentialsResponse)
+	go startAndListenHTTPServer(channel, &a)
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
 	if err != nil {
