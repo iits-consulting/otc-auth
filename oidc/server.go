@@ -65,15 +65,26 @@ func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse, a *authFlow) {
+type listenerFactory func(address string) (net.Listener, error)
+
+func createListener(address string) (net.Listener, error) {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("can't listen on %s, something might already be using this port", address))
+	}
+	return listener, nil
+}
+
+func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse, a *authFlow, createListener listenerFactory) error {
 	registerHandlers(channel, a)
 
-	listener := createListener(localhost)
+	listener, err := createListener(localhost)
+	if err != nil {
+		return errors.Wrap(err, "couldn't start http server")
+	}
 
 	server := newHTTPServer(rwTimeout, rwTimeout, idleTimeout)
-	if err := server.Serve(listener); err != nil {
-		common.ThrowError(fmt.Errorf("failed to start server at %s: %w", localhost, err))
-	}
+	return server.Serve(listener)
 }
 
 func registerHandlers(channel chan common.OidcCredentialsResponse, a *authFlow) {
@@ -131,16 +142,6 @@ func handleOIDCAuth(w http.ResponseWriter, r *http.Request, channel chan common.
 	}
 }
 
-func createListener(address string) net.Listener {
-	listener, err := net.Listen("tcp", address)
-	if err != nil {
-		common.ThrowError(
-			errors.Wrap(err, fmt.Sprintf("can't listen on %s, something might already be using this port", address)),
-		)
-	}
-	return listener
-}
-
 func newHTTPServer(readTimeout, writeTimeout, idleTimeout time.Duration) *http.Server {
 	return &http.Server{
 		Handler:      nil,
@@ -167,7 +168,9 @@ func authenticateWithIdp(params common.AuthInfo) (*common.OidcCredentialsRespons
 		state:           uuid.New().String(),
 	}
 	channel := make(chan common.OidcCredentialsResponse)
-	go startAndListenHTTPServer(channel, &a)
+	go func() error {
+		return startAndListenHTTPServer(channel, &a, createListener)
+	}()
 
 	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
 	if err != nil {

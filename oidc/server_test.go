@@ -3,9 +3,12 @@ package oidc
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"otc-auth/common"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -122,4 +125,51 @@ func Test_authFlow_handleRoot(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_startAndListenHTTPServer(t *testing.T) {
+	mockFlow := &authFlow{}
+	mockChannel := make(chan common.OidcCredentialsResponse)
+
+	t.Run("Success case - server starts and is shut down", func(t *testing.T) {
+		var wg sync.WaitGroup
+		wg.Add(1)
+		var serverErr error
+
+		listenerChan := make(chan net.Listener, 1)
+		mockCreateListener := func(address string) (net.Listener, error) {
+			l, err := net.Listen("tcp", "localhost:0") // Use dynamic port
+			if err != nil {
+				return nil, err
+			}
+			listenerChan <- l
+			return l, nil
+		}
+
+		go func() {
+			defer wg.Done()
+			serverErr = startAndListenHTTPServer(mockChannel, mockFlow, mockCreateListener)
+		}()
+
+		listener := <-listenerChan
+		listener.Close()
+		wg.Wait()
+
+		if serverErr == nil || !strings.Contains(serverErr.Error(), "use of closed network connection") {
+			t.Errorf("expected a server closed error, but got: %v", serverErr)
+		}
+	})
+
+	t.Run("Failure case - listener cannot be created", func(t *testing.T) {
+		expectedErr := errors.New("failed to listen on port")
+		mockCreateListener := func(address string) (net.Listener, error) {
+			return nil, expectedErr
+		}
+
+		err := startAndListenHTTPServer(mockChannel, mockFlow, mockCreateListener)
+
+		if !errors.Is(err, expectedErr) {
+			t.Errorf("expected error '%v', but got: %v", expectedErr, err)
+		}
+	})
 }
