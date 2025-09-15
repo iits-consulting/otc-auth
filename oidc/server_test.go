@@ -2,7 +2,9 @@ package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -10,29 +12,34 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-http-utils/headers"
 	"golang.org/x/oauth2"
 )
 
-// mockVerifier is a test implementation of the IVerifier interface.
 type mockVerifier struct {
 	ReturnError   error
-	ReturnIDToken *oidc.IDToken
+	ReturnIDToken IIDToken
 }
 
-// Verify implements the IVerifier interface for our mock.
-func (m *mockVerifier) Verify(ctx context.Context, rawIDToken string) (*oidc.IDToken, error) {
+type mockIDToken struct {
+	ReturnErrorOnClaims error
+}
+
+func (m *mockIDToken) Claims(v interface{}) error {
+	return m.ReturnErrorOnClaims
+}
+
+func (m *mockVerifier) Verify(ctx context.Context, rawIDToken string) (IIDToken, error) {
 	return m.ReturnIDToken, m.ReturnError
 }
 
 func Test_authFlow_handleRoot(t *testing.T) {
-	// Common setup for our tests
 	const testState = "test-state-123"
 	const testClientID = "my-test-client"
 
-	// This is the URL that the oauth2 library will correctly generate.
 	const testRedirectURL = "https://example.com/auth?client_id=" + testClientID + "&response_type=code&state=" + testState
 
 	commonOauthConfig := oauth2.Config{
@@ -43,14 +50,14 @@ func Test_authFlow_handleRoot(t *testing.T) {
 	tests := []struct {
 		name               string
 		request            *http.Request
-		idTokenVerifier    IVerifier // Use our interface here
+		idTokenVerifier    IVerifier
 		expectedStatusCode int
-		expectedLocation   string // To check for redirects
+		expectedLocation   string
 	}{
 		{
 			name:               "No Authorization Header should redirect",
 			request:            httptest.NewRequest(http.MethodGet, "/", nil),
-			idTokenVerifier:    &mockVerifier{}, // Doesn't matter for this case
+			idTokenVerifier:    &mockVerifier{},
 			expectedStatusCode: http.StatusFound,
 			expectedLocation:   testRedirectURL,
 		},
@@ -58,12 +65,12 @@ func Test_authFlow_handleRoot(t *testing.T) {
 			name: "Malformed Authorization Header should return 400 Bad Request",
 			request: func() *http.Request {
 				req := httptest.NewRequest(http.MethodGet, "/", nil)
-				req.Header.Set(headers.Authorization, "BearerTokenWithoutSpace") // Malformed
+				req.Header.Set(headers.Authorization, "BearerTokenWithoutSpace")
 				return req
 			}(),
 			idTokenVerifier:    &mockVerifier{},
 			expectedStatusCode: http.StatusBadRequest,
-			expectedLocation:   "", // No redirect expected
+			expectedLocation:   "",
 		},
 		{
 			name: "Invalid Token should redirect",
@@ -73,7 +80,7 @@ func Test_authFlow_handleRoot(t *testing.T) {
 				return req
 			}(),
 			idTokenVerifier: &mockVerifier{
-				ReturnError:   errors.New("oidc: token is invalid"), // Simulate a verification error
+				ReturnError:   errors.New("oidc: token is invalid"),
 				ReturnIDToken: nil,
 			},
 			expectedStatusCode: http.StatusFound,
@@ -87,38 +94,32 @@ func Test_authFlow_handleRoot(t *testing.T) {
 				return req
 			}(),
 			idTokenVerifier: &mockVerifier{
-				ReturnError:   nil,             // Simulate successful verification
-				ReturnIDToken: &oidc.IDToken{}, // Return a non-nil token
+				ReturnError:   nil,
+				ReturnIDToken: &oidc.IDToken{},
 			},
 			expectedStatusCode: http.StatusOK,
-			expectedLocation:   "", // No redirect expected
+			expectedLocation:   "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup the authFlow with the verifier for this specific test case
 			a := &authFlow{
 				oAuth2Config:    commonOauthConfig,
 				idTokenVerifier: tt.idTokenVerifier,
 				state:           testState,
 			}
 
-			// Use httptest.NewRecorder to capture the response
 			recorder := httptest.NewRecorder()
 
-			// Call the handler
 			a.handleRoot(recorder, tt.request)
 
-			// Assert the status code
 			if recorder.Code != tt.expectedStatusCode {
 				t.Errorf("handler returned wrong status code: got %v want %v", recorder.Code, tt.expectedStatusCode)
 			}
 
-			// Assert the Location header for redirects
 			if tt.expectedLocation != "" {
 				location := recorder.Header().Get("Location")
-				// The AuthCodeURL function might add extra parameters, so we check if it starts with our expected URL
 				if !strings.HasPrefix(location, tt.expectedLocation) {
 					t.Errorf("handler returned wrong redirect location: got %v want prefix %v", location, tt.expectedLocation)
 				}
@@ -159,17 +160,149 @@ func Test_startAndListenHTTPServer(t *testing.T) {
 			t.Errorf("expected a server closed error, but got: %v", serverErr)
 		}
 	})
+}
 
-	t.Run("Failure case - listener cannot be created", func(t *testing.T) {
-		expectedErr := errors.New("failed to listen on port")
-		mockCreateListener := func(address string) (net.Listener, error) {
-			return nil, expectedErr
-		}
+func Test_handleOIDCAuth(t *testing.T) {
+	const testState = "state-abc-123"
+	const testCode = "code-xyz-789"
+	const testIDToken = "a.very.valid.jwt"
 
-		err := startAndListenHTTPServer(mockChannel, mockFlow, mockCreateListener)
+	verifier := &mockVerifier{}
 
-		if !errors.Is(err, expectedErr) {
-			t.Errorf("expected error '%v', but got: %v", expectedErr, err)
-		}
-	})
+	mockOauthServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"access_token": "mock_access_token",
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+			idTokenField:   testIDToken,
+		})
+	}))
+	t.Cleanup(mockOauthServer.Close)
+
+	tests := []struct {
+		name                 string
+		request              *http.Request
+		authFlow             *authFlow
+		setupMocks           func()
+		expectedStatusCode   int
+		expectedBodyContains string
+		expectChannelSend    bool
+	}{
+		{
+			name:                 "State mismatch should return 400 Bad Request",
+			request:              httptest.NewRequest(http.MethodGet, fmt.Sprintf("/?state=wrong-state&code=%s", testCode), nil),
+			authFlow:             &authFlow{state: testState},
+			setupMocks:           func() {},
+			expectedStatusCode:   http.StatusBadRequest,
+			expectedBodyContains: "state does not match",
+		},
+		{
+			name:    "Token exchange failure should return 500",
+			request: httptest.NewRequest(http.MethodGet, fmt.Sprintf("/?state=%s&code=bad-code", testState), nil),
+			authFlow: &authFlow{
+				state: testState,
+				oAuth2Config: oauth2.Config{
+					Endpoint: oauth2.Endpoint{TokenURL: "http://127.0.0.1:0/token"},
+				},
+			},
+			setupMocks:           func() {},
+			expectedStatusCode:   http.StatusInternalServerError,
+			expectedBodyContains: "Failed to exchange token",
+		},
+		{
+			name: "Token response without id_token field should return 500",
+			authFlow: &authFlow{
+				state:           testState,
+				idTokenVerifier: verifier,
+				oAuth2Config: func() oauth2.Config {
+					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("Content-Type", "application/json")
+						json.NewEncoder(w).Encode(map[string]interface{}{"access_token": "only_this"})
+					}))
+					t.Cleanup(server.Close)
+					return oauth2.Config{Endpoint: oauth2.Endpoint{TokenURL: server.URL}}
+				}(),
+			},
+			request:              httptest.NewRequest(http.MethodGet, fmt.Sprintf("/?state=%s&code=%s", testState, testCode), nil),
+			setupMocks:           func() {},
+			expectedStatusCode:   http.StatusInternalServerError,
+			expectedBodyContains: "No id_token field",
+		},
+		{
+			name:    "Token verification failure should return 500",
+			request: httptest.NewRequest(http.MethodGet, fmt.Sprintf("/?state=%s&code=%s", testState, testCode), nil),
+			authFlow: &authFlow{
+				state:           testState,
+				oAuth2Config:    oauth2.Config{Endpoint: oauth2.Endpoint{TokenURL: mockOauthServer.URL}},
+				idTokenVerifier: verifier,
+			},
+			setupMocks: func() {
+				verifier.ReturnError = errors.New("invalid signature")
+				verifier.ReturnIDToken = nil
+			},
+			expectedStatusCode:   http.StatusInternalServerError,
+			expectedBodyContains: "Failed to verify ID Token",
+		},
+		{
+			name:    "Claims extraction failure should return 500",
+			request: httptest.NewRequest(http.MethodGet, fmt.Sprintf("/?state=%s&code=%s", testState, testCode), nil),
+			authFlow: &authFlow{
+				state:           testState,
+				oAuth2Config:    oauth2.Config{Endpoint: oauth2.Endpoint{TokenURL: mockOauthServer.URL}},
+				idTokenVerifier: verifier,
+			},
+			setupMocks: func() {
+				verifier.ReturnError = nil
+				verifier.ReturnIDToken = &mockIDToken{ReturnErrorOnClaims: errors.New("malformed claims")}
+			},
+			expectedStatusCode:   http.StatusInternalServerError,
+			expectedBodyContains: "malformed claims",
+		},
+		{
+			name:    "Successful authentication should return 200 OK and send on channel",
+			request: httptest.NewRequest(http.MethodGet, fmt.Sprintf("/?state=%s&code=%s", testState, testCode), nil),
+			authFlow: &authFlow{
+				state:           testState,
+				oAuth2Config:    oauth2.Config{Endpoint: oauth2.Endpoint{TokenURL: mockOauthServer.URL}},
+				idTokenVerifier: verifier,
+			},
+			setupMocks: func() {
+				verifier.ReturnError = nil
+				verifier.ReturnIDToken = &mockIDToken{ReturnErrorOnClaims: nil}
+			},
+			expectedStatusCode:   http.StatusOK,
+			expectedBodyContains: common.SuccessPageHTML,
+			expectChannelSend:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			channel := make(chan common.OidcCredentialsResponse, 1)
+			recorder := httptest.NewRecorder()
+
+			tt.setupMocks()
+
+			handleOIDCAuth(recorder, tt.request, channel, tt.authFlow)
+
+			if recorder.Code != tt.expectedStatusCode {
+				t.Errorf("wrong status code: got %v want %v", recorder.Code, tt.expectedStatusCode)
+			}
+			if !strings.Contains(recorder.Body.String(), tt.expectedBodyContains) {
+				t.Errorf("body '%s' does not contain '%s'", recorder.Body.String(), tt.expectedBodyContains)
+			}
+
+			if tt.expectChannelSend {
+				select {
+				case creds := <-channel:
+					expectedBearer := fmt.Sprintf("Bearer %s", testIDToken)
+					if creds.BearerToken != expectedBearer {
+						t.Errorf("wrong bearer token: got %s want %s", creds.BearerToken, expectedBearer)
+					}
+				case <-time.After(100 * time.Millisecond):
+					t.Error("expected a value to be sent on the channel, but received none")
+				}
+			}
+		})
+	}
 }

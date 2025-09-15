@@ -37,8 +37,21 @@ const (
 	idleTimeout = 2 * time.Minute
 )
 
+type IIDToken interface {
+	Claims(v interface{}) error
+}
+
+type oidcVerifierWrapper struct {
+	realVerifier *oidc.IDTokenVerifier
+}
+
+func (w *oidcVerifierWrapper) Verify(ctx context.Context, rawIDToken string) (IIDToken, error) {
+	// The key is that the return value (*oidc.IDToken) is compatible with the IIDToken interface.
+	return w.realVerifier.Verify(ctx, rawIDToken)
+}
+
 type IVerifier interface {
-	Verify(ctx context.Context, rawIDToken string) (*oidc.IDToken, error)
+	Verify(ctx context.Context, rawIDToken string) (IIDToken, error)
 }
 
 type authFlow struct {
@@ -156,6 +169,7 @@ func authenticateWithIdp(params common.AuthInfo) (*common.OidcCredentialsRespons
 	if err != nil {
 		return nil, err
 	}
+	realVerifier := provider.Verifier(&oidc.Config{ClientID: params.ClientID})
 	a := authFlow{
 		oAuth2Config: oauth2.Config{
 			ClientID:     params.ClientID,
@@ -164,7 +178,7 @@ func authenticateWithIdp(params common.AuthInfo) (*common.OidcCredentialsRespons
 			Endpoint:     provider.Endpoint(),
 			Scopes:       params.OidcScopes,
 		},
-		idTokenVerifier: provider.Verifier(&oidc.Config{ClientID: params.ClientID}),
+		idTokenVerifier: &oidcVerifierWrapper{realVerifier: realVerifier},
 		state:           uuid.New().String(),
 	}
 	channel := make(chan common.OidcCredentialsResponse)
