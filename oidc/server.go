@@ -50,12 +50,12 @@ type authFlow struct {
 	state           string
 }
 
-type listenerFactory func(address string) (net.Listener, error)
+type listenerFactory func(address string, ctx context.Context) (net.Listener, error)
 
 type flowController struct {
 	newProvider func(ctx context.Context, issuer string) (*oidc.Provider, error)
 	openURL     func(url string) error
-	startServer func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error
+	startServer func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory, ctx context.Context) error
 	newUUID     func() string
 }
 
@@ -98,7 +98,7 @@ func (fc *flowController) Authenticate(params common.AuthInfo,
 	respChan := make(chan common.OidcCredentialsResponse)
 	errChan := make(chan error, 1) // Buffer of 1 so it doesn't block if an error is sent to chan
 	go func() {
-		if startErr := fc.startServer(respChan, &a, createListener); startErr != nil {
+		if startErr := fc.startServer(respChan, &a, createListener, ctx); startErr != nil {
 			errChan <- startErr
 		}
 	}()
@@ -134,8 +134,8 @@ func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createListener(address string) (net.Listener, error) {
-	listener, err := net.Listen("tcp", address)
+func createListener(address string, ctx context.Context) (net.Listener, error) {
+	listener, err := (*net.ListenConfig).Listen(&net.ListenConfig{}, ctx, "tcp", address)
 	if err != nil {
 		return nil, errors.Wrap(err,
 			fmt.Sprintf("can't listen on %s, something might already be using this port", address))
@@ -145,15 +145,16 @@ func createListener(address string) (net.Listener, error) {
 
 func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse,
 	a *authFlow, createListener listenerFactory,
+	ctx context.Context,
 ) error {
 	registerHandlers(channel, a)
 
-	listener, err := createListener(localhost)
+	listener, err := createListener(localhost, ctx)
 	if err != nil {
 		return errors.Wrap(err, "couldn't start http server")
 	}
 
-	server := newHTTPServer(rwTimeout, rwTimeout, idleTimeout)
+	server := newHTTPServer(rwTimeout, rwTimeout, idleTimeout, ctx)
 	return server.Serve(listener)
 }
 
@@ -212,12 +213,15 @@ func handleOIDCAuth(w http.ResponseWriter, r *http.Request, channel chan common.
 	}
 }
 
-func newHTTPServer(readTimeout, writeTimeout, idleTimeout time.Duration) *http.Server {
+func newHTTPServer(readTimeout, writeTimeout, idleTimeout time.Duration, ctx context.Context) *http.Server {
 	return &http.Server{
 		Handler:      nil,
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,
+		BaseContext: func(listener net.Listener) context.Context {
+			return ctx
+		},
 	}
 }
 

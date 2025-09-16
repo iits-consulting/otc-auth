@@ -134,6 +134,7 @@ func Test_authFlow_handleRoot(t *testing.T) {
 func Test_startAndListenHTTPServer(t *testing.T) {
 	mockFlow := &authFlow{}
 	mockChannel := make(chan common.OidcCredentialsResponse)
+	testCtx := context.Background()
 
 	t.Run("Success case - server starts and is shut down", func(t *testing.T) {
 		var wg sync.WaitGroup
@@ -143,7 +144,7 @@ func Test_startAndListenHTTPServer(t *testing.T) {
 		listenerChan := make(chan net.Listener, 1)
 
 		//nolint:unparam // `address` IS used in go func below
-		mockCreateListener := func(address string) (net.Listener, error) {
+		mockCreateListener := func(address string, ctx context.Context) (net.Listener, error) {
 			l, err := net.Listen("tcp", "localhost:0") // Use dynamic port
 			if err != nil {
 				return nil, err
@@ -154,7 +155,7 @@ func Test_startAndListenHTTPServer(t *testing.T) {
 
 		go func() {
 			defer wg.Done()
-			serverErr = startAndListenHTTPServer(mockChannel, mockFlow, mockCreateListener)
+			serverErr = startAndListenHTTPServer(mockChannel, mockFlow, mockCreateListener, testCtx)
 		}()
 
 		listener := <-listenerChan
@@ -187,7 +188,9 @@ func Test_flowController_Authenticate(t *testing.T) {
 					return &oidc.Provider{}, nil // Successfully return a mock provider.
 				},
 				openURL: func(url string) error { return nil }, // Successfully "open" the browser.
-				startServer: func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error {
+				startServer: func(ch chan common.OidcCredentialsResponse,
+					a *authFlow, cf listenerFactory, ctx context.Context,
+				) error {
 					ch <- *expectedCreds // Simulate a successful login by sending credentials.
 					return nil
 				},
@@ -215,7 +218,9 @@ func Test_flowController_Authenticate(t *testing.T) {
 					return &oidc.Provider{}, nil
 				},
 				openURL: func(url string) error { return nil }, // This will be called before the error is processed.
-				startServer: func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error {
+				startServer: func(ch chan common.OidcCredentialsResponse,
+					a *authFlow, cf listenerFactory, ctx context.Context,
+				) error {
 					// Simulate a failure, e.g., port already in use.
 					return errors.New("address already in use")
 				},
@@ -232,7 +237,9 @@ func Test_flowController_Authenticate(t *testing.T) {
 					return &oidc.Provider{}, nil
 				},
 				openURL: func(url string) error { return errors.New("unsupported OS") },
-				startServer: func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error {
+				startServer: func(ch chan common.OidcCredentialsResponse,
+					a *authFlow, cf listenerFactory, ctx context.Context,
+				) error {
 					return nil // The server starts, but the function errors out before waiting.
 				},
 				newUUID: func() string { return "test-uuid" },
