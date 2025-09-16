@@ -21,7 +21,7 @@ import (
 
 //nolint:gochecknoglobals // Works for now but needs a rewrite
 var (
-	backgroundCtx = context.Background()
+	backgroundCtx = context.Background() // TODO
 )
 
 const (
@@ -37,27 +37,86 @@ const (
 	idleTimeout = 2 * time.Minute
 )
 
-type IIDToken interface {
+type iIDToken interface {
 	Claims(v interface{}) error
+}
+
+type iVerifier interface {
+	Verify(ctx context.Context, rawIDToken string) (iIDToken, error)
 }
 
 type oidcVerifierWrapper struct {
 	realVerifier *oidc.IDTokenVerifier
 }
 
-func (w *oidcVerifierWrapper) Verify(ctx context.Context, rawIDToken string) (IIDToken, error) {
-	// The key is that the return value (*oidc.IDToken) is compatible with the IIDToken interface.
+type authFlow struct {
+	oAuth2Config    oauth2.Config
+	idTokenVerifier iVerifier
+	state           string
+}
+
+type listenerFactory func(address string) (net.Listener, error)
+
+type flowController struct {
+	newProvider func(ctx context.Context, issuer string) (*oidc.Provider, error)
+	openURL     func(url string) error
+	startServer func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error
+	newUUID     func() string
+}
+
+func newFlowController() *flowController {
+	return &flowController{
+		newProvider: oidc.NewProvider,
+		openURL:     browser.OpenURL,
+		startServer: startAndListenHTTPServer,
+		newUUID: func() string {
+			return uuid.New().String()
+		},
+	}
+}
+
+func (w *oidcVerifierWrapper) Verify(ctx context.Context, rawIDToken string) (iIDToken, error) {
 	return w.realVerifier.Verify(ctx, rawIDToken)
 }
 
-type IVerifier interface {
-	Verify(ctx context.Context, rawIDToken string) (IIDToken, error)
-}
+func (fc *flowController) Authenticate(params common.AuthInfo) (*common.OidcCredentialsResponse, error) {
+	provider, err := fc.newProvider(backgroundCtx, params.IdpURL)
+	if err != nil {
+		return nil, err
+	}
 
-type authFlow struct {
-	oAuth2Config    oauth2.Config
-	idTokenVerifier IVerifier
-	state           string
+	realVerifier := provider.Verifier(&oidc.Config{ClientID: params.ClientID})
+	a := authFlow{
+		oAuth2Config: oauth2.Config{
+			ClientID:     params.ClientID,
+			ClientSecret: params.ClientSecret,
+			RedirectURL:  redirectURL,
+			Endpoint:     provider.Endpoint(),
+			Scopes:       params.OidcScopes,
+		},
+		idTokenVerifier: &oidcVerifierWrapper{realVerifier: realVerifier},
+		state:           fc.newUUID(),
+	}
+
+	respChan := make(chan common.OidcCredentialsResponse)
+	errChan := make(chan error, 1) // Buffer of 1 so it doesn't block if an error is sent to chan
+	go func() {
+		if startErr := fc.startServer(respChan, &a, createListener); startErr != nil {
+			errChan <- startErr
+		}
+	}()
+
+	err = fc.openURL(fmt.Sprintf("http://%s", localhost))
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case resp := <-respChan:
+		return &resp, nil
+	case startErr := <-errChan:
+		return nil, startErr
+	}
 }
 
 func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -77,8 +136,6 @@ func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-type listenerFactory func(address string) (net.Listener, error)
 
 func createListener(address string) (net.Listener, error) {
 	listener, err := net.Listen("tcp", address)
@@ -164,33 +221,5 @@ func newHTTPServer(readTimeout, writeTimeout, idleTimeout time.Duration) *http.S
 	}
 }
 func authenticateWithIdp(params common.AuthInfo) (*common.OidcCredentialsResponse, error) {
-	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, params.IdpURL)
-	if err != nil {
-		return nil, err
-	}
-	realVerifier := provider.Verifier(&oidc.Config{ClientID: params.ClientID})
-	a := authFlow{
-		oAuth2Config: oauth2.Config{
-			ClientID:     params.ClientID,
-			ClientSecret: params.ClientSecret,
-			RedirectURL:  redirectURL,
-			Endpoint:     provider.Endpoint(),
-			Scopes:       params.OidcScopes,
-		},
-		idTokenVerifier: &oidcVerifierWrapper{realVerifier: realVerifier},
-		state:           uuid.New().String(),
-	}
-	channel := make(chan common.OidcCredentialsResponse)
-	go func() error {
-		return startAndListenHTTPServer(channel, &a, createListener)
-	}()
-
-	err = browser.OpenURL(fmt.Sprintf("http://%s", localhost))
-	if err != nil {
-		return nil, err
-	}
-
-	resp := <-channel
-	return &resp, nil
+	return newFlowController().Authenticate(params)
 }

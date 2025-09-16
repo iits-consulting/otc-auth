@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"otc-auth/common"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -21,7 +22,7 @@ import (
 
 type mockVerifier struct {
 	ReturnError   error
-	ReturnIDToken IIDToken
+	ReturnIDToken iIDToken
 }
 
 type mockIDToken struct {
@@ -32,7 +33,7 @@ func (m *mockIDToken) Claims(v interface{}) error {
 	return m.ReturnErrorOnClaims
 }
 
-func (m *mockVerifier) Verify(ctx context.Context, rawIDToken string) (IIDToken, error) {
+func (m *mockVerifier) Verify(ctx context.Context, rawIDToken string) (iIDToken, error) {
 	return m.ReturnIDToken, m.ReturnError
 }
 
@@ -50,7 +51,7 @@ func Test_authFlow_handleRoot(t *testing.T) {
 	tests := []struct {
 		name               string
 		request            *http.Request
-		idTokenVerifier    IVerifier
+		idTokenVerifier    iVerifier
 		expectedStatusCode int
 		expectedLocation   string
 	}{
@@ -302,6 +303,104 @@ func Test_handleOIDCAuth(t *testing.T) {
 				case <-time.After(100 * time.Millisecond):
 					t.Error("expected a value to be sent on the channel, but received none")
 				}
+			}
+		})
+	}
+}
+
+func Test_flowController_Authenticate(t *testing.T) {
+	// A common successful response we expect from the server in the success case.
+	expectedCreds := &common.OidcCredentialsResponse{
+		BearerToken: "Bearer mock-token",
+	}
+
+	tests := []struct {
+		name         string
+		controller   *flowController // We'll build a custom controller for each test case.
+		authInfo     common.AuthInfo
+		wantResponse *common.OidcCredentialsResponse
+		wantErrMsg   string // An empty string means no error is expected.
+	}{
+		{
+			name: "Success path",
+			controller: &flowController{
+				newProvider: func(ctx context.Context, issuer string) (*oidc.Provider, error) {
+					return &oidc.Provider{}, nil // Successfully return a mock provider.
+				},
+				openURL: func(url string) error { return nil }, // Successfully "open" the browser.
+				startServer: func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error {
+					ch <- *expectedCreds // Simulate a successful login by sending credentials.
+					return nil
+				},
+				newUUID: func() string { return "test-uuid" },
+			},
+			authInfo:     common.AuthInfo{IdpURL: "https://example.com"},
+			wantResponse: expectedCreds,
+			wantErrMsg:   "",
+		},
+		{
+			name: "Failure when OIDC provider is unreachable",
+			controller: &flowController{
+				newProvider: func(ctx context.Context, issuer string) (*oidc.Provider, error) {
+					return nil, errors.New("provider not found")
+				},
+			},
+			authInfo:     common.AuthInfo{IdpURL: "https://invalid-url"},
+			wantResponse: nil,
+			wantErrMsg:   "provider not found",
+		},
+		{
+			name: "Failure when local server cannot start",
+			controller: &flowController{
+				newProvider: func(ctx context.Context, issuer string) (*oidc.Provider, error) {
+					return &oidc.Provider{}, nil
+				},
+				openURL: func(url string) error { return nil }, // This will be called before the error is processed.
+				startServer: func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error {
+					// Simulate a failure, e.g., port already in use.
+					return errors.New("address already in use")
+				},
+				newUUID: func() string { return "test-uuid" },
+			},
+			authInfo:     common.AuthInfo{IdpURL: "https://example.com"},
+			wantResponse: nil,
+			wantErrMsg:   "address already in use",
+		},
+		{
+			name: "Failure when browser fails to open",
+			controller: &flowController{
+				newProvider: func(ctx context.Context, issuer string) (*oidc.Provider, error) {
+					return &oidc.Provider{}, nil
+				},
+				openURL: func(url string) error { return errors.New("unsupported OS") },
+				startServer: func(ch chan common.OidcCredentialsResponse, a *authFlow, cf listenerFactory) error {
+					return nil // The server starts, but the function errors out before waiting.
+				},
+				newUUID: func() string { return "test-uuid" },
+			},
+			authInfo:     common.AuthInfo{IdpURL: "https://example.com"},
+			wantResponse: nil,
+			wantErrMsg:   "unsupported OS",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.controller.Authenticate(tt.authInfo)
+
+			if tt.wantErrMsg != "" {
+				if err == nil {
+					t.Fatalf("Authenticate() error = nil, wantErr %q", tt.wantErrMsg)
+				}
+				if err.Error() != tt.wantErrMsg {
+					t.Errorf("Authenticate() error = %q, wantErrMsg %q", err.Error(), tt.wantErrMsg)
+				}
+			} else if err != nil {
+				t.Fatalf("Authenticate() unexpected error = %v", err)
+			}
+
+			if !reflect.DeepEqual(got, tt.wantResponse) {
+				t.Errorf("Authenticate() got = %v, want %v", got, tt.wantResponse)
 			}
 		})
 	}
