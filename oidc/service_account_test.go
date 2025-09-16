@@ -7,9 +7,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"otc-auth/common"
 	"reflect"
 	"testing"
+
+	"otc-auth/common"
 )
 
 func Test_createServiceAccountAuthenticateRequest(t *testing.T) {

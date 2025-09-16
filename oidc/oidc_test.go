@@ -1,3 +1,4 @@
+//nolint:testpackage // whitebox testing
 package oidc
 
 import (
@@ -8,11 +9,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"otc-auth/common"
-	"otc-auth/common/xheaders"
 	"reflect"
 	"strings"
 	"testing"
+
+	"otc-auth/common"
+	"otc-auth/common/xheaders"
 )
 
 func Test_authenticateWithServiceProvider(t *testing.T) {
@@ -161,6 +163,136 @@ func Test_authenticateWithServiceProvider(t *testing.T) {
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("authenticateWithServiceProvider() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAuthenticateAndGetUnscopedToken(t *testing.T) {
+	ctx := context.Background()
+	mockOidcCreds := &common.OidcCredentialsResponse{BearerToken: "oidc-token"}
+	expectedTokenResponse := &common.TokenResponse{
+		Token: struct {
+			Secret    string
+			ExpiresAt string `json:"expires_at"`
+			IssuedAt  string `json:"issued_at"`
+			User      struct {
+				Domain struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"domain"`
+				Name string `json:"name"`
+			} `json:"user"`
+		}{
+			Secret:    "a-very-long-secret",
+			ExpiresAt: "2025-01-01T00:00:00Z",
+			IssuedAt:  "2024-12-31T23:00:00Z",
+			User: struct {
+				Domain struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"domain"`
+				Name string `json:"name"`
+			}{
+				Domain: struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				}{
+					ID:   "domain123",
+					Name: "Default",
+				},
+				Name: "test-user",
+			},
+		},
+	}
+
+	tests := []struct {
+		name        string
+		authInfo    common.AuthInfo
+		authService *AuthService
+		want        *common.TokenResponse
+		wantErrMsg  string
+	}{
+		{
+			name:     "Success path for user authentication",
+			authInfo: common.AuthInfo{IsServiceAccount: false},
+			authService: &AuthService{
+				authUserFn: func(common.AuthInfo, context.Context) (*common.OidcCredentialsResponse, error) {
+					return mockOidcCreds, nil
+				},
+				authTokenExchangeFn: func(context.Context,
+					common.OidcCredentialsResponse, common.AuthInfo, common.HTTPClient,
+				) (*common.TokenResponse, error) {
+					return expectedTokenResponse, nil
+				},
+			},
+			want:       expectedTokenResponse,
+			wantErrMsg: "",
+		},
+		{
+			name:     "Success path for service account authentication",
+			authInfo: common.AuthInfo{IsServiceAccount: true},
+			authService: &AuthService{
+				authServiceAccountFn: func(context.Context,
+					common.AuthInfo, common.HTTPClient,
+				) (*common.OidcCredentialsResponse, error) {
+					return mockOidcCreds, nil
+				},
+				authTokenExchangeFn: func(context.Context,
+					common.OidcCredentialsResponse, common.AuthInfo, common.HTTPClient,
+				) (*common.TokenResponse, error) {
+					return expectedTokenResponse, nil
+				},
+			},
+			want:       expectedTokenResponse,
+			wantErrMsg: "",
+		},
+		{
+			name:     "Failure on user authentication step",
+			authInfo: common.AuthInfo{IsServiceAccount: false},
+			authService: &AuthService{
+				authUserFn: func(common.AuthInfo, context.Context) (*common.OidcCredentialsResponse, error) {
+					return nil, errors.New("user login failed")
+				},
+			},
+			want:       nil,
+			wantErrMsg: "user login failed",
+		},
+		{
+			name:     "Failure on service provider token exchange step",
+			authInfo: common.AuthInfo{IsServiceAccount: false},
+			authService: &AuthService{
+				authUserFn: func(common.AuthInfo, context.Context) (*common.OidcCredentialsResponse, error) {
+					return mockOidcCreds, nil
+				},
+				authTokenExchangeFn: func(context.Context,
+					common.OidcCredentialsResponse, common.AuthInfo, common.HTTPClient,
+				) (*common.TokenResponse, error) {
+					return nil, errors.New("service provider rejected token")
+				},
+			},
+			want:       nil,
+			wantErrMsg: "service provider rejected token",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.authService.authenticate(ctx, tt.authInfo, false)
+
+			if tt.wantErrMsg != "" {
+				if err == nil {
+					t.Fatalf("run() error = nil, wantErr %q", tt.wantErrMsg)
+				}
+				if err.Error() != tt.wantErrMsg {
+					t.Errorf("run() error = %q, wantErrMsg %q", err.Error(), tt.wantErrMsg)
+				}
+			} else if err != nil {
+				t.Fatalf("run() unexpected error = %v", err)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("run() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

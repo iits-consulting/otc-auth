@@ -12,23 +12,46 @@ import (
 	"github.com/go-http-utils/headers"
 )
 
-func AuthenticateAndGetUnscopedToken(ctx context.Context, authInfo common.AuthInfo,
-	skipTLS bool,
+type AuthService struct {
+	authUserFn           func(common.AuthInfo, context.Context) (*common.OidcCredentialsResponse, error)
+	authServiceAccountFn func(context.Context, common.AuthInfo, common.HTTPClient) (*common.OidcCredentialsResponse, error)
+	authTokenExchangeFn  func(context.Context, common.OidcCredentialsResponse,
+		common.AuthInfo, common.HTTPClient) (*common.TokenResponse, error)
+}
+
+func newAuthService() *AuthService {
+	return &AuthService{
+		authUserFn:           authenticateWithIdp,
+		authServiceAccountFn: authenticateServiceAccountWithIdp,
+		authTokenExchangeFn:  authenticateWithServiceProvider,
+	}
+}
+
+func (s *AuthService) authenticate(ctx context.Context,
+	authInfo common.AuthInfo, skipTLS bool,
 ) (*common.TokenResponse, error) {
 	var oidcCredentials *common.OidcCredentialsResponse
 	var err error
 	httpClient := common.NewHTTPClient(skipTLS)
+
 	if authInfo.IsServiceAccount {
-		oidcCredentials, err = authenticateServiceAccountWithIdp(ctx, authInfo, httpClient)
+		oidcCredentials, err = s.authServiceAccountFn(ctx, authInfo, httpClient)
 	} else {
-		oidcCredentials, err = authenticateWithIdp(authInfo, ctx)
+		oidcCredentials, err = s.authUserFn(authInfo, ctx)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	return authenticateWithServiceProvider(ctx, *oidcCredentials, authInfo, httpClient)
+	return s.authTokenExchangeFn(ctx, *oidcCredentials, authInfo, httpClient)
+}
+
+func AuthenticateAndGetUnscopedToken(ctx context.Context,
+	authInfo common.AuthInfo, skipTLS bool,
+) (*common.TokenResponse, error) {
+	service := newAuthService()
+	return service.authenticate(ctx, authInfo, skipTLS)
 }
 
 func authenticateWithServiceProvider(ctx context.Context, oidcCredentials common.OidcCredentialsResponse,
