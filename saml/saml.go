@@ -44,7 +44,9 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) com
 	return *tokenResponse
 }
 
-func getServiceProviderInitiatedRequest(params common.AuthInfo, skipTLS bool, client common.HTTPClient) (*http.Response, error) {
+func getServiceProviderInitiatedRequest(params common.AuthInfo,
+	skipTLS bool, client common.HTTPClient,
+) (*http.Response, error) {
 	request := common.GetRequest(http.MethodGet,
 		endpoints.IdentityProviders(params.IdpName, params.AuthProtocol, params.Region), nil)
 	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
@@ -53,7 +55,9 @@ func getServiceProviderInitiatedRequest(params common.AuthInfo, skipTLS bool, cl
 	return client.MakeRequest(request, skipTLS)
 }
 
-func authenticateWithIdp(params common.AuthInfo, samlResponse *http.Response, skipTLS bool, client common.HTTPClient) ([]byte, error) {
+func authenticateWithIdp(params common.AuthInfo,
+	samlResponse *http.Response, skipTLS bool, client common.HTTPClient,
+) ([]byte, error) {
 	request := common.GetRequest(http.MethodPost, params.IdpURL, samlResponse.Body)
 	request.Header.Add(headers.ContentType, headervalues.TextXML)
 	request.SetBasicAuth(params.Username, params.Password)

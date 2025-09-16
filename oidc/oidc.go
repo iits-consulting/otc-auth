@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,10 +15,11 @@ import (
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) common.TokenResponse {
 	var oidcCredentials *common.OidcCredentialsResponse
 	var err error
+	authCtx := context.Background()
 	if authInfo.IsServiceAccount {
 		oidcCredentials, err = authenticateServiceAccountWithIdp(authInfo, skipTLS, common.HTTPClientImpl{})
 	} else {
-		oidcCredentials, err = authenticateWithIdp(authInfo)
+		oidcCredentials, err = authenticateWithIdp(authInfo, authCtx)
 	}
 
 	if err != nil {

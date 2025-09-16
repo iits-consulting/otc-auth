@@ -19,11 +19,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-//nolint:gochecknoglobals // Works for now but needs a rewrite
-var (
-	backgroundCtx = context.Background() // TODO
-)
-
 const (
 	localhost   = "localhost:8088"
 	redirectURL = "http://localhost:8088/oidc/auth"
@@ -79,8 +74,10 @@ func (w *oidcVerifierWrapper) Verify(ctx context.Context, rawIDToken string) (iI
 	return w.realVerifier.Verify(ctx, rawIDToken)
 }
 
-func (fc *flowController) Authenticate(params common.AuthInfo) (*common.OidcCredentialsResponse, error) {
-	provider, err := fc.newProvider(backgroundCtx, params.IdpURL)
+func (fc *flowController) Authenticate(params common.AuthInfo,
+	ctx context.Context,
+) (*common.OidcCredentialsResponse, error) {
+	provider, err := fc.newProvider(ctx, params.IdpURL)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +127,7 @@ func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	_, err := a.idTokenVerifier.Verify(backgroundCtx, parts[1])
+	_, err := a.idTokenVerifier.Verify(r.Context(), parts[1])
 	if err != nil {
 		http.Redirect(w, r, a.oAuth2Config.AuthCodeURL(a.state), http.StatusFound)
 		return
@@ -140,12 +137,15 @@ func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
 func createListener(address string) (net.Listener, error) {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("can't listen on %s, something might already be using this port", address))
+		return nil, errors.Wrap(err,
+			fmt.Sprintf("can't listen on %s, something might already be using this port", address))
 	}
 	return listener, nil
 }
 
-func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse, a *authFlow, createListener listenerFactory) error {
+func startAndListenHTTPServer(channel chan common.OidcCredentialsResponse,
+	a *authFlow, createListener listenerFactory,
+) error {
 	registerHandlers(channel, a)
 
 	listener, err := createListener(localhost)
@@ -170,7 +170,7 @@ func handleOIDCAuth(w http.ResponseWriter, r *http.Request, channel chan common.
 		return
 	}
 
-	oauth2Token, err := a.oAuth2Config.Exchange(backgroundCtx, r.URL.Query().Get(queryCode))
+	oauth2Token, err := a.oAuth2Config.Exchange(r.Context(), r.URL.Query().Get(queryCode))
 	if err != nil {
 		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -189,7 +189,7 @@ func handleOIDCAuth(w http.ResponseWriter, r *http.Request, channel chan common.
 		)
 	}
 
-	rawIDToken, err := a.idTokenVerifier.Verify(backgroundCtx, idToken)
+	rawIDToken, err := a.idTokenVerifier.Verify(r.Context(), idToken)
 	if err != nil {
 		http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -220,6 +220,7 @@ func newHTTPServer(readTimeout, writeTimeout, idleTimeout time.Duration) *http.S
 		IdleTimeout:  idleTimeout,
 	}
 }
-func authenticateWithIdp(params common.AuthInfo) (*common.OidcCredentialsResponse, error) {
-	return newFlowController().Authenticate(params)
+
+func authenticateWithIdp(params common.AuthInfo, ctx context.Context) (*common.OidcCredentialsResponse, error) {
+	return newFlowController().Authenticate(params, ctx)
 }

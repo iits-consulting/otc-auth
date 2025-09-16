@@ -1,3 +1,4 @@
+//nolint:testpackage //whitebox testing
 package oidc
 
 import (
@@ -5,10 +6,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
-	"otc-auth/common"
 	"reflect"
 	"testing"
+
+	"otc-auth/common"
 )
 
 func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
@@ -18,9 +19,13 @@ func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
 		clientSecret string
 	}
 	tests := []struct {
-		name string
-		args args
-		want *http.Request
+		name            string
+		args            args
+		wantURL         string
+		wantBody        string
+		wantContentType string
+		wantUser        string
+		wantPass        string
 	}{
 		{
 			name: "basic valid request",
@@ -29,61 +34,55 @@ func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
 				clientID:     "myclient",
 				clientSecret: "mysecret",
 			},
-			want: func() *http.Request {
-				expectedURL := "http://example.com/token"
-				data := url.Values{}
-				data.Set("grant_type", "client_credentials")
-				data.Set("scope", "openid")
-				expectedBodyContent := data.Encode()
-
-				bodyReader := io.NopCloser(bytes.NewReader([]byte(expectedBodyContent)))
-
-				req, err := http.NewRequest(http.MethodPost, expectedURL, bodyReader)
-				if err != nil {
-					t.Fatalf("Failed to create expected request: %v", err)
-				}
-
-				req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-				req.SetBasicAuth("myclient", "mysecret") // TODO - consts
-
-				return req
-			}(),
+			wantURL:         "http://example.com/token",
+			wantBody:        "grant_type=client_credentials&scope=openid",
+			wantContentType: "application/x-www-form-urlencoded",
+			wantUser:        "myclient",
+			wantPass:        "mysecret",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := createServiceAccountAuthenticateRequest(tt.args.requestURL, tt.args.clientID, tt.args.clientSecret)
 
-			wantBody, err := io.ReadAll(tt.want.Body)
-			if err != nil {
-				t.Errorf("error reading want body: %v", err)
-			}
-			gotBody, err := io.ReadAll(got.Body)
-			if err != nil {
-				t.Errorf("error reading got body: %v", err)
-			}
-			if string(wantBody) != string(gotBody) {
-				t.Errorf("body mismatch -> want: %s, got: %s", string(wantBody), string(gotBody))
-			}
-
-			if got.URL.String() != tt.want.URL.String() {
-				t.Errorf("url mismatch -> want: %s, got: %s", tt.want.URL.String(), got.URL.String())
-			}
-
-			if got.Header.Get("Content-Type") != tt.want.Header.Get("Content-Type") {
-				t.Errorf("Content-Type header mismatch -> want: %s, got: %s", tt.want.Header.Get("Content-Type"), got.Header.Get("Content-Type"))
-			}
-
-			gotUser, gotPass, _ := got.BasicAuth()
-			if gotUser != tt.args.clientID {
-				t.Errorf("basicauth user mismatch -> want: %s, got: %s", tt.args.clientID, gotUser)
-			}
-
-			if gotPass != tt.args.clientSecret {
-				t.Errorf("basicauth password mismatch -> want: %s, got: %s", tt.args.clientSecret, gotPass)
-			}
+			assertStringEquals(t, "URL", got.URL.String(), tt.wantURL)
+			assertStringEquals(t, "Content-Type Header", got.Header.Get("Content-Type"), tt.wantContentType)
+			assertRequestBody(t, got, tt.wantBody)
+			assertBasicAuth(t, got, tt.wantUser, tt.wantPass)
 		})
 	}
+}
+
+func assertStringEquals(t *testing.T, fieldName, got, want string) {
+	t.Helper() // Marks this function as a test helper. Errors will be reported from the caller's line.
+	if got != want {
+		t.Errorf("%s mismatch: want %q, got %q", fieldName, want, got)
+	}
+}
+
+func assertRequestBody(t *testing.T, got *http.Request, wantBody string) {
+	t.Helper()
+	if got.Body == nil {
+		t.Fatal("Request body is nil")
+	}
+	gotBody, err := io.ReadAll(got.Body)
+	if err != nil {
+		t.Fatalf("Failed to read request body: %v", err)
+	}
+	// Restore the body so it can be read again if needed
+	got.Body = io.NopCloser(bytes.NewBuffer(gotBody))
+
+	assertStringEquals(t, "Request Body", string(gotBody), wantBody)
+}
+
+func assertBasicAuth(t *testing.T, got *http.Request, wantUser, wantPass string) {
+	t.Helper()
+	gotUser, gotPass, ok := got.BasicAuth()
+	if !ok {
+		t.Fatal("Request is missing Basic Auth header")
+	}
+	assertStringEquals(t, "Basic Auth User", gotUser, wantUser)
+	assertStringEquals(t, "Basic Auth Password", gotPass, wantPass)
 }
 
 type mockHTTPClient struct {
@@ -123,7 +122,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			client: mockHTTPClient{
 				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
 					return &http.Response{
-						StatusCode: 500,
+						StatusCode: http.StatusInternalServerError,
 						Body:       io.NopCloser(bytes.NewBufferString("")),
 					}, nil
 				},
@@ -136,10 +135,11 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			client: mockHTTPClient{
 				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
 					return &http.Response{
-						StatusCode: 200,
+						StatusCode: http.StatusOK,
 						Body:       io.NopCloser(errorReader{}),
 					}, nil
-				}},
+				},
+			},
 			wantErr: true,
 		},
 		{
@@ -148,7 +148,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			client: mockHTTPClient{
 				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
 					return &http.Response{
-						StatusCode: 200,
+						StatusCode: http.StatusOK,
 						Body:       io.NopCloser(bytes.NewBufferString("{invalid json}")),
 					}, nil
 				},
@@ -163,13 +163,12 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 					if req.URL.String() != "http://valid.idp/protocol/openid-connect/token" {
 						t.Errorf("Unexpected URL: %s", req.URL.String())
 					}
-					if req.Method != "POST" {
+					if req.Method != http.MethodPost {
 						t.Errorf("Unexpected method: %s", req.Method)
 					}
 
-					// Return valid response
 					return &http.Response{
-						StatusCode: 200,
+						StatusCode: http.StatusOK,
 						Body:       io.NopCloser(bytes.NewBufferString(`{"id_token":"test-token"}`)),
 					}, nil
 				},
