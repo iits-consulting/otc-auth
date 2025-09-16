@@ -3,6 +3,7 @@ package oidc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 )
 
 func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
+	textCtx := context.Background()
 	type args struct {
 		requestURL   string
 		clientID     string
@@ -43,7 +45,11 @@ func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := createServiceAccountAuthenticateRequest(tt.args.requestURL, tt.args.clientID, tt.args.clientSecret)
+			got, err := createServiceAccountAuthenticateRequest(textCtx,
+				tt.args.requestURL, tt.args.clientID, tt.args.clientSecret)
+			if err != nil {
+				t.Errorf("couldn't create sa auth request: %v", err)
+			}
 
 			assertStringEquals(t, "URL", got.URL.String(), tt.wantURL)
 			assertStringEquals(t, "Content-Type Header", got.Header.Get("Content-Type"), tt.wantContentType)
@@ -86,11 +92,11 @@ func assertBasicAuth(t *testing.T, got *http.Request, wantUser, wantPass string)
 }
 
 type mockHTTPClient struct {
-	MakeRequestFunc func(request *http.Request, skipTLS bool) (*http.Response, error)
+	MakeRequestFunc func(request *http.Request) (*http.Response, error)
 }
 
-func (m mockHTTPClient) MakeRequest(request *http.Request, skipTLS bool) (*http.Response, error) {
-	return m.MakeRequestFunc(request, skipTLS)
+func (m mockHTTPClient) MakeRequest(request *http.Request) (*http.Response, error) {
+	return m.MakeRequestFunc(request)
 }
 
 func Test_authenticateServiceAccountWithIdp(t *testing.T) {
@@ -100,6 +106,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 		ClientID:     "client",
 		ClientSecret: "secret",
 	}
+	textCtx := context.Background()
 
 	tests := []struct {
 		name    string
@@ -120,7 +127,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			name:   "HTTP request failure",
 			params: validAuth,
 			client: mockHTTPClient{
-				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+				MakeRequestFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusInternalServerError,
 						Body:       io.NopCloser(bytes.NewBufferString("")),
@@ -133,7 +140,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			name:   "body read error",
 			params: validAuth,
 			client: mockHTTPClient{
-				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+				MakeRequestFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
 						Body:       io.NopCloser(errorReader{}),
@@ -146,7 +153,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			name:   "invalid JSON response",
 			params: validAuth,
 			client: mockHTTPClient{
-				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+				MakeRequestFunc: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
 						Body:       io.NopCloser(bytes.NewBufferString("{invalid json}")),
@@ -159,7 +166,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			name:   "successful authentication",
 			params: validAuth,
 			client: mockHTTPClient{
-				MakeRequestFunc: func(req *http.Request, skipTLS bool) (*http.Response, error) {
+				MakeRequestFunc: func(req *http.Request) (*http.Response, error) {
 					if req.URL.String() != "http://valid.idp/protocol/openid-connect/token" {
 						t.Errorf("Unexpected URL: %s", req.URL.String())
 					}
@@ -191,7 +198,7 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 				client = common.HTTPClientImpl{}
 			}
 
-			got, err := authenticateServiceAccountWithIdp(tt.params, false, client)
+			got, err := authenticateServiceAccountWithIdp(textCtx, tt.params, client)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 				return

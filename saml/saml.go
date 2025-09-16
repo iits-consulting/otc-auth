@@ -2,6 +2,7 @@ package saml
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"net/http"
@@ -14,66 +15,85 @@ import (
 	"github.com/go-http-utils/headers"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) common.TokenResponse {
-	spInitiatedRequest, err := getServiceProviderInitiatedRequest(authInfo, skipTLS, common.HTTPClientImpl{}) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
+func AuthenticateAndGetUnscopedToken(ctx context.Context, authInfo common.AuthInfo,
+	skipTLS bool,
+) (*common.TokenResponse, error) {
+	httpClient := common.NewHTTPClient(skipTLS)
+	spInitiatedRequest, err := getServiceProviderInitiatedRequest(ctx, authInfo, httpClient)
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error getting sp request\ntrace: %w", err))
+		return nil, fmt.Errorf("error getting sp request\ntrace: %w", err)
 	}
+	defer spInitiatedRequest.Body.Close()
 
-	bodyBytes, err := authenticateWithIdp(authInfo, spInitiatedRequest, skipTLS, common.HTTPClientImpl{})
+	bodyBytes, err := authenticateWithIdp(ctx, authInfo, spInitiatedRequest, httpClient)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't auth with idp: %w", err)
 	}
 
 	assertionResult := common.SamlAssertionResponse{}
 
 	err = xml.Unmarshal(bodyBytes, &assertionResult)
 	if err != nil {
-		common.ThrowError(fmt.Errorf("fatal: error deserializing xml.\ntrace: %w", err))
+		return nil, fmt.Errorf("fatal: error deserializing xml.\ntrace: %w", err)
 	}
 
-	response, err := validateAuthenticationWithServiceProvider(assertionResult, bodyBytes, skipTLS, common.HTTPClientImpl{}) //nolint:bodyclose,lll // The body IS closed later on after being read in GetCloudCredentialsFromResponse. This isn't super neat and might be worth refactoring
+	response, err := validateAuthenticationWithServiceProvider(ctx, assertionResult, bodyBytes, httpClient)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't validate auth with service provider: %w", err)
 	}
+	defer response.Body.Close()
+
 	tokenResponse, err := common.GetCloudCredentialsFromResponse(response)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get cloud creds from response: %w", err)
 	}
 
-	return *tokenResponse
+	return tokenResponse, nil
 }
 
-func getServiceProviderInitiatedRequest(params common.AuthInfo,
-	skipTLS bool, client common.HTTPClient,
+func getServiceProviderInitiatedRequest(ctx context.Context,
+	params common.AuthInfo, client common.HTTPClient,
 ) (*http.Response, error) {
-	request := common.GetRequest(http.MethodGet,
+	request, err := common.NewRequest(ctx, http.MethodGet,
 		endpoints.IdentityProviders(params.IdpName, params.AuthProtocol, params.Region), nil)
-	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
-	request.Header.Add(header.Paos, headervalues.Paos)
-
-	return client.MakeRequest(request, skipTLS)
-}
-
-func authenticateWithIdp(params common.AuthInfo,
-	samlResponse *http.Response, skipTLS bool, client common.HTTPClient,
-) ([]byte, error) {
-	request := common.GetRequest(http.MethodPost, params.IdpURL, samlResponse.Body)
-	request.Header.Add(headers.ContentType, headervalues.TextXML)
-	request.SetBasicAuth(params.Username, params.Password)
-
-	response, err := client.MakeRequest(request, skipTLS) //nolint:bodyclose,lll // Works fine for now, this method will be replaced soon
 	if err != nil {
 		return nil, err
 	}
+	request.Header.Add(headers.Accept, headervalues.ApplicationPaos)
+	request.Header.Add(header.Paos, headervalues.Paos)
+
+	return client.MakeRequest(request)
+}
+
+func authenticateWithIdp(ctx context.Context, params common.AuthInfo,
+	samlResponse *http.Response, client common.HTTPClient,
+) ([]byte, error) {
+	request, err := common.NewRequest(ctx, http.MethodPost, params.IdpURL, samlResponse.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer request.Body.Close()
+
+	request.Header.Add(headers.ContentType, headervalues.TextXML)
+	request.SetBasicAuth(params.Username, params.Password)
+
+	response, err := client.MakeRequest(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
 	return common.GetBodyBytesFromResponse(response)
 }
 
-//nolint:lll // This function will be removed soon
-func validateAuthenticationWithServiceProvider(assertionResult common.SamlAssertionResponse, responseBodyBytes []byte, skipTLS bool, client common.HTTPClient) (*http.Response, error) {
-	request := common.GetRequest(http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL,
+func validateAuthenticationWithServiceProvider(ctx context.Context, assertionResult common.SamlAssertionResponse,
+	responseBodyBytes []byte, client common.HTTPClient,
+) (*http.Response, error) {
+	request, err := common.NewRequest(ctx, http.MethodPost, assertionResult.Header.Response.AssertionConsumerServiceURL,
 		bytes.NewReader(responseBodyBytes))
+	if err != nil {
+		return nil, err
+	}
 	request.Header.Add(headers.ContentType, headervalues.ApplicationPaos)
 
-	return client.MakeRequest(request, skipTLS)
+	return client.MakeRequest(request)
 }

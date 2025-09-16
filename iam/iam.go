@@ -15,7 +15,7 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (*common.TokenResponse, error) {
 	authOpts := golangsdk.AuthOptions{
 		DomainName:       authInfo.DomainName,
 		Username:         authInfo.Username,
@@ -27,12 +27,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	}
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get openstack client: %w", err)
 	}
 
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get identity client: %w", err)
 	}
 
 	tokenResult := tokens.Create(client, &authOpts)
@@ -40,15 +40,15 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	var tokenMarshalledResult common.TokenResponse
 	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't unmarshal token: %w", err)
 	}
 
 	token, err := tokenResult.ExtractToken()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't extract token: %w", err)
 	}
 	tokenMarshalledResult.Token.Secret = token.ID
-	return tokenMarshalledResult
+	return &tokenMarshalledResult, nil
 }
 
 func GetScopedToken(projectName string) config.Token {

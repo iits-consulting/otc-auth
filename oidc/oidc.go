@@ -12,12 +12,15 @@ import (
 	"github.com/go-http-utils/headers"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) common.TokenResponse {
+func AuthenticateAndGetUnscopedToken(ctx context.Context, authInfo common.AuthInfo,
+	skipTLS bool,
+) (*common.TokenResponse, error) {
 	var oidcCredentials *common.OidcCredentialsResponse
 	var err error
 	authCtx := context.Background()
+	httpClient := common.NewHTTPClient(skipTLS)
 	if authInfo.IsServiceAccount {
-		oidcCredentials, err = authenticateServiceAccountWithIdp(authInfo, skipTLS, common.HTTPClientImpl{})
+		oidcCredentials, err = authenticateServiceAccountWithIdp(ctx, authInfo, httpClient)
 	} else {
 		oidcCredentials, err = authenticateWithIdp(authInfo, authCtx)
 	}
@@ -26,15 +29,19 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) com
 		common.ThrowError(err)
 	}
 
-	return authenticateWithServiceProvider(*oidcCredentials, authInfo, skipTLS, common.HTTPClientImpl{})
+	return authenticateWithServiceProvider(ctx, *oidcCredentials, authInfo, httpClient)
 }
 
-//nolint:lll // This function will be removed soon
-func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsResponse, authInfo common.AuthInfo, skipTLS bool, client common.HTTPClient) common.TokenResponse {
+func authenticateWithServiceProvider(ctx context.Context, oidcCredentials common.OidcCredentialsResponse,
+	authInfo common.AuthInfo, client common.HTTPClient,
+) (*common.TokenResponse, error) {
 	var tokenResponse *common.TokenResponse
 	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol, authInfo.Region)
 
-	request := common.GetRequest(http.MethodPost, url, nil)
+	request, err := common.NewRequest(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get new request: %w", err)
+	}
 
 	if !strings.HasPrefix(oidcCredentials.BearerToken, "Bearer ") {
 		oidcCredentials.BearerToken = fmt.Sprintf("Bearer %s", oidcCredentials.BearerToken)
@@ -43,15 +50,17 @@ func authenticateWithServiceProvider(oidcCredentials common.OidcCredentialsRespo
 		headers.Authorization, oidcCredentials.BearerToken,
 	)
 
-	response, err := client.MakeRequest(request, skipTLS) //nolint:bodyclose,lll // The body IS being closed in GetCloudCredentialsFromResponse after being read, which might be worth refactoring later
+	response, err := client.MakeRequest(request)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't make request: %w", err)
 	}
+	defer response.Body.Close()
+
 	tokenResponse, err = common.GetCloudCredentialsFromResponse(response)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get cloud credentials from response: %w", err)
 	}
 	tokenResponse.Token.User.Name = oidcCredentials.Claims.PreferredUsername
 
-	return *tokenResponse
+	return tokenResponse, nil
 }
