@@ -169,29 +169,28 @@ func Test_startAndListenHTTPServer(t *testing.T) {
 }
 
 func Test_flowController_Authenticate(t *testing.T) {
-	// A common successful response we expect from the server in the success case.
 	expectedCreds := &common.OidcCredentialsResponse{
 		BearerToken: "Bearer mock-token",
 	}
 
 	tests := []struct {
 		name         string
-		controller   *flowController // We'll build a custom controller for each test case.
+		controller   *flowController
 		authInfo     common.AuthInfo
 		wantResponse *common.OidcCredentialsResponse
-		wantErrMsg   string // An empty string means no error is expected.
+		wantErrMsg   string
 	}{
 		{
 			name: "Success path",
 			controller: &flowController{
 				newProvider: func(ctx context.Context, issuer string) (*oidc.Provider, error) {
-					return &oidc.Provider{}, nil // Successfully return a mock provider.
+					return &oidc.Provider{}, nil
 				},
-				openURL: func(url string) error { return nil }, // Successfully "open" the browser.
+				openURL: func(url string) error { return nil },
 				startServer: func(ch chan common.OidcCredentialsResponse,
 					a *authFlow, cf listenerFactory, ctx context.Context,
 				) error {
-					ch <- *expectedCreds // Simulate a successful login by sending credentials.
+					ch <- *expectedCreds
 					return nil
 				},
 				newUUID: func() string { return "test-uuid" },
@@ -217,11 +216,10 @@ func Test_flowController_Authenticate(t *testing.T) {
 				newProvider: func(ctx context.Context, issuer string) (*oidc.Provider, error) {
 					return &oidc.Provider{}, nil
 				},
-				openURL: func(url string) error { return nil }, // This will be called before the error is processed.
+				openURL: func(url string) error { return nil },
 				startServer: func(ch chan common.OidcCredentialsResponse,
 					a *authFlow, cf listenerFactory, ctx context.Context,
 				) error {
-					// Simulate a failure, e.g., port already in use.
 					return errors.New("address already in use")
 				},
 				newUUID: func() string { return "test-uuid" },
