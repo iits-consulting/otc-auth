@@ -245,8 +245,9 @@ func writeOtcConfigContentToFile(content OtcConfigContent) error {
 	}
 
 	path, err := effectiveConfigPath()
-	writeErr := WriteConfigFile(common.ByteSliceToIndentedJSONFormat(contentAsBytes), path)
-	return errors.Join(err, writeErr)
+	indentedContent, indErr := common.ByteSliceToIndentedJSONFormat(contentAsBytes)
+	writeErr := WriteConfigFile(indentedContent, path)
+	return errors.Join(err, indErr, writeErr)
 }
 
 func readFileContent() (*string, error) {

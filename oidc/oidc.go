@@ -17,16 +17,15 @@ func AuthenticateAndGetUnscopedToken(ctx context.Context, authInfo common.AuthIn
 ) (*common.TokenResponse, error) {
 	var oidcCredentials *common.OidcCredentialsResponse
 	var err error
-	authCtx := context.Background()
 	httpClient := common.NewHTTPClient(skipTLS)
 	if authInfo.IsServiceAccount {
 		oidcCredentials, err = authenticateServiceAccountWithIdp(ctx, authInfo, httpClient)
 	} else {
-		oidcCredentials, err = authenticateWithIdp(authInfo, authCtx)
+		oidcCredentials, err = authenticateWithIdp(authInfo, ctx)
 	}
 
 	if err != nil {
-		common.ThrowError(err)
+		return nil, err
 	}
 
 	return authenticateWithServiceProvider(ctx, *oidcCredentials, authInfo, httpClient)

@@ -7,10 +7,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"otc-auth/common"
 	"reflect"
 	"testing"
-
-	"otc-auth/common"
 )
 
 func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
@@ -57,46 +56,6 @@ func Test_createServiceAccountAuthenticateRequest(t *testing.T) {
 			assertBasicAuth(t, got, tt.wantUser, tt.wantPass)
 		})
 	}
-}
-
-func assertStringEquals(t *testing.T, fieldName, got, want string) {
-	t.Helper() // Marks this function as a test helper. Errors will be reported from the caller's line.
-	if got != want {
-		t.Errorf("%s mismatch: want %q, got %q", fieldName, want, got)
-	}
-}
-
-func assertRequestBody(t *testing.T, got *http.Request, wantBody string) {
-	t.Helper()
-	if got.Body == nil {
-		t.Fatal("Request body is nil")
-	}
-	gotBody, err := io.ReadAll(got.Body)
-	if err != nil {
-		t.Fatalf("Failed to read request body: %v", err)
-	}
-	// Restore the body so it can be read again if needed
-	got.Body = io.NopCloser(bytes.NewBuffer(gotBody))
-
-	assertStringEquals(t, "Request Body", string(gotBody), wantBody)
-}
-
-func assertBasicAuth(t *testing.T, got *http.Request, wantUser, wantPass string) {
-	t.Helper()
-	gotUser, gotPass, ok := got.BasicAuth()
-	if !ok {
-		t.Fatal("Request is missing Basic Auth header")
-	}
-	assertStringEquals(t, "Basic Auth User", gotUser, wantUser)
-	assertStringEquals(t, "Basic Auth Password", gotPass, wantPass)
-}
-
-type mockHTTPClient struct {
-	MakeRequestFunc func(request *http.Request) (*http.Response, error)
-}
-
-func (m mockHTTPClient) MakeRequest(request *http.Request) (*http.Response, error) {
-	return m.MakeRequestFunc(request)
 }
 
 func Test_authenticateServiceAccountWithIdp(t *testing.T) {
@@ -208,6 +167,38 @@ func Test_authenticateServiceAccountWithIdp(t *testing.T) {
 			}
 		})
 	}
+}
+
+func assertStringEquals(t *testing.T, fieldName, got, want string) {
+	t.Helper() // Marks this function as a test helper. Errors will be reported from the caller's line.
+	if got != want {
+		t.Errorf("%s mismatch: want %q, got %q", fieldName, want, got)
+	}
+}
+
+func assertRequestBody(t *testing.T, got *http.Request, wantBody string) {
+	t.Helper()
+	if got.Body == nil {
+		t.Fatal("Request body is nil")
+	}
+	gotBody, err := io.ReadAll(got.Body)
+	if err != nil {
+		t.Fatalf("Failed to read request body: %v", err)
+	}
+	// Restore the body so it can be read again if needed
+	got.Body = io.NopCloser(bytes.NewBuffer(gotBody))
+
+	assertStringEquals(t, "Request Body", string(gotBody), wantBody)
+}
+
+func assertBasicAuth(t *testing.T, got *http.Request, wantUser, wantPass string) {
+	t.Helper()
+	gotUser, gotPass, ok := got.BasicAuth()
+	if !ok {
+		t.Fatal("Request is missing Basic Auth header")
+	}
+	assertStringEquals(t, "Basic Auth User", gotUser, wantUser)
+	assertStringEquals(t, "Basic Auth Password", gotPass, wantPass)
 }
 
 type errorReader struct{}

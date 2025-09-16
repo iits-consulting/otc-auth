@@ -22,23 +22,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type mockVerifier struct {
-	ReturnError   error
-	ReturnIDToken iIDToken
-}
-
-type mockIDToken struct {
-	ReturnErrorOnClaims error
-}
-
-func (m *mockIDToken) Claims(v interface{}) error {
-	return m.ReturnErrorOnClaims
-}
-
-func (m *mockVerifier) Verify(ctx context.Context, rawIDToken string) (iIDToken, error) {
-	return m.ReturnIDToken, m.ReturnError
-}
-
 func Test_authFlow_handleRoot(t *testing.T) {
 	const testState = "test-state-123"
 	const testClientID = "my-test-client"

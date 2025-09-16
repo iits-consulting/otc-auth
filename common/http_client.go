@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
-	"strconv"
 )
 
 type HTTPClient interface {
@@ -58,8 +56,7 @@ func GetBodyBytesFromResponse(response *http.Response) ([]byte, error) {
 		return nil, errors.Join(err, closeErr)
 	}
 
-	statusCodeStartsWith2 := regexp.MustCompile(`2\d{2}`)
-	if !statusCodeStartsWith2.MatchString(strconv.Itoa(response.StatusCode)) {
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		err = fmt.Errorf("fatal: status %s, body:\n%s", response.Status, bodyBytes)
 		closeErr := response.Body.Close()
 		return nil, errors.Join(err, closeErr)
