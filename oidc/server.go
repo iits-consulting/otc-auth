@@ -98,7 +98,7 @@ func (fc *flowController) Authenticate(params common.AuthInfo,
 	respChan := make(chan common.OidcCredentialsResponse)
 	errChan := make(chan error, 1) // Buffer of 1 so it doesn't block if an error is sent to chan
 	go func() {
-		if startErr := fc.startServer(respChan, &a, createListener, ctx); startErr != nil {
+		if startErr := fc.startServer(respChan, &a, createAndBindListener, ctx); startErr != nil {
 			errChan <- startErr
 		}
 	}()
@@ -134,7 +134,7 @@ func (a *authFlow) handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createListener(address string, ctx context.Context) (net.Listener, error) {
+func createAndBindListener(address string, ctx context.Context) (net.Listener, error) {
 	listener, err := (*net.ListenConfig).Listen(&net.ListenConfig{}, ctx, "tcp", address)
 	if err != nil {
 		return nil, errors.Wrap(err,
