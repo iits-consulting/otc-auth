@@ -40,14 +40,14 @@ func ByteSliceToIndentedJSONFormat(biteSlice []byte) (string, error) {
 	return formattedJSON.String(), nil
 }
 
-func DeserializeJSONForType[T any](data []byte) (*T, error) {
-	var pointer T
-	err := json.Unmarshal(data, &pointer)
+func DeserializeJSONForType[Type any](data []byte) (*Type, error) {
+	var content Type
+	err := json.Unmarshal(data, &content)
 	if err != nil {
 		return nil, fmt.Errorf("fatal: error deserializing json.\ntrace: %w", err)
 	}
 
-	return &pointer, nil
+	return &content, nil
 }
 
 func ThrowError(err error) {
