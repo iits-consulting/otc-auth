@@ -71,7 +71,7 @@ var loginIamCmd = &cobra.Command{
 		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
 		defer cancel()
 		authInfo := common.AuthInfo{
-			AuthType:      "iam",
+			AuthType:      common.AuthTypeIAM,
 			Username:      username,
 			Password:      password,
 			DomainName:    domainName,
@@ -98,13 +98,13 @@ var loginIdpSamlCmd = &cobra.Command{
 		defer cancel()
 
 		authInfo := common.AuthInfo{
-			AuthType:      "idp",
+			AuthType:      common.AuthTypeIDP,
 			Username:      username,
 			Password:      password,
 			DomainName:    domainName,
 			IdpName:       idpName,
 			IdpURL:        idpURL,
-			AuthProtocol:  "saml",
+			AuthProtocol:  common.AuthProtocolSAML,
 			OverwriteFile: overwriteToken,
 			Region:        region,
 			SkipTLS:       skipTLS,
@@ -126,13 +126,13 @@ var loginIdpOidcCmd = &cobra.Command{
 		defer cancel()
 
 		authInfo := common.AuthInfo{
-			AuthType:         "idp",
+			AuthType:         common.AuthTypeIDP,
 			ClientID:         clientID,
 			ClientSecret:     clientSecret,
 			DomainName:       domainName,
 			IdpName:          idpName,
 			IdpURL:           idpURL,
-			AuthProtocol:     "oidc",
+			AuthProtocol:     common.AuthProtocolOIDC,
 			OverwriteFile:    overwriteToken,
 			Region:           region,
 			OidcScopes:       oidcScopes,

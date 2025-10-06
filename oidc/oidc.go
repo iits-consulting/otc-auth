@@ -58,7 +58,7 @@ func authenticateWithServiceProvider(ctx context.Context, oidcCredentials common
 	authInfo common.AuthInfo, client common.HTTPClient,
 ) (*common.TokenResponse, error) {
 	var tokenResponse *common.TokenResponse
-	url := endpoints.IdentityProviders(authInfo.IdpName, authInfo.AuthProtocol, authInfo.Region)
+	url := endpoints.IdentityProviders(authInfo.IdpName, string(authInfo.AuthProtocol), authInfo.Region)
 
 	request, err := common.NewRequest(ctx, http.MethodPost, url, nil)
 	if err != nil {

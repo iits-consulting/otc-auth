@@ -53,7 +53,7 @@ func getServiceProviderInitiatedRequest(ctx context.Context,
 	params common.AuthInfo, client common.HTTPClient,
 ) (*http.Response, error) {
 	request, err := common.NewRequest(ctx, http.MethodGet,
-		endpoints.IdentityProviders(params.IdpName, params.AuthProtocol, params.Region), nil)
+		endpoints.IdentityProviders(params.IdpName, string(params.AuthProtocol), params.Region), nil)
 	if err != nil {
 		return nil, err
 	}

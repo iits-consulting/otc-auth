@@ -14,11 +14,6 @@ import (
 	"github.com/golang/glog"
 )
 
-const (
-	protocolSAML = "saml"
-	protocolOIDC = "oidc"
-)
-
 func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.AuthInfo) error {
 	err := config.LoadCloudConfig(authInfo.DomainName)
 	if err != nil {
@@ -36,14 +31,14 @@ func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.A
 
 	var tokenResponse *common.TokenResponse
 	switch authInfo.AuthType {
-	case "idp":
+	case common.AuthTypeIDP:
 		switch authInfo.AuthProtocol {
-		case protocolSAML:
+		case common.AuthProtocolSAML:
 			tokenResponse, err = saml.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
 			if err != nil {
 				return fmt.Errorf("couldn't get unscoped token: %w", err)
 			}
-		case protocolOIDC:
+		case common.AuthProtocolOIDC:
 			tokenResponse, err = oidc.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
 			if err != nil {
 				return fmt.Errorf("couldn't get unscoped token: %w", err)
@@ -53,7 +48,7 @@ func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.A
 				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
 					"Please provide a valid argument and try again")
 		}
-	case "iam":
+	case common.AuthTypeIAM:
 		tokenResponse, err = iam.AuthenticateAndGetUnscopedToken(authInfo)
 		if err != nil {
 			return fmt.Errorf("couldn't get unscoped token: %w", err)
