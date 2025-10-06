@@ -24,7 +24,8 @@ func GetProjectsInActiveCloud() config.Projects {
 	}
 
 	config.UpdateProjects(cloudProjects)
-	glog.V(common.InfoLogLevel).Infof("info: projects for active cloud:\n%s \n", strings.Join(cloudProjects.GetProjectNames(), ",\n"))
+	glog.V(common.InfoLogLevel).Infof("info: projects for active cloud:\n%s \n",
+		strings.Join(cloudProjects.GetProjectNames(), ",\n"))
 	return cloudProjects
 }
 

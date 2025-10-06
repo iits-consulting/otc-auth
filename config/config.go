@@ -98,7 +98,8 @@ func IsAuthenticationValid() bool {
 	}
 	if tokenExpirationDate.After(time.Now()) {
 		// token still valid
-		glog.V(common.InfoLogLevel).Infof("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat))
+		glog.V(common.InfoLogLevel).Infof("info: unscoped token valid until %s",
+			tokenExpirationDate.Format(common.PrintTimeFormat))
 
 		return true
 	}
