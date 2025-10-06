@@ -23,10 +23,10 @@ const (
 	localhost   = "localhost:8088"
 	redirectURL = "http://localhost:8088/oidc/auth"
 
-	queryState             = "state"
-	queryCode              = "code"
-	idTokenField           = "id_token"
-	normalMaxIDTokenLength = 2300
+	queryState       = "state"
+	queryCode        = "code"
+	idTokenField     = "id_token"
+	maxIDTokenLength = 2300
 
 	rwTimeout   = 1 * time.Minute
 	idleTimeout = 2 * time.Minute
@@ -183,10 +183,10 @@ func handleOIDCAuth(w http.ResponseWriter, r *http.Request, channel chan common.
 		return
 	}
 
-	if len(idToken) > normalMaxIDTokenLength {
+	if len(idToken) > maxIDTokenLength {
 		glog.Warningf(
 			"warning: id token longer than %d characters – consider removing some groups or roles",
-			normalMaxIDTokenLength,
+			maxIDTokenLength,
 		)
 	}
 
