@@ -18,7 +18,7 @@ import (
 )
 
 func CreateAccessToken(tokenDescription string, printAkSk bool) {
-	glog.V(1).Infof("info: creating access token file with GTC...\n")
+	glog.V(common.InfoLogLevel).Infof("info: creating access token file with GTC...\n")
 	resp, err := getAccessTokenFromServiceProvider(tokenDescription)
 	if err != nil {
 		// A 404 error is thrown when trying to create a permanent AK/SK when logged in with OIDC or SAML
@@ -70,13 +70,13 @@ func makeAccessFile(resp *credentials.Credential, tempResp *credentials.Temporar
 		}
 	} else {
 		common.WriteStringToFile("./ak-sk-env.sh", accessKeyFileContent)
-		glog.V(1).Info("info: access token file created successfully")
-		glog.V(1).Info("info: please source the ak-sk-env.sh file in the current directory manually")
+		glog.V(common.InfoLogLevel).Info("info: access token file created successfully")
+		glog.V(common.InfoLogLevel).Info("info: please source the ak-sk-env.sh file in the current directory manually")
 	}
 }
 
 func CreateTemporaryAccessToken(durationSeconds int, printAkSk bool) error {
-	glog.V(1).Info("info: creating temporary access token file with GTC...")
+	glog.V(common.InfoLogLevel).Info("info: creating temporary access token file with GTC...")
 	resp, err := getTempAccessTokenFromServiceProvider(durationSeconds)
 	if err != nil {
 		return err

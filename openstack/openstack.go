@@ -74,5 +74,5 @@ func createOpenstackCloudsYAML(clouds clientconfig.Clouds, openStackConfigFileLo
 		common.ThrowError(err)
 	}
 
-	glog.V(1).Info("info: openstack clouds.yaml was updated")
+	glog.V(common.InfoLogLevel).Info("info: openstack clouds.yaml was updated")
 }

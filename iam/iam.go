@@ -68,15 +68,15 @@ func GetScopedToken(projectName string) config.Token {
 			common.ThrowError(parseErr)
 		}
 		if tokenExpirationDate.After(time.Now()) {
-			glog.V(1).Infof("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
+			glog.V(common.InfoLogLevel).Infof("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
 			return token
 		}
 	}
 
-	glog.V(1).Infof("info: attempting to request a scoped token for %s\n", projectName)
+	glog.V(common.InfoLogLevel).Infof("info: attempting to request a scoped token for %s\n", projectName)
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
-	glog.V(1).Info("info: scoped token acquired successfully")
+	glog.V(common.InfoLogLevel).Info("info: scoped token acquired successfully")
 	project, err = activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
 		common.ThrowError(err)

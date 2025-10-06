@@ -17,7 +17,7 @@ import (
 )
 
 func getKubeConfig(kubeConfigParams KubeConfigParams, alias string) (*api.Config, error) {
-	glog.V(1).Infof("info: getting kube config...")
+	glog.V(common.InfoLogLevel).Infof("info: getting kube config...")
 
 	clusterID, err := getClusterID(kubeConfigParams.ClusterName, kubeConfigParams.ProjectName)
 	if err != nil {

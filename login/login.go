@@ -21,13 +21,13 @@ func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.A
 	}
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
-		glog.V(1).Info(
+		glog.V(common.InfoLogLevel).Info(
 			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
 				"To overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
 		return nil
 	}
 
-	glog.V(1).Info("info: retrieving unscoped token for active cloud...")
+	glog.V(common.InfoLogLevel).Info("info: retrieving unscoped token for active cloud...")
 
 	var tokenResponse *common.TokenResponse
 	switch authInfo.AuthType {
@@ -64,7 +64,7 @@ func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.A
 	}
 	updateOTCInfoFile(*tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()
-	glog.V(1).Info("info: successfully obtained unscoped token!")
+	glog.V(common.InfoLogLevel).Info("info: successfully obtained unscoped token!")
 	return nil
 }
 

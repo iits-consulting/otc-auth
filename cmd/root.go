@@ -330,7 +330,7 @@ var accessTokenListCmd = &cobra.Command{
 				common.ThrowError(fmt.Errorf("fatal: couldn't write output: %w", wErr))
 			}
 		} else {
-			glog.V(1).Info("info: no access-tokens found")
+			glog.V(common.InfoLogLevel).Info("info: no access-tokens found")
 		}
 	},
 }

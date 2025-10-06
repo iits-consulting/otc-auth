@@ -24,7 +24,7 @@ func GetProjectsInActiveCloud() config.Projects {
 	}
 
 	config.UpdateProjects(cloudProjects)
-	glog.V(1).Infof("info: projects for active cloud:\n%s \n", strings.Join(cloudProjects.GetProjectNames(), ",\n"))
+	glog.V(common.InfoLogLevel).Infof("info: projects for active cloud:\n%s \n", strings.Join(cloudProjects.GetProjectNames(), ",\n"))
 	return cloudProjects
 }
 
@@ -39,7 +39,7 @@ func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse)
 	if err != nil {
 		common.ThrowError(err)
 	}
-	glog.V(1).Infof("info: fetching projects for cloud %s \n", activeCloud.Domain.Name)
+	glog.V(common.InfoLogLevel).Infof("info: fetching projects for cloud %s \n", activeCloud.Domain.Name)
 
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),

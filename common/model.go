@@ -4,6 +4,13 @@ import (
 	"encoding/xml"
 )
 
+type LogLevel int
+
+const (
+	InfoLogLevel  = 1
+	DebugLogLevel = 2
+)
+
 type AuthType string
 
 const (

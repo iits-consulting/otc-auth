@@ -53,7 +53,7 @@ func LoadCloudConfig(domainName string) error {
 		return err
 	}
 
-	glog.V(1).Infof("info: cloud %s loaded successfully and set to active.\n", domainName)
+	glog.V(common.InfoLogLevel).Infof("info: cloud %s loaded successfully and set to active.\n", domainName)
 	return nil
 }
 
@@ -98,7 +98,7 @@ func IsAuthenticationValid() bool {
 	}
 	if tokenExpirationDate.After(time.Now()) {
 		// token still valid
-		glog.V(1).Infof("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat))
+		glog.V(common.InfoLogLevel).Infof("info: unscoped token valid until %s", tokenExpirationDate.Format(common.PrintTimeFormat))
 
 		return true
 	}
@@ -213,7 +213,7 @@ func getOtcConfig() (*OtcConfigContent, error) {
 		if err != nil {
 			return nil, err
 		}
-		glog.V(1).Info("info: cloud config created")
+		glog.V(common.InfoLogLevel).Info("info: cloud config created")
 	}
 
 	var otcConfig OtcConfigContent

@@ -40,7 +40,7 @@ func GetClusterNames(projectName string) config.Clusters {
 	}
 
 	config.UpdateClusters(clustersArr)
-	glog.V(1).Infof(
+	glog.V(common.InfoLogLevel).Infof(
 		"info: CCE clusters for project %s:\n%s",
 		projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
 
@@ -78,10 +78,10 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		if err != nil {
 			common.ThrowError(errors.New("error writing YAML to STDOUT"))
 		}
-		glog.V(1).Info("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
+		glog.V(common.InfoLogLevel).Info("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
 	} else {
 		mergeKubeConfig(configParams, *kubeConfig)
-		glog.V(1).Infof("info: successfully fetched and Merge kube config for cce cluster %s. \n", configParams.ClusterName)
+		glog.V(common.InfoLogLevel).Infof("info: successfully fetched and Merge kube config for cce cluster %s. \n", configParams.ClusterName)
 	}
 }
 
@@ -108,20 +108,20 @@ func CheckAndWarnCertsValidity(kubeConfig api.Config) {
 			glog.Warningf("certificate expired. certificate: %s", sprintCertInfo(cert))
 			issueFound = true
 		default:
-			//nolint:mnd // V2 since this is debug info
-			glog.V(2).Infof("certificate and current time match. certificate: %s", sprintCertInfo(cert))
+			glog.V(common.DebugLogLevel).Infof("certificate and current time match. certificate: %s", sprintCertInfo(cert))
 		}
 	}
 
 	if issueFound {
-		glog.V(1).Info("issue found with kube config, please refresh it with `otc-auth cce get-kube-config`")
+		glog.V(common.InfoLogLevel).Info("issue found with kube config, please refresh it with `otc-auth cce get-kube-config`")
 	}
 }
 
 func getAuthInfoCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Certificate) (bool, []*x509.Certificate) {
 	for name, authInfo := range kubeConfig.AuthInfos {
 		if len(authInfo.ClientCertificateData) == 0 {
-			glog.V(2).Infof("Skipping cluster '%s' during expiry check: no certificate authority data present.", name)
+
+			glog.V(common.DebugLogLevel).Infof("Skipping cluster '%s' during expiry check: no certificate authority data present.", name)
 			continue
 		}
 		p, rest := pem.Decode(authInfo.ClientCertificateData)
@@ -135,8 +135,7 @@ func getAuthInfoCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Cert
 		if certErr != nil {
 			common.ThrowError(certErr)
 		}
-		//nolint:mnd // V2 since this is debug info
-		glog.V(2).Infof("found certs in authInfo. cert: %+v", nCerts)
+		glog.V(common.DebugLogLevel).Infof("found certs in authInfo. cert: %+v", nCerts)
 		certs = append(certs, nCerts...)
 	}
 	return issueFound, certs
@@ -145,7 +144,7 @@ func getAuthInfoCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Cert
 func getClusterCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Certificate) (bool, []*x509.Certificate) {
 	for name, cluster := range kubeConfig.Clusters {
 		if len(cluster.CertificateAuthorityData) == 0 {
-			glog.V(2).Infof("Skipping cluster '%s' during expiry check: no certificate authority data present.", name)
+			glog.V(common.DebugLogLevel).Infof("Skipping cluster '%s' during expiry check: no certificate authority data present.", name)
 			continue
 		}
 		p, rest := pem.Decode(cluster.CertificateAuthorityData)
@@ -162,8 +161,7 @@ func getClusterCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Certi
 		if certErr != nil {
 			common.ThrowError(certErr)
 		}
-		//nolint:mnd // V2 since this is debug info
-		glog.V(2).Infof("found certs in cluster. cert: %+v", nCerts)
+		glog.V(common.DebugLogLevel).Infof("found certs in cluster. cert: %+v", nCerts)
 		certs = append(certs, nCerts...)
 	}
 	return issueFound, certs
@@ -325,6 +323,6 @@ func getRefreshedClusterArr(projectName string) config.Clusters {
 			ID:   cluster.Metadata.Id,
 		})
 	}
-	glog.V(1).Info("info: clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
+	glog.V(common.InfoLogLevel).Info("info: clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
 	return clusterArr
 }
