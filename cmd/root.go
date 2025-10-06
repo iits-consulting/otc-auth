@@ -94,7 +94,6 @@ var loginIdpSamlCmd = &cobra.Command{
 	Example: loginIdpSamlCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
-
 		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
 		defer cancel()
 
@@ -123,7 +122,6 @@ var loginIdpOidcCmd = &cobra.Command{
 	Example: loginIdpOidcCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpOidcFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
-
 		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
 		defer cancel()
 
