@@ -19,7 +19,7 @@ const (
 	protocolOIDC = "oidc"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) error {
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) error {
 	err := config.LoadCloudConfig(authInfo.DomainName)
 	if err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
@@ -40,12 +40,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) err
 	case "idp":
 		switch authInfo.AuthProtocol {
 		case protocolSAML:
-			tokenResponse, err = saml.AuthenticateAndGetUnscopedToken(loginCtx, authInfo, skipTLS)
+			tokenResponse, err = saml.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
 			if err != nil {
 				return fmt.Errorf("couldn't get unscoped token: %w", err)
 			}
 		case protocolOIDC:
-			tokenResponse, err = oidc.AuthenticateAndGetUnscopedToken(loginCtx, authInfo, skipTLS)
+			tokenResponse, err = oidc.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
 			if err != nil {
 				return fmt.Errorf("couldn't get unscoped token: %w", err)
 			}

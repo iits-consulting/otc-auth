@@ -28,11 +28,11 @@ func newAuthService() *AuthService {
 }
 
 func (s *AuthService) authenticate(ctx context.Context,
-	authInfo common.AuthInfo, skipTLS bool,
+	authInfo common.AuthInfo,
 ) (*common.TokenResponse, error) {
 	var oidcCredentials *common.OidcCredentialsResponse
 	var err error
-	httpClient := common.NewHTTPClient(skipTLS)
+	httpClient := common.NewHTTPClient(authInfo.SkipTLS)
 
 	if authInfo.IsServiceAccount {
 		oidcCredentials, err = s.authServiceAccountFn(ctx, authInfo, httpClient)
@@ -48,10 +48,10 @@ func (s *AuthService) authenticate(ctx context.Context,
 }
 
 func AuthenticateAndGetUnscopedToken(ctx context.Context,
-	authInfo common.AuthInfo, skipTLS bool,
+	authInfo common.AuthInfo,
 ) (*common.TokenResponse, error) {
 	service := newAuthService()
-	return service.authenticate(ctx, authInfo, skipTLS)
+	return service.authenticate(ctx, authInfo)
 }
 
 func authenticateWithServiceProvider(ctx context.Context, oidcCredentials common.OidcCredentialsResponse,

@@ -15,10 +15,8 @@ import (
 	"github.com/go-http-utils/headers"
 )
 
-func AuthenticateAndGetUnscopedToken(ctx context.Context, authInfo common.AuthInfo,
-	skipTLS bool,
-) (*common.TokenResponse, error) {
-	httpClient := common.NewHTTPClient(skipTLS)
+func AuthenticateAndGetUnscopedToken(ctx context.Context, authInfo common.AuthInfo) (*common.TokenResponse, error) {
+	httpClient := common.NewHTTPClient(authInfo.SkipTLS)
 	spInitiatedRequest, err := getServiceProviderInitiatedRequest(ctx, authInfo, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("error getting sp request\ntrace: %w", err)

@@ -19,6 +19,7 @@ import (
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
+	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -221,9 +222,16 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams,
 	if err != nil {
 		common.ThrowError(err)
 	}
-	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
+	cert, err := clusters.GetCertWithExpiration(client, clusterID, expOpts)
+	if err != nil {
+		common.ThrowError(err)
+	}
+	certBytes, err := yaml.Marshal(cert)
+	if err != nil {
+		common.ThrowError(err)
+	}
 	certWithContext := addContextInformationToKubeConfig(kubeConfigParams.ProjectName,
-		kubeConfigParams.ClusterName, string(cert), alias)
+		kubeConfigParams.ClusterName, string(certBytes), alias)
 	extractedCert, err := clientcmd.NewClientConfigFromBytes([]byte(certWithContext))
 	if err != nil {
 		common.ThrowError(err)

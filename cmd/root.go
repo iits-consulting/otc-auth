@@ -72,8 +72,9 @@ var loginIamCmd = &cobra.Command{
 			UserID:        userID,
 			OverwriteFile: overwriteToken,
 			Region:        region,
+			SkipTLS:       skipTLS,
 		}
-		err := login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
+		err := login.AuthenticateAndGetUnscopedToken(authInfo)
 		if err != nil {
 			common.ThrowError(err)
 		}
@@ -96,8 +97,9 @@ var loginIdpSamlCmd = &cobra.Command{
 			AuthProtocol:  "saml",
 			OverwriteFile: overwriteToken,
 			Region:        region,
+			SkipTLS:       skipTLS,
 		}
-		err := login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
+		err := login.AuthenticateAndGetUnscopedToken(authInfo)
 		if err != nil {
 			common.ThrowError(err)
 		}
@@ -122,8 +124,9 @@ var loginIdpOidcCmd = &cobra.Command{
 			Region:           region,
 			OidcScopes:       oidcScopes,
 			IsServiceAccount: isServiceAccount,
+			SkipTLS:          skipTLS,
 		}
-		err := login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
+		err := login.AuthenticateAndGetUnscopedToken(authInfo)
 		if err != nil {
 			common.ThrowError(err)
 		}

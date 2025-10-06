@@ -1,8 +1,8 @@
 module otc-auth
 
-go 1.22.0
+go 1.25.0
 
-toolchain go1.22.5
+toolchain go1.25.1
 
 require (
 	github.com/coreos/go-oidc/v3 v3.11.0
@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/imdario/mergo v0.3.16
-	github.com/opentelekomcloud/gophertelekomcloud v0.9.3
+	github.com/opentelekomcloud/gophertelekomcloud v0.9.5
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.1

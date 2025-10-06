@@ -278,7 +278,7 @@ func TestAuthenticateAndGetUnscopedToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.authService.authenticate(ctx, tt.authInfo, false)
+			got, err := tt.authService.authenticate(ctx, tt.authInfo)
 
 			if tt.wantErrMsg != "" {
 				if err == nil {
