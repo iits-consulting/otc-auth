@@ -18,12 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"otc-auth/accesstoken"
 	"otc-auth/cce"
@@ -39,6 +41,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
+
+const loginTimeout = 5 * time.Minute
 
 var RootCmd = &cobra.Command{
 	Use:     "otc-auth",
@@ -63,6 +67,9 @@ var loginIamCmd = &cobra.Command{
 		if (userID != "" && username != "") || (userID == "" && username == "") {
 			common.ThrowError(errors.New("either the username or the userID must be set, not both"))
 		}
+
+		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
+		defer cancel()
 		authInfo := common.AuthInfo{
 			AuthType:      "iam",
 			Username:      username,
@@ -74,7 +81,7 @@ var loginIamCmd = &cobra.Command{
 			Region:        region,
 			SkipTLS:       skipTLS,
 		}
-		err := login.AuthenticateAndGetUnscopedToken(authInfo)
+		err := login.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
 		if err != nil {
 			common.ThrowError(err)
 		}
@@ -87,6 +94,10 @@ var loginIdpSamlCmd = &cobra.Command{
 	Example: loginIdpSamlCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
+
+		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
+		defer cancel()
+
 		authInfo := common.AuthInfo{
 			AuthType:      "idp",
 			Username:      username,
@@ -99,7 +110,7 @@ var loginIdpSamlCmd = &cobra.Command{
 			Region:        region,
 			SkipTLS:       skipTLS,
 		}
-		err := login.AuthenticateAndGetUnscopedToken(authInfo)
+		err := login.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
 		if err != nil {
 			common.ThrowError(err)
 		}
@@ -112,6 +123,10 @@ var loginIdpOidcCmd = &cobra.Command{
 	Example: loginIdpOidcCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpOidcFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
+
+		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
+		defer cancel()
+
 		authInfo := common.AuthInfo{
 			AuthType:         "idp",
 			ClientID:         clientID,
@@ -126,7 +141,7 @@ var loginIdpOidcCmd = &cobra.Command{
 			IsServiceAccount: isServiceAccount,
 			SkipTLS:          skipTLS,
 		}
-		err := login.AuthenticateAndGetUnscopedToken(authInfo)
+		err := login.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
 		if err != nil {
 			common.ThrowError(err)
 		}
@@ -368,7 +383,7 @@ func Execute() {
 	// Parse glog flags first
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	setupRootCmd()
-	err := RootCmd.Execute()
+	err := RootCmd.ExecuteContext(context.Background())
 	if err != nil {
 		glog.Exitf("fatal: error executing root cmd: %v", err)
 	}

@@ -19,7 +19,7 @@ const (
 	protocolOIDC = "oidc"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) error {
+func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.AuthInfo) error {
 	err := config.LoadCloudConfig(authInfo.DomainName)
 	if err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
@@ -35,7 +35,6 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) error {
 	glog.V(1).Info("info: retrieving unscoped token for active cloud...")
 
 	var tokenResponse *common.TokenResponse
-	loginCtx := context.Background()
 	switch authInfo.AuthType {
 	case "idp":
 		switch authInfo.AuthProtocol {
