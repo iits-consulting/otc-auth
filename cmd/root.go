@@ -18,12 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"otc-auth/accesstoken"
 	"otc-auth/cce"
@@ -39,6 +41,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
+
+const loginTimeout = 5 * time.Minute
 
 var RootCmd = &cobra.Command{
 	Use:     "otc-auth",
@@ -63,8 +67,11 @@ var loginIamCmd = &cobra.Command{
 		if (userID != "" && username != "") || (userID == "" && username == "") {
 			common.ThrowError(errors.New("either the username or the userID must be set, not both"))
 		}
+
+		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
+		defer cancel()
 		authInfo := common.AuthInfo{
-			AuthType:      "iam",
+			AuthType:      common.AuthTypeIAM,
 			Username:      username,
 			Password:      password,
 			DomainName:    domainName,
@@ -72,8 +79,12 @@ var loginIamCmd = &cobra.Command{
 			UserID:        userID,
 			OverwriteFile: overwriteToken,
 			Region:        region,
+			SkipTLS:       skipTLS,
 		}
-		login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
+		err := login.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
+		if err != nil {
+			common.ThrowError(err)
+		}
 	},
 }
 
@@ -83,18 +94,25 @@ var loginIdpSamlCmd = &cobra.Command{
 	Example: loginIdpSamlCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpSamlFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
+		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
+		defer cancel()
+
 		authInfo := common.AuthInfo{
-			AuthType:      "idp",
+			AuthType:      common.AuthTypeIDP,
 			Username:      username,
 			Password:      password,
 			DomainName:    domainName,
 			IdpName:       idpName,
 			IdpURL:        idpURL,
-			AuthProtocol:  "saml",
+			AuthProtocol:  common.AuthProtocolSAML,
 			OverwriteFile: overwriteToken,
 			Region:        region,
+			SkipTLS:       skipTLS,
 		}
-		login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
+		err := login.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
+		if err != nil {
+			common.ThrowError(err)
+		}
 	},
 }
 
@@ -104,20 +122,27 @@ var loginIdpOidcCmd = &cobra.Command{
 	Example: loginIdpOidcCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIdpOidcFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
+		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
+		defer cancel()
+
 		authInfo := common.AuthInfo{
-			AuthType:         "idp",
+			AuthType:         common.AuthTypeIDP,
 			ClientID:         clientID,
 			ClientSecret:     clientSecret,
 			DomainName:       domainName,
 			IdpName:          idpName,
 			IdpURL:           idpURL,
-			AuthProtocol:     "oidc",
+			AuthProtocol:     common.AuthProtocolOIDC,
 			OverwriteFile:    overwriteToken,
 			Region:           region,
 			OidcScopes:       oidcScopes,
 			IsServiceAccount: isServiceAccount,
+			SkipTLS:          skipTLS,
 		}
-		login.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
+		err := login.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
+		if err != nil {
+			common.ThrowError(err)
+		}
 	},
 }
 
@@ -244,11 +269,7 @@ var tempAccessTokenCreateCmd = &cobra.Command{
 		if temporaryAccessTokenDurationSeconds < 900 || temporaryAccessTokenDurationSeconds > 86400 {
 			return errors.New("fatal: token duration must be between 900 and 86400 seconds (15m and 24h)")
 		}
-		err = accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds, printAkSk)
-		if err != nil {
-			return err
-		}
-		return nil
+		return accesstoken.CreateTemporaryAccessToken(temporaryAccessTokenDurationSeconds, printAkSk)
 	},
 }
 
@@ -309,7 +330,7 @@ var accessTokenListCmd = &cobra.Command{
 				common.ThrowError(fmt.Errorf("fatal: couldn't write output: %w", wErr))
 			}
 		} else {
-			glog.V(1).Info("info: no access-tokens found")
+			glog.V(common.InfoLogLevel).Info("info: no access-tokens found")
 		}
 	},
 }
@@ -360,7 +381,7 @@ func Execute() {
 	// Parse glog flags first
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	setupRootCmd()
-	err := RootCmd.Execute()
+	err := RootCmd.ExecuteContext(context.Background())
 	if err != nil {
 		glog.Exitf("fatal: error executing root cmd: %v", err)
 	}

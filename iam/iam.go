@@ -15,7 +15,7 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
 
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenResponse {
+func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (*common.TokenResponse, error) {
 	authOpts := golangsdk.AuthOptions{
 		DomainName:       authInfo.DomainName,
 		Username:         authInfo.Username,
@@ -27,12 +27,12 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	}
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get openstack client: %w", err)
 	}
 
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get identity client: %w", err)
 	}
 
 	tokenResult := tokens.Create(client, &authOpts)
@@ -40,15 +40,15 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) common.TokenRespo
 	var tokenMarshalledResult common.TokenResponse
 	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't unmarshal token: %w", err)
 	}
 
 	token, err := tokenResult.ExtractToken()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't extract token: %w", err)
 	}
 	tokenMarshalledResult.Token.Secret = token.ID
-	return tokenMarshalledResult
+	return &tokenMarshalledResult, nil
 }
 
 func GetScopedToken(projectName string) config.Token {
@@ -68,15 +68,16 @@ func GetScopedToken(projectName string) config.Token {
 			common.ThrowError(parseErr)
 		}
 		if tokenExpirationDate.After(time.Now()) {
-			glog.V(1).Infof("info: scoped token is valid until %s \n", tokenExpirationDate.Format(common.PrintTimeFormat))
+			glog.V(common.InfoLogLevel).Infof("info: scoped token is valid until %s \n",
+				tokenExpirationDate.Format(common.PrintTimeFormat))
 			return token
 		}
 	}
 
-	glog.V(1).Infof("info: attempting to request a scoped token for %s\n", projectName)
+	glog.V(common.InfoLogLevel).Infof("info: attempting to request a scoped token for %s\n", projectName)
 	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
 	config.UpdateCloudConfig(cloud)
-	glog.V(1).Info("info: scoped token acquired successfully")
+	glog.V(common.InfoLogLevel).Info("info: scoped token acquired successfully")
 	project, err = activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
 		common.ThrowError(err)

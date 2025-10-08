@@ -2,6 +2,7 @@ package cce
 
 import (
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -39,7 +40,7 @@ func GetClusterNames(projectName string) config.Clusters {
 	}
 
 	config.UpdateClusters(clustersArr)
-	glog.V(1).Infof(
+	glog.V(common.InfoLogLevel).Infof(
 		"info: CCE clusters for project %s:\n%s",
 		projectName, strings.Join(clustersArr.GetClusterNames(), ",\n"))
 
@@ -64,11 +65,11 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		}
 	}
 
-	CheckAndWarnCertsValidity(kubeConfig)
+	CheckAndWarnCertsValidity(*kubeConfig)
 
 	if printKubeConfig {
 		// Create a configuration file in kubectl-compatible format
-		configBytes, errMarshal := clientcmd.Write(kubeConfig)
+		configBytes, errMarshal := clientcmd.Write(*kubeConfig)
 		if errMarshal != nil {
 			common.ThrowError(errMarshal)
 		}
@@ -77,10 +78,12 @@ func GetKubeConfig(configParams KubeConfigParams, skipKubeTLS bool, printKubeCon
 		if err != nil {
 			common.ThrowError(errors.New("error writing YAML to STDOUT"))
 		}
-		glog.V(1).Info("info: successfully fetched kube config for cce cluster %s. \n", configParams.ClusterName)
+		glog.V(common.InfoLogLevel).Info("info: successfully fetched kube config for cce cluster %s. \n",
+			configParams.ClusterName)
 	} else {
-		mergeKubeConfig(configParams, kubeConfig)
-		glog.V(1).Infof("info: successfully fetched and Merge kube config for cce cluster %s. \n", configParams.ClusterName)
+		mergeKubeConfig(configParams, *kubeConfig)
+		glog.V(common.InfoLogLevel).Infof("info: successfully fetched and Merge kube config for cce cluster %s. \n",
+			configParams.ClusterName)
 	}
 }
 
@@ -107,21 +110,28 @@ func CheckAndWarnCertsValidity(kubeConfig api.Config) {
 			glog.Warningf("certificate expired. certificate: %s", sprintCertInfo(cert))
 			issueFound = true
 		default:
-			//nolint:mnd // V2 since this is debug info
-			glog.V(2).Infof("certificate and current time match. certificate: %s", sprintCertInfo(cert))
+			glog.V(common.DebugLogLevel).Infof("certificate and current time match. certificate: %s",
+				sprintCertInfo(cert))
 		}
 	}
 
 	if issueFound {
-		glog.V(1).Info("issue found with kube config, please refresh it with `otc-auth cce get-kube-config`")
+		glog.V(common.InfoLogLevel).Info(
+			"issue found with kube config, please refresh it with `otc-auth cce get-kube-config`")
 	}
 }
 
 func getAuthInfoCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Certificate) (bool, []*x509.Certificate) {
-	for _, authInfo := range kubeConfig.AuthInfos {
-		p, _ := pem.Decode(authInfo.ClientCertificateData)
+	for name, authInfo := range kubeConfig.AuthInfos {
+		if len(authInfo.ClientCertificateData) == 0 {
+			glog.V(common.DebugLogLevel).Infof(
+				"Skipping cluster '%s' during expiry check: no certificate authority data present.", name)
+			continue
+		}
+		p, rest := pem.Decode(authInfo.ClientCertificateData)
 		if p == nil {
-			glog.Warningf("can't decode authInfo certificate during expiry check. authInfo: %+v", authInfo)
+			glog.Warningf("can't decode authInfo certificate during expiry check. authInfo: %+v, rest: %+v",
+				authInfo, rest)
 			issueFound = true
 			continue
 		}
@@ -129,21 +139,27 @@ func getAuthInfoCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Cert
 		if certErr != nil {
 			common.ThrowError(certErr)
 		}
-		//nolint:mnd // V2 since this is debug info
-		glog.V(2).Infof("found certs in authInfo. cert: %+v", nCerts)
+		glog.V(common.DebugLogLevel).Infof("found certs in authInfo. cert: %+v", nCerts)
 		certs = append(certs, nCerts...)
 	}
 	return issueFound, certs
 }
 
 func getClusterCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Certificate) (bool, []*x509.Certificate) {
-	for _, cluster := range kubeConfig.Clusters {
-		p, _ := pem.Decode(cluster.CertificateAuthorityData)
+	for name, cluster := range kubeConfig.Clusters {
+		if len(cluster.CertificateAuthorityData) == 0 {
+			glog.V(common.DebugLogLevel).Infof(
+				"Skipping cluster '%s' during expiry check: no certificate authority data present.", name)
+			continue
+		}
+		p, rest := pem.Decode(cluster.CertificateAuthorityData)
 		if p == nil {
 			if cluster.InsecureSkipTLSVerify {
 				continue
 			}
-			glog.Warningf("can't decode cluster authority certificate during expiry check. cluster: %+v", cluster)
+			glog.Warningf(
+				"can't decode cluster authority certificate during expiry check. cluster: %+v, rest: %+v",
+				cluster, rest)
 			issueFound = true
 			continue
 		}
@@ -151,8 +167,7 @@ func getClusterCerts(kubeConfig api.Config, issueFound bool, certs []*x509.Certi
 		if certErr != nil {
 			common.ThrowError(certErr)
 		}
-		//nolint:mnd // V2 since this is debug info
-		glog.V(2).Infof("found certs in cluster. cert: %+v", nCerts)
+		glog.V(common.DebugLogLevel).Infof("found certs in cluster. cert: %+v", nCerts)
 		certs = append(certs, nCerts...)
 	}
 	return issueFound, certs
@@ -191,16 +206,16 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	return clusters.List(client, clusters.ListOpts{})
 }
 
-func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams,
+func getKubeConfFromServiceProvider(kubeConfigParams KubeConfigParams,
 	clusterID string, alias string,
-) (api.Config, error) {
+) (*api.Config, error) {
 	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get active cloud: %w", err)
 	}
 	project, err := activeCloud.Projects.GetProjectByName(kubeConfigParams.ProjectName)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get project %s: %w", kubeConfigParams.ProjectName, err)
 	}
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
 		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
@@ -209,26 +224,72 @@ func getClusterCertFromServiceProvider(kubeConfigParams KubeConfigParams,
 		TenantID:         project.ID,
 	})
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get new openstack client: %w", err)
 	}
 	client, err := openstack.NewCCE(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get new cce client: %w", err)
 	}
 
 	var expOpts clusters.ExpirationOpts
 	expOpts.Duration, err = strconv.Atoi(kubeConfigParams.DaysValid)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't convert string to int: %w", err)
 	}
-	cert := clusters.GetCertWithExpiration(client, clusterID, expOpts).Body
-	certWithContext := addContextInformationToKubeConfig(kubeConfigParams.ProjectName,
-		kubeConfigParams.ClusterName, string(cert), alias)
-	extractedCert, err := clientcmd.NewClientConfigFromBytes([]byte(certWithContext))
+	cert, err := clusters.GetCertWithExpiration(client, clusterID, expOpts)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get cert: %w", err)
 	}
-	return extractedCert.RawConfig()
+
+	rawConfig := api.Config{
+		Kind:           cert.Kind,
+		APIVersion:     cert.ApiVersion,
+		Preferences:    api.Preferences{},
+		Clusters:       make(map[string]*api.Cluster),
+		AuthInfos:      make(map[string]*api.AuthInfo),
+		Contexts:       make(map[string]*api.Context),
+		CurrentContext: cert.CurrentContext,
+	}
+
+	for _, c := range cert.Clusters {
+		decodedCA, errDecode := base64.StdEncoding.DecodeString(c.Cluster.CertAuthorityData)
+		if errDecode != nil {
+			return nil, fmt.Errorf("failed to decode cluster cert auth data for cluster '%s': %w",
+				c.Name, err)
+		}
+		rawConfig.Clusters[c.Name] = &api.Cluster{
+			Server:                   c.Cluster.Server,
+			CertificateAuthorityData: decodedCA,
+		}
+	}
+
+	for _, u := range cert.Users {
+		decodedCert, errDecode := base64.StdEncoding.DecodeString(u.User.ClientCertData)
+		if errDecode != nil {
+			return nil, fmt.Errorf("failed to decode client certificate data for user '%s': %w", u.Name, err)
+		}
+		decodedKey, errDecode := base64.StdEncoding.DecodeString(u.User.ClientKeyData)
+		if errDecode != nil {
+			return nil, fmt.Errorf("failed to decode client key data for user '%s': %w", u.Name, err)
+		}
+		rawConfig.AuthInfos[u.Name] = &api.AuthInfo{
+			ClientCertificateData: decodedCert,
+			ClientKeyData:         decodedKey,
+		}
+	}
+
+	for _, ctx := range cert.Contexts {
+		rawConfig.Contexts[ctx.Name] = &api.Context{
+			Cluster:  ctx.Context.Cluster,
+			AuthInfo: ctx.Context.User,
+		}
+	}
+
+	err = renameKubeconfigEntries(&rawConfig, kubeConfigParams.ProjectName, kubeConfigParams.ClusterName, alias)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't rename entries: %w", err)
+	}
+	return &rawConfig, nil
 }
 
 func getClusterID(clusterName string, projectName string) (clusterID string, err error) {
@@ -268,6 +329,7 @@ func getRefreshedClusterArr(projectName string) config.Clusters {
 			ID:   cluster.Metadata.Id,
 		})
 	}
-	glog.V(1).Info("info: clusters for project %s:\n%s", projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
+	glog.V(common.InfoLogLevel).Info("info: clusters for project %s:\n%s",
+		projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
 	return clusterArr
 }

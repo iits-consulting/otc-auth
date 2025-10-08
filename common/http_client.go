@@ -7,34 +7,43 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
-	"strconv"
 )
 
-func HTTPClientMakeRequest(request *http.Request, skipTLS bool) *http.Response {
+type HTTPClient interface {
+	MakeRequest(request *http.Request) (*http.Response, error)
+}
+
+type HTTPClientImpl struct {
+	client *http.Client
+}
+
+func NewHTTPClient(skipTLS bool) HTTPClient {
 	tr := &http.Transport{
 		//nolint:gosec // Needs to be explicitly set to true via a flag to skip TLS verification.
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLS},
 	}
-	httpClient := http.Client{Transport: tr}
-	response, err := httpClient.Do(request)
-	if err != nil {
-		ThrowError(fmt.Errorf("fatal: error making a request %w", err))
+
+	client := &http.Client{
+		Transport: tr,
 	}
 
-	defer httpClient.CloseIdleConnections()
-	return response
+	return &HTTPClientImpl{client: client}
 }
 
-func GetRequest(method string, url string, body io.Reader) *http.Request {
-	request, err := http.NewRequestWithContext(context.Background(), method, url, body)
+func (c HTTPClientImpl) MakeRequest(request *http.Request) (*http.Response, error) {
+	defer c.client.CloseIdleConnections()
+	return c.client.Do(request)
+}
+
+func NewRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
+	request, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		ThrowError(fmt.Errorf(
+		return nil, fmt.Errorf(
 			"fatal: error building %s request for url %s\ntrace: %w",
-			method, url, err))
+			method, url, err)
 	}
 
-	return request
+	return request, nil
 }
 
 func GetBodyBytesFromResponse(response *http.Response) ([]byte, error) {
@@ -47,8 +56,7 @@ func GetBodyBytesFromResponse(response *http.Response) ([]byte, error) {
 		return nil, errors.Join(err, closeErr)
 	}
 
-	statusCodeStartsWith2 := regexp.MustCompile(`2\d{2}`)
-	if !statusCodeStartsWith2.MatchString(strconv.Itoa(response.StatusCode)) {
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		err = fmt.Errorf("fatal: status %s, body:\n%s", response.Status, bodyBytes)
 		closeErr := response.Body.Close()
 		return nil, errors.Join(err, closeErr)

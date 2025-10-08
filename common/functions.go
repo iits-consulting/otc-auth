@@ -31,23 +31,23 @@ func WriteStringToFile(filepath string, content string) {
 	}
 }
 
-func ByteSliceToIndentedJSONFormat(biteSlice []byte) string {
+func ByteSliceToIndentedJSONFormat(biteSlice []byte) (string, error) {
 	var formattedJSON bytes.Buffer
 	err := json.Indent(&formattedJSON, biteSlice, "", "   ")
 	if err != nil {
-		ThrowError(err)
+		return "", fmt.Errorf("couldn't indent json: %w", err)
 	}
-	return formattedJSON.String()
+	return formattedJSON.String(), nil
 }
 
-func DeserializeJSONForType[T any](data []byte) *T {
-	var pointer T
-	err := json.Unmarshal(data, &pointer)
+func DeserializeJSONForType[Type any](data []byte) (*Type, error) {
+	var content Type
+	err := json.Unmarshal(data, &content)
 	if err != nil {
-		ThrowError(fmt.Errorf("fatal: error deserializing json.\ntrace: %w", err))
+		return nil, fmt.Errorf("fatal: error deserializing json.\ntrace: %w", err)
 	}
 
-	return &pointer
+	return &content, nil
 }
 
 func ThrowError(err error) {
