@@ -51,48 +51,50 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (*common.TokenRes
 	return &tokenMarshalledResult, nil
 }
 
-func GetScopedToken(projectName string) config.Token {
+func GetScopedToken(projectName string) (*config.Token, error) {
 	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get active cloud config: %w", err)
 	}
 	project, err := activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get project named '%s': %w", projectName, err)
 	}
 	if project.ScopedToken.IsTokenValid() {
-		token := project.ScopedToken
-
-		tokenExpirationDate, parseErr := common.ParseTime(token.ExpiresAt)
+		tokenExpirationDate, parseErr := common.ParseTime(project.ScopedToken.ExpiresAt)
 		if parseErr != nil {
-			common.ThrowError(parseErr)
+			return nil, fmt.Errorf("couldn't parse token expiry time: %w", err)
 		}
 		if tokenExpirationDate.After(time.Now()) {
 			glog.V(common.InfoLogLevel).Infof("info: scoped token is valid until %s \n",
 				tokenExpirationDate.Format(common.PrintTimeFormat))
-			return token
+			return &project.ScopedToken, nil
 		}
 	}
 
 	glog.V(common.InfoLogLevel).Infof("info: attempting to request a scoped token for %s\n", projectName)
-	cloud := getCloudWithScopedTokenFromServiceProvider(projectName)
-	config.UpdateCloudConfig(cloud)
+	cloud, err := getCloudWithScopedTokenFromServiceProvider(projectName)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get token from sp: %w", err)
+	}
+	config.UpdateCloudConfig(*cloud)
 	glog.V(common.InfoLogLevel).Info("info: scoped token acquired successfully")
 	project, err = activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get project by named '%s': %w", projectName, err)
 	}
-	return project.ScopedToken
+	return &project.ScopedToken, nil
 }
 
-func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud {
+// TODO - DRY
+func getCloudWithScopedTokenFromServiceProvider(projectName string) (*config.Cloud, error) {
 	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get active cloud config: %w", err)
 	}
 	project, err := activeCloud.Projects.GetProjectByName(projectName)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get project by named '%s': %w", projectName, err)
 	}
 
 	authOpts := golangsdk.AuthOptions{
@@ -104,16 +106,16 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get authed client: %w", err)
 	}
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get identity client: %w", err)
 	}
 
 	scopedToken, err := tokens.Create(client, &authOpts).ExtractToken()
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't create and extract token: %w", err)
 	}
 
 	token := config.Token{
@@ -122,11 +124,11 @@ func getCloudWithScopedTokenFromServiceProvider(projectName string) config.Cloud
 	}
 	index := activeCloud.Projects.FindProjectIndexByName(projectName)
 	if index == nil {
-		common.ThrowError(fmt.Errorf(
+		return nil, fmt.Errorf(
 			"fatal: project with name %s not found.\n"+
 				"\nUse the cce list-projects command to get a list of projects",
-			projectName))
+			projectName)
 	}
 	activeCloud.Projects[*index].ScopedToken = token
-	return *activeCloud
+	return activeCloud, nil
 }
