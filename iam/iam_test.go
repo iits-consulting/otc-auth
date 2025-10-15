@@ -173,7 +173,6 @@ func TestGetScopedToken(t *testing.T) {
 }
 
 func Test_gopherTokenToConfigToken(t *testing.T) {
-	// Setup a known time for a predictable output string.
 	testTime := time.Date(2023, 10, 27, 10, 0, 0, 0, time.UTC)
 	expectedTimeString := "2023-10-27T10:00:00Z"
 
@@ -181,7 +180,7 @@ func Test_gopherTokenToConfigToken(t *testing.T) {
 		name        string
 		gopherToken *tokens.Token
 		want        *config.Token
-		shouldPanic bool // We will explicitly test for the panic
+		shouldPanic bool
 	}{
 		{
 			name: "Success - Converts a valid token",
@@ -199,13 +198,12 @@ func Test_gopherTokenToConfigToken(t *testing.T) {
 			name:        "Failure - Handles nil input gracefully",
 			gopherToken: nil,
 			want:        nil,
-			shouldPanic: true, // The original code panics, a better implementation would not.
+			shouldPanic: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This defer block allows us to test for panics gracefully.
 			defer func() {
 				r := recover()
 				if (r != nil) != tt.shouldPanic {
@@ -221,8 +219,6 @@ func Test_gopherTokenToConfigToken(t *testing.T) {
 		})
 	}
 }
-
-// --- Tests for configTokenToGopherToken ---
 
 func Test_configTokenToGopherToken(t *testing.T) {
 	testTime := time.Date(2023, 10, 27, 10, 0, 0, 0, time.UTC)
@@ -261,7 +257,7 @@ func Test_configTokenToGopherToken(t *testing.T) {
 			name:        "Failure - Panics on nil input",
 			configToken: nil,
 			want:        nil,
-			wantErr:     true, // We expect an error state (a panic is an uncontrolled error)
+			wantErr:     true,
 		},
 	}
 
