@@ -180,7 +180,7 @@ func Test_gopherTokenToConfigToken(t *testing.T) {
 		name        string
 		gopherToken *tokens.Token
 		want        *config.Token
-		shouldPanic bool
+		wantErr     bool
 	}{
 		{
 			name: "Success - Converts a valid token",
@@ -192,26 +192,22 @@ func Test_gopherTokenToConfigToken(t *testing.T) {
 				Secret:    "test-id",
 				ExpiresAt: expectedTimeString,
 			},
-			shouldPanic: false,
+			wantErr: false,
 		},
 		{
 			name:        "Failure - Handles nil input gracefully",
 			gopherToken: nil,
 			want:        nil,
-			shouldPanic: true,
+			wantErr:     true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer func() {
-				r := recover()
-				if (r != nil) != tt.shouldPanic {
-					t.Errorf("gopherTokenToConfigToken() panic = %v, wantPanic %v", r, tt.shouldPanic)
-				}
-			}()
-
-			got := gopherTokenToConfigToken(tt.gopherToken)
+			got, errConv := gopherTokenToConfigToken(tt.gopherToken)
+			if (errConv != nil) != tt.wantErr {
+				t.Errorf("error converting token: %v", errConv)
+			}
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("gopherTokenToConfigToken() = %v, want %v", got, tt.want)

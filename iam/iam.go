@@ -2,6 +2,7 @@ package iam
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -162,17 +163,23 @@ func fetchNewScopedToken(tc TokenCreator, unscopedToken, projectID, region, doma
 		return nil, err
 	}
 
-	return gopherTokenToConfigToken(gopherToken), nil
+	return gopherTokenToConfigToken(gopherToken)
 }
 
-func gopherTokenToConfigToken(gopherToken *tokens.Token) *config.Token {
+func gopherTokenToConfigToken(gopherToken *tokens.Token) (*config.Token, error) {
+	if gopherToken == nil {
+		return nil, errors.New("token to convert is nil")
+	}
 	return &config.Token{
 		Secret:    gopherToken.ID,
 		ExpiresAt: gopherToken.ExpiresAt.Format(time.RFC3339),
-	}
+	}, nil
 }
 
 func configTokenToGopherToken(configToken *config.Token) (*tokens.Token, error) {
+	if configToken == nil {
+		return nil, errors.New("token to convert is nil")
+	}
 	parse, err := time.Parse(time.RFC3339, configToken.ExpiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse expiry time: %w", err)
