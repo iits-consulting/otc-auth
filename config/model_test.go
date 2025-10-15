@@ -779,6 +779,7 @@ func TestToken_IsTokenValid(t *testing.T) {
 		{
 			name: "valid future expiration",
 			fields: fields{
+				Secret:    "secret",
 				ExpiresAt: now.Add(1 * time.Hour).Format(time.RFC3339),
 			},
 			want: true,
@@ -786,6 +787,7 @@ func TestToken_IsTokenValid(t *testing.T) {
 		{
 			name: "expired token",
 			fields: fields{
+				Secret:    "secret",
 				ExpiresAt: now.Add(-1 * time.Hour).Format(time.RFC3339),
 			},
 			want: false,
@@ -793,6 +795,7 @@ func TestToken_IsTokenValid(t *testing.T) {
 		{
 			name: "just expired token",
 			fields: fields{
+				Secret:    "secret",
 				ExpiresAt: now.Add(-1 * time.Second).Format(time.RFC3339),
 			},
 			want: false,
@@ -800,6 +803,7 @@ func TestToken_IsTokenValid(t *testing.T) {
 		{
 			name: "empty expiration time",
 			fields: fields{
+				Secret:    "secret",
 				ExpiresAt: "",
 			},
 			want: false,
@@ -807,6 +811,7 @@ func TestToken_IsTokenValid(t *testing.T) {
 		{
 			name: "malformed expiration time",
 			fields: fields{
+				Secret:    "secret",
 				ExpiresAt: "invalid-time-format",
 			},
 			want: false,
@@ -820,8 +825,8 @@ func TestToken_IsTokenValid(t *testing.T) {
 				IssuedAt:  tt.fields.IssuedAt,
 				ExpiresAt: tt.fields.ExpiresAt,
 			}
-			if got := token.IsTokenValid(); got != tt.want {
-				t.Errorf("IsTokenValid() = %v, want %v", got, tt.want)
+			if got := token.IsValid(); got != tt.want {
+				t.Errorf("IsValid() = %v, want %v", got, tt.want)
 			}
 		})
 	}

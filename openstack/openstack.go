@@ -11,7 +11,7 @@ import (
 	"otc-auth/config"
 
 	"github.com/golang/glog"
-	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/gophercloud/utils/openstack/clientconfig" // "github.com/opentelekomcloud/utils" does not exist yet
 	"gopkg.in/yaml.v3"
 )
 

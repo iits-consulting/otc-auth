@@ -86,7 +86,7 @@ func IsAuthenticationValid() bool {
 		common.ThrowError(err)
 	}
 
-	if !cloud.UnscopedToken.IsTokenValid() {
+	if !cloud.UnscopedToken.IsValid() {
 		return false
 	}
 
@@ -158,21 +158,23 @@ func UpdateProjects(projects Projects) {
 	}
 }
 
-func UpdateCloudConfig(updatedCloud Cloud) {
+func UpdateCloudConfig(updatedCloud Cloud) error {
 	otcConfig, err := getOtcConfig()
 	if err != nil {
-		common.ThrowError(err)
+		return fmt.Errorf("couldn't get otc config: %w", err)
 	}
 	index, err := otcConfig.Clouds.GetActiveCloudIndex()
 	if err != nil {
-		common.ThrowError(err)
+		return fmt.Errorf("couldn't get active cloud idx: %w", err)
 	}
 	otcConfig.Clouds[*index] = updatedCloud
 
 	err = writeOtcConfigContentToFile(*otcConfig)
 	if err != nil {
-		common.ThrowError(err)
+		return fmt.Errorf("couldn't write config to file: %w", err)
 	}
+
+	return nil
 }
 
 func GetActiveCloudConfig() (*Cloud, error) {

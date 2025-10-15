@@ -14,9 +14,53 @@ import (
 	"github.com/golang/glog"
 )
 
+type tokenProviderFunc func(context.Context, common.AuthInfo) (*common.TokenResponse, error)
+
+func getTokenProvider(authInfo common.AuthInfo) (tokenProviderFunc, error) {
+	switch authInfo.AuthType {
+	case common.AuthTypeIDP:
+		switch authInfo.AuthProtocol {
+		case common.AuthProtocolSAML:
+			return saml.AuthenticateAndGetUnscopedToken, nil
+		case common.AuthProtocolOIDC:
+			return oidc.AuthenticateAndGetUnscopedToken, nil
+		default:
+			return nil, errors.New(
+				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
+					"Please provide a valid argument and try again")
+		}
+	case common.AuthTypeIAM:
+		iamProvider := func(ctx context.Context, ai common.AuthInfo) (*common.TokenResponse, error) {
+			return iam.AuthenticateAndGetUnscopedToken(ai)
+		}
+		return iamProvider, nil
+	default:
+		return nil, errors.New(
+			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
+				"Please provide a valid argument and try again")
+	}
+}
+
+func handleSuccessfulAuthentication(tokenResponse common.TokenResponse, region string) error {
+	if tokenResponse.Token.Secret == "" {
+		return errors.New("authorization did not succeed. please try again")
+	}
+
+	if err := updateOTCInfoFile(tokenResponse, region); err != nil {
+		return fmt.Errorf("couldn't update otc info file: %w", err)
+	}
+
+	projectsInActiveCloud := iam.GetProjectsInActiveCloud()
+	if err := iam.CreateScopedTokenForEveryProject(projectsInActiveCloud.GetProjectNames()); err != nil {
+		return fmt.Errorf("couldn't create scoped token for projects: %w", err)
+	}
+
+	glog.V(common.InfoLogLevel).Info("info: successfully obtained unscoped token!")
+	return nil
+}
+
 func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.AuthInfo) error {
-	err := config.LoadCloudConfig(authInfo.DomainName)
-	if err != nil {
+	if err := config.LoadCloudConfig(authInfo.DomainName); err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
 	}
 
@@ -29,58 +73,27 @@ func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.A
 
 	glog.V(common.InfoLogLevel).Info("info: retrieving unscoped token for active cloud...")
 
-	var tokenResponse *common.TokenResponse
-	switch authInfo.AuthType {
-	case common.AuthTypeIDP:
-		switch authInfo.AuthProtocol {
-		case common.AuthProtocolSAML:
-			tokenResponse, err = saml.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
-			if err != nil {
-				return fmt.Errorf("couldn't get unscoped token: %w", err)
-			}
-		case common.AuthProtocolOIDC:
-			tokenResponse, err = oidc.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
-			if err != nil {
-				return fmt.Errorf("couldn't get unscoped token: %w", err)
-			}
-		default:
-			return errors.New(
-				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
-					"Please provide a valid argument and try again")
-		}
-	case common.AuthTypeIAM:
-		tokenResponse, err = iam.AuthenticateAndGetUnscopedToken(authInfo)
-		if err != nil {
-			return fmt.Errorf("couldn't get unscoped token: %w", err)
-		}
-	default:
-		return errors.New(
-			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
-				"Please provide a valid argument and try again")
+	provider, err := getTokenProvider(authInfo)
+	if err != nil {
+		return err
 	}
 
-	if tokenResponse.Token.Secret == "" {
-		return errors.New("authorization did not succeed. please try again")
+	tokenResponse, err := provider(loginCtx, authInfo)
+	if err != nil {
+		return fmt.Errorf("couldn't get unscoped token: %w", err)
 	}
-	updateOTCInfoFile(*tokenResponse, authInfo.Region)
-	createScopedTokenForEveryProject()
-	glog.V(common.InfoLogLevel).Info("info: successfully obtained unscoped token!")
-	return nil
+
+	return handleSuccessfulAuthentication(*tokenResponse, authInfo.Region)
 }
 
-func createScopedTokenForEveryProject() {
-	projectsInActiveCloud := iam.GetProjectsInActiveCloud()
-	iam.CreateScopedTokenForEveryProject(projectsInActiveCloud.GetProjectNames())
-}
-
-func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
+func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) error {
 	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
-		common.ThrowError(err)
+		return fmt.Errorf("couldn't get cloud config: %w", err)
 	}
 	if activeCloud.Domain.Name != tokenResponse.Token.User.Domain.Name {
 		// Sanity check: we're in the same cloud as the active cloud
-		common.ThrowError(errors.New("fatal: authorization made for wrong cloud configuration"))
+		return errors.New("fatal: authorization made for wrong cloud configuration")
 	}
 	activeCloud.Domain.ID = tokenResponse.Token.User.Domain.ID
 	if activeCloud.Username != tokenResponse.Token.User.Name {
@@ -100,5 +113,10 @@ func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) {
 	}
 	activeCloud.Region = regionCode
 	activeCloud.UnscopedToken = token
-	config.UpdateCloudConfig(*activeCloud)
+	err = config.UpdateCloudConfig(*activeCloud)
+	if err != nil {
+		return fmt.Errorf("couldn't update config: %w", err)
+	}
+
+	return nil
 }
