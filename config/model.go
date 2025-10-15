@@ -175,7 +175,10 @@ type Token struct {
 	ExpiresAt string `json:"expires_at"`
 }
 
-func (token *Token) IsTokenValid() bool {
+func (token *Token) IsValid() bool {
+	if token.Secret == "" {
+		return false
+	}
 	timePTR, err := common.ParseTime(token.ExpiresAt)
 	if err != nil {
 		glog.Warningf("couldn't parse token expires_at: %s", err)
