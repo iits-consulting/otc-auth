@@ -2,6 +2,7 @@ package iam
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"otc-auth/common"
@@ -29,10 +30,17 @@ func GetProjectsInActiveCloud() config.Projects {
 	return cloudProjects
 }
 
-func CreateScopedTokenForEveryProject(projectNames []string) {
+func CreateScopedTokenForEveryProject(projectNames []string) error {
+	var tokenError error
+	store := NewFileConfigStore()
+	tc := NewGopherTokenCreator()
 	for _, projectName := range projectNames {
-		GetScopedToken(projectName)
+		_, err := GetScopedToken(store, tc, projectName) // Getting tokens also caches them for later use
+		if err != nil {
+			return errors.Join(tokenError, err)
+		}
 	}
+	return nil
 }
 
 func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
