@@ -4,14 +4,35 @@ import (
 	"encoding/xml"
 )
 
+type LogLevel int
+
+const (
+	InfoLogLevel  = 1
+	DebugLogLevel = 2
+)
+
+type AuthType string
+
+const (
+	AuthTypeIDP AuthType = "idp"
+	AuthTypeIAM AuthType = "iam"
+)
+
+type AuthProtocol string
+
+const (
+	AuthProtocolOIDC AuthProtocol = "oidc"
+	AuthProtocolSAML AuthProtocol = "saml"
+)
+
 type AuthInfo struct {
 	Region           string
-	AuthType         string
+	AuthType         AuthType
 	IdpName          string
 	IdpURL           string
 	Username         string
 	Password         string
-	AuthProtocol     string
+	AuthProtocol     AuthProtocol
 	DomainName       string
 	Otp              string
 	UserID           string
@@ -20,6 +41,7 @@ type AuthInfo struct {
 	OverwriteFile    bool
 	IsServiceAccount bool
 	OidcScopes       []string
+	SkipTLS          bool
 }
 type SamlAssertionResponse struct {
 	Name   xml.Name

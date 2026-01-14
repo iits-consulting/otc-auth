@@ -1,7 +1,9 @@
 package login
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	"otc-auth/common"
 	"otc-auth/config"
@@ -12,53 +14,58 @@ import (
 	"github.com/golang/glog"
 )
 
-const (
-	protocolSAML = "saml"
-	protocolOIDC = "oidc"
-)
-
-func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo, skipTLS bool) {
+func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.AuthInfo) error {
 	err := config.LoadCloudConfig(authInfo.DomainName)
 	if err != nil {
-		common.ThrowError(err)
+		return fmt.Errorf("couldn't load config: %w", err)
 	}
 
 	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
-		glog.V(1).Info(
+		glog.V(common.InfoLogLevel).Info(
 			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
 				"To overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
-		return
+		return nil
 	}
 
-	glog.V(1).Info("info: retrieving unscoped token for active cloud...")
+	glog.V(common.InfoLogLevel).Info("info: retrieving unscoped token for active cloud...")
 
-	var tokenResponse common.TokenResponse
+	var tokenResponse *common.TokenResponse
 	switch authInfo.AuthType {
-	case "idp":
+	case common.AuthTypeIDP:
 		switch authInfo.AuthProtocol {
-		case protocolSAML:
-			tokenResponse = saml.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
-		case protocolOIDC:
-			tokenResponse = oidc.AuthenticateAndGetUnscopedToken(authInfo, skipTLS)
+		case common.AuthProtocolSAML:
+			tokenResponse, err = saml.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
+			if err != nil {
+				return fmt.Errorf("couldn't get unscoped token: %w", err)
+			}
+		case common.AuthProtocolOIDC:
+			tokenResponse, err = oidc.AuthenticateAndGetUnscopedToken(loginCtx, authInfo)
+			if err != nil {
+				return fmt.Errorf("couldn't get unscoped token: %w", err)
+			}
 		default:
-			common.ThrowError(errors.New(
+			return errors.New(
 				"fatal: unsupported login protocol.\n\nAllowed values are \"saml\" or \"oidc\". " +
-					"Please provide a valid argument and try again"))
+					"Please provide a valid argument and try again")
 		}
-	case "iam":
-		tokenResponse = iam.AuthenticateAndGetUnscopedToken(authInfo)
+	case common.AuthTypeIAM:
+		tokenResponse, err = iam.AuthenticateAndGetUnscopedToken(authInfo)
+		if err != nil {
+			return fmt.Errorf("couldn't get unscoped token: %w", err)
+		}
 	default:
-		common.ThrowError(errors.New(
+		return errors.New(
 			"fatal: unsupported authorization type.\n\nAllowed values are \"idp\" or \"iam\". " +
-				"Please provide a valid argument and try again"))
+				"Please provide a valid argument and try again")
 	}
 
 	if tokenResponse.Token.Secret == "" {
-		common.ThrowError(errors.New("authorization did not succeed. please try again"))
+		return errors.New("authorization did not succeed. please try again")
 	}
-	updateOTCInfoFile(tokenResponse, authInfo.Region)
+	updateOTCInfoFile(*tokenResponse, authInfo.Region)
 	createScopedTokenForEveryProject()
-	glog.V(1).Info("info: successfully obtained unscoped token!")
+	glog.V(common.InfoLogLevel).Info("info: successfully obtained unscoped token!")
+	return nil
 }
 
 func createScopedTokenForEveryProject() {
