@@ -342,3 +342,7 @@ packages
 .jj
 
 *.tar
+
+# Claude Code
+CLAUDE.md
+.claude/
