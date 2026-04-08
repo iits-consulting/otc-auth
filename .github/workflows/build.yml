@@ -46,6 +46,7 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
       - name: Find Comment
+        continue-on-error: true
         if: >
           github.event.action != 'closed' ||
           github.event.pull_request.merged == false ||
@@ -57,6 +58,7 @@ jobs:
           comment-author: 'github-actions[bot]'
           body-includes: "## Code Coverage Report"
       - name: Create or update coverage comment
+        continue-on-error: true
         if: >
           github.event.action != 'closed' ||
           github.event.pull_request.merged == false ||
