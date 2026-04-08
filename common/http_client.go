@@ -32,7 +32,7 @@ func NewHTTPClient(skipTLS bool) HTTPClient {
 
 func (c HTTPClientImpl) MakeRequest(request *http.Request) (*http.Response, error) {
 	defer c.client.CloseIdleConnections()
-	return c.client.Do(request) //nolint:gosec // URLs are constructed from user-provided cloud configuration, not untrusted input.
+	return c.client.Do(request) //nolint:gosec // URLs are made from user's cloud configuration not untrusted input
 }
 
 func NewRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
