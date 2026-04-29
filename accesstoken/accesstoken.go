@@ -99,6 +99,15 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
+	// Known upstream regression: gophertelekomcloud >= v0.9.3 returns
+	// "options type is not a struct" for credentials.List. The new URL builder
+	// passes &opts (pointer to the ListOptsBuilder interface) into the
+	// reflection-based BuildQueryString, which rejects pointer-to-interface.
+	// Introduced by https://github.com/opentelekomcloud/gophertelekomcloud/pull/641
+	// Broken line in v0.9.6:
+	//nolint:lll // permalink URL must remain unbroken
+	// https://github.com/opentelekomcloud/gophertelekomcloud/blob/3d1124b203dd40c1c18aea095743c258cabbb58a/openstack/identity/v3/credentials/requests.go#L30
+	// Last known-good SDK version: v0.8.0.
 	return credentials.List(client, credentials.ListOpts{UserID: user.ID}).Extract()
 }
 

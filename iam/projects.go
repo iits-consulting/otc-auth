@@ -2,6 +2,9 @@ package iam
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"otc-auth/common"
@@ -15,7 +18,19 @@ import (
 )
 
 func GetProjectsInActiveCloud() config.Projects {
-	projectsResponse := getProjectsFromServiceProvider()
+	return getProjectsAndPrint(os.Stdout, getProjectsFromServiceProvider, config.UpdateProjects)
+}
+
+// getProjectsAndPrint is the testable seam for GetProjectsInActiveCloud.
+// fetch retrieves the raw response, update persists projects to disk, and w
+// receives the user-facing list. Splitting these dependencies lets us assert
+// the list reaches stdout without an HTTP/disk round-trip.
+func getProjectsAndPrint(
+	w io.Writer,
+	fetch func() common.ProjectsResponse,
+	update func(config.Projects),
+) config.Projects {
+	projectsResponse := fetch()
 	var cloudProjects config.Projects
 	for _, project := range projectsResponse.Projects {
 		cloudProjects = append(cloudProjects, config.Project{
@@ -23,10 +38,16 @@ func GetProjectsInActiveCloud() config.Projects {
 		})
 	}
 
-	config.UpdateProjects(cloudProjects)
-	glog.V(common.InfoLogLevel).Infof("info: projects for active cloud:\n%s \n",
-		strings.Join(cloudProjects.GetProjectNames(), ",\n"))
+	update(cloudProjects)
+	if err := writeProjectNames(w, cloudProjects); err != nil {
+		common.ThrowError(err)
+	}
 	return cloudProjects
+}
+
+func writeProjectNames(w io.Writer, cloudProjects config.Projects) error {
+	_, err := fmt.Fprintln(w, strings.Join(cloudProjects.GetProjectNames(), "\n"))
+	return err
 }
 
 func CreateScopedTokenForEveryProject(projectNames []string) {

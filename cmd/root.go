@@ -612,7 +612,8 @@ var (
 	}
 
 	loginRemoveFlagToEnv = map[string]string{
-		userIDFlag: userIDEnv,
+		domainNameFlag: domainNameEnv,
+		userIDFlag:     userIDEnv,
 	}
 
 	cceFlagToEnv = map[string]string{
