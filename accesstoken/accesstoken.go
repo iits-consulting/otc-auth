@@ -103,9 +103,6 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	return listCredentials(client, user.ID)
 }
 
-// listCredentials issues GET /v3.0/OS-CREDENTIAL/credentials?user_id=... directly,
-// bypassing the broken credentials.List in gophertelekomcloud >= v0.9.3.
-//
 // Upstream regression: the new URL builder passes &opts (pointer to the
 // ListOptsBuilder interface) into reflection-based BuildQueryString, which
 // rejects pointer-to-interface with "options type is not a struct".
@@ -114,11 +111,7 @@ func ListAccessToken() ([]credentials.Credential, error) {
 //
 // https://github.com/opentelekomcloud/gophertelekomcloud/blob/3d1124b203dd40c1c18aea095743c258cabbb58a/openstack/identity/v3/credentials/requests.go#L30
 //
-// Note ListOpts only has json tags, but BuildQueryString reads the q tag —
-// even calling ListOpts.ToCredentialListQuery() returns an empty string. So
-// we build the query ourselves rather than reuse the SDK helper.
-//
-// Last known-good SDK version: v0.8.0. Drop this workaround once upstream is fixed.
+// Last known-good SDK version: v0.8.0.
 //
 //nolint:lll // permalink URL must remain unbroken
 func listCredentials(client *golangsdk.ServiceClient, userID string) ([]credentials.Credential, error) {
