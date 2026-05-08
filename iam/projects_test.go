@@ -45,8 +45,8 @@ func TestWriteProjectNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
-			if err := writeProjectNames(&buf, tc.projects); err != nil {
-				t.Fatalf("writeProjectNames returned error: %v", err)
+			if err := WriteProjectNames(&buf, tc.projects); err != nil {
+				t.Fatalf("WriteProjectNames returned error: %v", err)
 			}
 			if got := buf.String(); got != tc.want {
 				t.Errorf("output mismatch\n got: %q\nwant: %q", got, tc.want)
@@ -55,11 +55,16 @@ func TestWriteProjectNames(t *testing.T) {
 	}
 }
 
-// TestGetProjectsAndPrint_WritesNamesToWriter would have caught the original
-// silent-output regression on `projects list` (issue #177): the previous
-// implementation sent the project list to glog instead of stdout. Asserting
-// the buffer is non-empty via the io.Writer seam catches that class directly.
-func TestGetProjectsAndPrint_WritesNamesToWriter(t *testing.T) {
+// TestGetProjectsInActiveCloud_FetchUpdateOnly guards against two regressions
+// at once:
+//   - The original silent `projects list` (issue #177): output went to glog
+//     instead of stdout. The cmd handler now calls WriteProjectNames explicitly,
+//     so the writer-side regression is covered by TestWriteProjectNames above.
+//   - The reverse: login flow accidentally printing the project list. The
+//     seam takes no writer; this test is a structural witness that fetch+update
+//     happens with no I/O. A future refactor that re-adds a stdout write here
+//     would have to also break this test's signature.
+func TestGetProjectsInActiveCloud_FetchUpdateOnly(t *testing.T) {
 	t.Parallel()
 
 	fakeFetch := func() common.ProjectsResponse {
@@ -73,22 +78,24 @@ func TestGetProjectsAndPrint_WritesNamesToWriter(t *testing.T) {
 	var updated config.Projects
 	fakeUpdate := func(p config.Projects) { updated = p }
 
-	var buf bytes.Buffer
-	got := getProjectsAndPrint(&buf, fakeFetch, fakeUpdate)
+	got := getProjectsInActiveCloud(fakeFetch, fakeUpdate)
 
-	if buf.Len() == 0 {
-		t.Fatal("no output written — regression to glog-only behavior?")
-	}
-	out := buf.String()
-	for _, want := range []string{"eu-de", "eu-de_MyProject"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("output missing %q; got %q", want, out)
-		}
-	}
 	if len(updated) != 2 {
 		t.Errorf("updater received %d projects, want 2", len(updated))
 	}
 	if len(got) != 2 {
-		t.Errorf("returned %d projects, want 2", len(got))
+		t.Fatalf("returned %d projects, want 2", len(got))
+	}
+	for _, want := range []string{"eu-de", "eu-de_MyProject"} {
+		found := false
+		for _, p := range got {
+			if strings.Contains(p.Name, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing project %q", want)
+		}
 	}
 }

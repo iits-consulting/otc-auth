@@ -42,7 +42,10 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-const loginTimeout = 5 * time.Minute
+const (
+	loginTimeout = 5 * time.Minute
+	cmdUseList   = "list"
+)
 
 var RootCmd = &cobra.Command{
 	Use:     "otc-auth",
@@ -162,11 +165,14 @@ var projectsCmd = &cobra.Command{
 }
 
 var projectsListCmd = &cobra.Command{
-	Use:     "list",
+	Use:     cmdUseList,
 	Short:   projectsListCmdHelp,
 	Example: projectsListCmdExample,
 	Run: func(cmd *cobra.Command, args []string) {
-		iam.GetProjectsInActiveCloud()
+		projects := iam.GetProjectsInActiveCloud()
+		if err := iam.WriteProjectNames(cmd.OutOrStdout(), projects); err != nil {
+			common.ThrowError(err)
+		}
 	},
 }
 
@@ -177,7 +183,7 @@ var cceCmd = &cobra.Command{
 }
 
 var cceListCmd = &cobra.Command{
-	Use:     "list",
+	Use:     cmdUseList,
 	Short:   cceListCmdHelp,
 	Example: cceListCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(cceListFlagToEnv),
@@ -299,7 +305,7 @@ var accessTokenCreateCmd = &cobra.Command{
 }
 
 var accessTokenListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   cmdUseList,
 	Short: accessTokenListCmdHelp,
 	Run: func(cmd *cobra.Command, args []string) {
 		err := config.LoadCloudConfig(domainName)

@@ -12,7 +12,7 @@ func TestInitializeConfig_FlagSetFromEnvWhenMissing(t *testing.T) {
 	t.Setenv(userIDEnv, "user-abc")
 
 	var domainVal, userIDVal string
-	cmd := &cobra.Command{Use: "remove"}
+	cmd := &cobra.Command{Use: "test-cmd"}
 	cmd.Flags().StringVar(&domainVal, domainNameFlag, "", "")
 	cmd.Flags().StringVar(&userIDVal, userIDFlag, "", "")
 
@@ -32,7 +32,7 @@ func TestInitializeConfig_ExplicitFlagBeatsEnv(t *testing.T) {
 	t.Setenv(domainNameEnv, "FromEnv")
 
 	var domainVal string
-	cmd := &cobra.Command{Use: "remove"}
+	cmd := &cobra.Command{Use: "test-cmd"}
 	cmd.Flags().StringVar(&domainVal, domainNameFlag, "", "")
 	if err := cmd.Flags().Set(domainNameFlag, "FromFlag"); err != nil {
 		t.Fatalf("setting flag: %v", err)

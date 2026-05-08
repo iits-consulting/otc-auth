@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"otc-auth/common"
@@ -17,16 +16,15 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/projects"
 )
 
+// GetProjectsInActiveCloud fetches projects and persists them. Silent — the
+// caller decides whether to print. Login uses this to seed scoped tokens; the
+// `projects list` command pairs it with WriteProjectNames.
 func GetProjectsInActiveCloud() config.Projects {
-	return getProjectsAndPrint(os.Stdout, getProjectsFromServiceProvider, config.UpdateProjects)
+	return getProjectsInActiveCloud(getProjectsFromServiceProvider, config.UpdateProjects)
 }
 
-// getProjectsAndPrint is the testable seam for GetProjectsInActiveCloud.
-// fetch retrieves the raw response, update persists projects to disk, and w
-// receives the user-facing list. Splitting these dependencies lets us assert
-// the list reaches stdout without an HTTP/disk round-trip.
-func getProjectsAndPrint(
-	w io.Writer,
+// getProjectsInActiveCloud is the testable seam: fetch + update only.
+func getProjectsInActiveCloud(
 	fetch func() common.ProjectsResponse,
 	update func(config.Projects),
 ) config.Projects {
@@ -39,13 +37,12 @@ func getProjectsAndPrint(
 	}
 
 	update(cloudProjects)
-	if err := writeProjectNames(w, cloudProjects); err != nil {
-		common.ThrowError(err)
-	}
 	return cloudProjects
 }
 
-func writeProjectNames(w io.Writer, cloudProjects config.Projects) error {
+// WriteProjectNames writes one project name per line to w. Used by the
+// `projects list` command; deliberately not invoked from the login flow.
+func WriteProjectNames(w io.Writer, cloudProjects config.Projects) error {
 	_, err := fmt.Fprintln(w, strings.Join(cloudProjects.GetProjectNames(), "\n"))
 	return err
 }
