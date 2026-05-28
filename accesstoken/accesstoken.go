@@ -3,6 +3,7 @@ package accesstoken
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -99,7 +100,32 @@ func ListAccessToken() ([]credentials.Credential, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get user: %w", err)
 	}
-	return credentials.List(client, credentials.ListOpts{UserID: user.ID}).Extract()
+	return listCredentials(client, user.ID)
+}
+
+// Upstream regression: the new URL builder passes &opts (pointer to the
+// ListOptsBuilder interface) into reflection-based BuildQueryString, which
+// rejects pointer-to-interface with "options type is not a struct".
+// Introduced by https://github.com/opentelekomcloud/gophertelekomcloud/pull/641
+// Broken line in v0.9.6:
+//
+// https://github.com/opentelekomcloud/gophertelekomcloud/blob/3d1124b203dd40c1c18aea095743c258cabbb58a/openstack/identity/v3/credentials/requests.go#L30
+//
+// Last known-good SDK version: v0.8.0.
+//
+//nolint:lll // permalink URL must remain unbroken
+func listCredentials(client *golangsdk.ServiceClient, userID string) ([]credentials.Credential, error) {
+	query := url.Values{"user_id": []string{userID}}.Encode()
+	listURL := strings.Replace(client.ServiceURL("OS-CREDENTIAL", "credentials"), "v3/", "v3.0/", 1)
+
+	var body struct {
+		Credentials []credentials.Credential `json:"credentials"`
+	}
+	//nolint:bodyclose // SDK's client.Get drains the body via extract.Into; matches every other call site in this codebase
+	if _, err := client.Get(listURL+"?"+query, &body, nil); err != nil {
+		return nil, fmt.Errorf("listing credentials: %w", err)
+	}
+	return body.Credentials, nil
 }
 
 func getTempAccessTokenFromServiceProvider(durationSeconds int) (*credentials.TemporaryCredential, error) {
