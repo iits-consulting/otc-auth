@@ -42,7 +42,10 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-const loginTimeout = 5 * time.Minute
+const (
+	loginTimeout = 5 * time.Minute
+	cmdUseList   = "list"
+)
 
 var RootCmd = &cobra.Command{
 	Use:     "otc-auth",
@@ -62,10 +65,14 @@ var loginIamCmd = &cobra.Command{
 	PreRunE: configureCmdFlagsAgainstEnvs(loginIamFlagToEnv),
 	Run: func(cmd *cobra.Command, args []string) {
 		if totp != "" && username != "" {
-			common.ThrowError(errors.New("when using MFA (totp), the userID should be given, not the username"))
+			common.ThrowError(fmt.Errorf(
+				"when using MFA (--%s), pass the user id via --%s (or %s), not --%s",
+				totpFlag, userIDFlag, userIDEnv, usernameFlag))
 		}
 		if (userID != "" && username != "") || (userID == "" && username == "") {
-			common.ThrowError(errors.New("either the username or the userID must be set, not both"))
+			common.ThrowError(fmt.Errorf(
+				"exactly one of --%s or --%s must be set",
+				usernameFlag, userIDFlag))
 		}
 
 		loginCtx, cancel := context.WithTimeout(cmd.Context(), loginTimeout)
@@ -162,11 +169,14 @@ var projectsCmd = &cobra.Command{
 }
 
 var projectsListCmd = &cobra.Command{
-	Use:     "list",
+	Use:     cmdUseList,
 	Short:   projectsListCmdHelp,
 	Example: projectsListCmdExample,
 	Run: func(cmd *cobra.Command, args []string) {
-		iam.GetProjectsInActiveCloud()
+		projects := iam.GetProjectsInActiveCloud()
+		if err := iam.WriteProjectNames(cmd.OutOrStdout(), projects); err != nil {
+			common.ThrowError(err)
+		}
 	},
 }
 
@@ -177,7 +187,7 @@ var cceCmd = &cobra.Command{
 }
 
 var cceListCmd = &cobra.Command{
-	Use:     "list",
+	Use:     cmdUseList,
 	Short:   cceListCmdHelp,
 	Example: cceListCmdExample,
 	PreRunE: configureCmdFlagsAgainstEnvs(cceListFlagToEnv),
@@ -299,7 +309,7 @@ var accessTokenCreateCmd = &cobra.Command{
 }
 
 var accessTokenListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   cmdUseList,
 	Short: accessTokenListCmdHelp,
 	Run: func(cmd *cobra.Command, args []string) {
 		err := config.LoadCloudConfig(domainName)
@@ -612,7 +622,8 @@ var (
 	}
 
 	loginRemoveFlagToEnv = map[string]string{
-		userIDFlag: userIDEnv,
+		domainNameFlag: domainNameEnv,
+		userIDFlag:     userIDEnv,
 	}
 
 	cceFlagToEnv = map[string]string{
@@ -770,8 +781,8 @@ $ otc-auth access-token delete --token YourToken --os-domain-name YourDomain`
 	totpFlag                  = "totp"
 	totpShortFlag             = "t"
 	totpUsage                 = "6-digit time-based one-time password (TOTP) used for the MFA login flow. Needs to be used in conjunction with the " + userIDFlag + " flag or the " + userIDEnv + " environment variable"
-	userIDFlag                = "os-user-domain-id"
-	userIDEnv                 = "OS_USER_DOMAIN_ID"
+	userIDFlag                = "os-user-id"
+	userIDEnv                 = "OS_USER_ID"
 	userIDUsage               = "User Id number, can be obtained on the \"My Credentials page\" on the OTC. Required if --totp is provided.  Either provide this argument or set the environment variable " + userIDEnv
 	regionFlag                = "region"
 	aliasFlag                 = "alias"
