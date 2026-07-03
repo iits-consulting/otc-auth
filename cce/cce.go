@@ -3,6 +3,7 @@ package cce
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -25,18 +26,9 @@ import (
 )
 
 func GetClusterNames(projectName string) config.Clusters {
-	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
+	clustersArr, err := getClustersForProjectFromServiceProvider(projectName)
 	if err != nil {
 		common.ThrowError(err)
-	}
-
-	var clustersArr config.Clusters
-
-	for _, item := range clustersResult {
-		clustersArr = append(clustersArr, config.Cluster{
-			Name: item.Metadata.Name,
-			ID:   item.Metadata.Id,
-		})
 	}
 
 	config.UpdateClusters(clustersArr)
@@ -181,7 +173,36 @@ func sprintCertInfo(cert *x509.Certificate) string {
 		cert.Version, cert.SerialNumber, cert.Issuer, cert.Subject)
 }
 
-func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Clusters, error) {
+func listClusters(client *golangsdk.ServiceClient) (config.Clusters, error) {
+	// GET /api/v3/projects/{project_id}/clusters
+	raw, err := client.Get(client.ServiceURL("clusters"), nil, &golangsdk.RequestOpts{
+		OkCodes:     []int{200},
+		MoreHeaders: map[string]string{"Content-Type": "application/json"},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer raw.Body.Close()
+
+	var res struct {
+		Items []cceClusterItem `json:"items"`
+	}
+	err = json.NewDecoder(raw.Body).Decode(&res)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't decode cluster list: %w", err)
+	}
+
+	var clustersArr config.Clusters
+	for _, item := range res.Items {
+		clustersArr = append(clustersArr, config.Cluster{
+			Name: item.Metadata.Name,
+			ID:   item.Metadata.UID,
+		})
+	}
+	return clustersArr, nil
+}
+
+func getClustersForProjectFromServiceProvider(projectName string) (config.Clusters, error) {
 	activeCloud, err := config.GetActiveCloudConfig()
 	if err != nil {
 		common.ThrowError(err)
@@ -203,7 +224,7 @@ func getClustersForProjectFromServiceProvider(projectName string) ([]clusters.Cl
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get clusters for project: %w", err)
 	}
-	return clusters.List(client, clusters.ListOpts{})
+	return listClusters(client)
 }
 
 func getKubeConfFromServiceProvider(kubeConfigParams KubeConfigParams,
@@ -298,7 +319,10 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 		common.ThrowError(err)
 	}
 
-	clusterArr := getRefreshedClusterArr(projectName)
+	clusterArr, err := getClustersForProjectFromServiceProvider(projectName)
+	if err != nil {
+		common.ThrowError(err)
+	}
 
 	if !activeCloud.Clusters.ContainsClusterByName(clusterName) {
 		config.UpdateClusters(clusterArr)
@@ -314,22 +338,4 @@ func getClusterID(clusterName string, projectName string) (clusterID string, err
 	}
 
 	return cluster.ID, nil
-}
-
-func getRefreshedClusterArr(projectName string) config.Clusters {
-	clustersResult, err := getClustersForProjectFromServiceProvider(projectName)
-	if err != nil {
-		common.ThrowError(err)
-	}
-
-	var clusterArr config.Clusters
-	for _, cluster := range clustersResult {
-		clusterArr = append(clusterArr, config.Cluster{
-			Name: cluster.Metadata.Name,
-			ID:   cluster.Metadata.Id,
-		})
-	}
-	glog.V(common.InfoLogLevel).Info("info: clusters for project %s:\n%s",
-		projectName, strings.Join(clusterArr.GetClusterNames(), ",\n"))
-	return clusterArr
 }
