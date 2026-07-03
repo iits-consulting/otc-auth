@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -201,7 +202,15 @@ var cceListCmd = &cobra.Command{
 				errors.New("fatal: no valid unscoped token found." +
 					"\n\nPlease obtain an unscoped token by logging in first"))
 		}
-		cce.GetClusterNames(projectName)
+		clusterList := cce.GetClusterNames(projectName)
+		if len(clusterList) == 0 {
+			glog.V(common.InfoLogLevel).Infof("info: no CCE clusters found for project %s", projectName)
+			return
+		}
+		_, err = os.Stdout.WriteString(strings.Join(clusterList.GetClusterNames(), "\n") + "\n")
+		if err != nil {
+			common.ThrowError(errors.New("error writing cluster names to STDOUT"))
+		}
 	},
 }
 
