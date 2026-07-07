@@ -3,9 +3,11 @@ package cce
 
 import (
 	"encoding/base64"
+	"reflect"
 	"testing"
 
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func Test_certToKubeConfig(t *testing.T) {
@@ -13,38 +15,42 @@ func Test_certToKubeConfig(t *testing.T) {
 
 	caData := "fake-ca-data"
 	caDataB64 := base64.StdEncoding.EncodeToString([]byte(caData))
+	internal := clusters.CertClusters{Name: internalClusterName, Cluster: clusters.CertCluster{
+		Server:            "https://192.168.0.1:5443",
+		CertAuthorityData: caDataB64,
+	}}
+	external := clusters.CertClusters{Name: externalClusterName, Cluster: clusters.CertCluster{
+		Server:                "https://80.158.0.1:5443",
+		InsecureSkipTLSVerify: true,
+	}}
+	wantInternal := &api.Cluster{
+		Server:                   "https://192.168.0.1:5443",
+		CertificateAuthorityData: []byte(caData),
+	}
+	wantExternal := &api.Cluster{
+		Server: "https://80.158.0.1:5443",
+		// decoding the empty CA string yields an empty, non-nil slice
+		CertificateAuthorityData: []byte{},
+		InsecureSkipTLSVerify:    true,
+	}
 
 	tests := []struct {
-		name         string
-		clusters     []clusters.CertClusters
-		wantInsecure map[string]bool
-		wantCAData   map[string]string
+		name     string
+		clusters []clusters.CertClusters
+		want     map[string]*api.Cluster
 	}{
 		{
-			name: "Jumbo setup without EIP: CA data only, no insecure flag",
-			clusters: []clusters.CertClusters{
-				{Name: "internalCluster", Cluster: clusters.CertCluster{
-					Server:            "https://192.168.0.1:5443",
-					CertAuthorityData: caDataB64,
-				}},
-			},
-			wantInsecure: map[string]bool{"internalCluster": false},
-			wantCAData:   map[string]string{"internalCluster": caData},
+			name:     "Jumbo setup without EIP: CA data only, no insecure flag",
+			clusters: []clusters.CertClusters{internal},
+			want:     map[string]*api.Cluster{internalClusterName: wantInternal},
 		},
 		{
-			name: "EIP bound: externalCluster has insecure-skip-tls-verify",
-			clusters: []clusters.CertClusters{
-				{Name: "internalCluster", Cluster: clusters.CertCluster{
-					Server:            "https://192.168.0.1:5443",
-					CertAuthorityData: caDataB64,
-				}},
-				{Name: "externalCluster", Cluster: clusters.CertCluster{
-					Server:                "https://80.158.0.1:5443",
-					InsecureSkipTLSVerify: true,
-				}},
+			name:     "EIP bound: externalCluster has insecure-skip-tls-verify",
+			clusters: []clusters.CertClusters{internal, external},
+			want: map[string]*api.Cluster{
+				internalClusterName: wantInternal,
+				externalClusterName: wantExternal,
 			},
-			wantInsecure: map[string]bool{"internalCluster": false, "externalCluster": true},
-			wantCAData:   map[string]string{"internalCluster": caData, "externalCluster": ""},
 		},
 	}
 
@@ -62,22 +68,8 @@ func Test_certToKubeConfig(t *testing.T) {
 				t.Fatalf("certToKubeConfig() error = %v", err)
 			}
 
-			if len(got.Clusters) != len(tt.clusters) {
-				t.Fatalf("got %d clusters, want %d", len(got.Clusters), len(tt.clusters))
-			}
-			for name, wantInsecure := range tt.wantInsecure {
-				cluster, ok := got.Clusters[name]
-				if !ok {
-					t.Fatalf("cluster %q missing from kube config", name)
-				}
-				if cluster.InsecureSkipTLSVerify != wantInsecure {
-					t.Errorf("cluster %q InsecureSkipTLSVerify = %v, want %v",
-						name, cluster.InsecureSkipTLSVerify, wantInsecure)
-				}
-				if string(cluster.CertificateAuthorityData) != tt.wantCAData[name] {
-					t.Errorf("cluster %q CertificateAuthorityData = %q, want %q",
-						name, cluster.CertificateAuthorityData, tt.wantCAData[name])
-				}
+			if !reflect.DeepEqual(got.Clusters, tt.want) {
+				t.Errorf("certToKubeConfig() clusters mismatch:\ngot = %+v\nwant = %+v", got.Clusters, tt.want)
 			}
 		})
 	}

@@ -16,6 +16,11 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+const (
+	internalClusterName = "internalCluster"
+	externalClusterName = "externalCluster"
+)
+
 func getKubeConfig(kubeConfigParams KubeConfigParams, alias string) (*api.Config, error) {
 	glog.V(common.InfoLogLevel).Infof("info: getting kube config...")
 
@@ -70,8 +75,8 @@ func renameKubeconfigEntries(rawConfig *api.Config, projectName, clusterName, al
 	}
 
 	clusterRenames := map[string]string{
-		"internalCluster": fmt.Sprintf("%s-intranet", alias),
-		"externalCluster": alias,
+		internalClusterName: fmt.Sprintf("%s-intranet", alias),
+		externalClusterName: alias,
 	}
 	userRenames := map[string]string{
 		"user": fmt.Sprintf("%s-%s-%s", projectName, clusterName, activeCloud.Username),
