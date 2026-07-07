@@ -262,6 +262,19 @@ func getKubeConfFromServiceProvider(kubeConfigParams KubeConfigParams,
 		return nil, fmt.Errorf("couldn't get cert: %w", err)
 	}
 
+	rawConfig, err := certToKubeConfig(cert)
+	if err != nil {
+		return nil, err
+	}
+
+	err = renameKubeconfigEntries(rawConfig, kubeConfigParams.ProjectName, kubeConfigParams.ClusterName, alias)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't rename entries: %w", err)
+	}
+	return rawConfig, nil
+}
+
+func certToKubeConfig(cert *clusters.Certificate) (*api.Config, error) {
 	rawConfig := api.Config{
 		Kind:           cert.Kind,
 		APIVersion:     cert.ApiVersion,
@@ -276,22 +289,23 @@ func getKubeConfFromServiceProvider(kubeConfigParams KubeConfigParams,
 		decodedCA, errDecode := base64.StdEncoding.DecodeString(c.Cluster.CertAuthorityData)
 		if errDecode != nil {
 			return nil, fmt.Errorf("failed to decode cluster cert auth data for cluster '%s': %w",
-				c.Name, err)
+				c.Name, errDecode)
 		}
 		rawConfig.Clusters[c.Name] = &api.Cluster{
 			Server:                   c.Cluster.Server,
 			CertificateAuthorityData: decodedCA,
+			InsecureSkipTLSVerify:    c.Cluster.InsecureSkipTLSVerify,
 		}
 	}
 
 	for _, u := range cert.Users {
 		decodedCert, errDecode := base64.StdEncoding.DecodeString(u.User.ClientCertData)
 		if errDecode != nil {
-			return nil, fmt.Errorf("failed to decode client certificate data for user '%s': %w", u.Name, err)
+			return nil, fmt.Errorf("failed to decode client certificate data for user '%s': %w", u.Name, errDecode)
 		}
 		decodedKey, errDecode := base64.StdEncoding.DecodeString(u.User.ClientKeyData)
 		if errDecode != nil {
-			return nil, fmt.Errorf("failed to decode client key data for user '%s': %w", u.Name, err)
+			return nil, fmt.Errorf("failed to decode client key data for user '%s': %w", u.Name, errDecode)
 		}
 		rawConfig.AuthInfos[u.Name] = &api.AuthInfo{
 			ClientCertificateData: decodedCert,
@@ -306,10 +320,6 @@ func getKubeConfFromServiceProvider(kubeConfigParams KubeConfigParams,
 		}
 	}
 
-	err = renameKubeconfigEntries(&rawConfig, kubeConfigParams.ProjectName, kubeConfigParams.ClusterName, alias)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't rename entries: %w", err)
-	}
 	return &rawConfig, nil
 }
 
