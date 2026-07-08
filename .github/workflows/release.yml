@@ -138,9 +138,9 @@ jobs:
       - name: Import keys
         run: |
           mkdir ~/.abuild
-          echo "$APK_PACKAGE_RSA" > ~/.abuild/abuild.rsa
-          openssl rsa -pubout -in ~/.abuild/abuild.rsa -out ~/.abuild/abuild.rsa.pub
-          echo "PACKAGER_PRIVKEY=\"~/.abuild/abuild.rsa\"" >> /etc/abuild.conf
+          echo "$APK_PACKAGE_RSA" > ~/.abuild/otc-auth.rsa
+          openssl rsa -pubout -in ~/.abuild/otc-auth.rsa -out ~/.abuild/otc-auth.rsa.pub
+          echo "PACKAGER_PRIVKEY=\"~/.abuild/otc-auth.rsa\"" >> /etc/abuild.conf
           cp ~/.abuild/*.pub /etc/apk/keys/
         env:
           APK_PACKAGE_RSA: ${{ secrets.APK_PACKAGE_RSA }}
@@ -148,11 +148,11 @@ jobs:
       - name: Make and sign apkindex
         run: |
           apk index -o APKINDEX.tar.gz *.apk
-          abuild-sign -k ~/.abuild/abuild.rsa APKINDEX.tar.gz
+          abuild-sign -k ~/.abuild/otc-auth.rsa APKINDEX.tar.gz
 
       - name: Create repo structure
         run: |
-          cp ~/.abuild/abuild.rsa.pub otc-auth.rsa.pub
+          cp ~/.abuild/otc-auth.rsa.pub otc-auth.rsa.pub
           echo -e "  # <img src='https://github.com/iits-consulting/otc-auth/blob/main/static/images/iits-2024.svg' width="150"/> otc-auth apk-repo \n This repo contains .apk files built from the [latest version of otc-auth](https://github.com/iits-consulting/otc-auth/releases).\n\n ## Usage \n \`\`\`bash \n apk add curl \n curl -SsL -o /etc/apk/keys/otc-auth.rsa.pub https://iits-consulting.github.io/apk-repo/otc-auth.rsa.pub \n apk add otc-auth --repository='https://iits-consulting.github.io/apk-repo' \n \`\`\`" > README.md;
 
       - name: Cleanup

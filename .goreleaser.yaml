@@ -64,3 +64,6 @@ nfpms:
     apk:
       signature:
         key_file: abuild.rsa
+        # apk-tools matches the embedded signature name against
+        # /etc/apk/keys/<key_name>.rsa.pub; defaults to maintainer email
+        key_name: otc-auth
