@@ -49,7 +49,24 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 func merge(currentConfig *api.Config, kubeConfig api.Config) error {
 	err := mergo.Merge(currentConfig, kubeConfig, mergo.WithOverride)
-	return err
+	if err != nil {
+		return err
+	}
+	// mergo deep-merges colliding entries and never overrides with empty
+	// values, so a re-fetched entry could keep stale CA data next to a
+	// freshly-set insecure-skip-tls-verify flag (a combination client-go
+	// rejects) and a once-set flag could never be cleared. Freshly fetched
+	// entries are authoritative: replace them wholesale.
+	for name, cluster := range kubeConfig.Clusters {
+		currentConfig.Clusters[name] = cluster
+	}
+	for name, authInfo := range kubeConfig.AuthInfos {
+		currentConfig.AuthInfos[name] = authInfo
+	}
+	for name, context := range kubeConfig.Contexts {
+		currentConfig.Contexts[name] = context
+	}
+	return nil
 }
 
 func determineTargetLocation(targetLocation string) string {
