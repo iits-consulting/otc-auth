@@ -16,6 +16,11 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+const (
+	internalClusterName = "internalCluster"
+	externalClusterName = "externalCluster"
+)
+
 func getKubeConfig(kubeConfigParams KubeConfigParams, alias string) (*api.Config, error) {
 	glog.V(common.InfoLogLevel).Infof("info: getting kube config...")
 
@@ -44,7 +49,24 @@ func mergeKubeConfig(configParams KubeConfigParams, kubeConfig api.Config) {
 
 func merge(currentConfig *api.Config, kubeConfig api.Config) error {
 	err := mergo.Merge(currentConfig, kubeConfig, mergo.WithOverride)
-	return err
+	if err != nil {
+		return err
+	}
+	// mergo deep-merges colliding entries and never overrides with empty
+	// values, so a re-fetched entry could keep stale CA data next to a
+	// freshly-set insecure-skip-tls-verify flag (a combination client-go
+	// rejects) and a once-set flag could never be cleared. Freshly fetched
+	// entries are authoritative: replace them wholesale.
+	for name, cluster := range kubeConfig.Clusters {
+		currentConfig.Clusters[name] = cluster
+	}
+	for name, authInfo := range kubeConfig.AuthInfos {
+		currentConfig.AuthInfos[name] = authInfo
+	}
+	for name, context := range kubeConfig.Contexts {
+		currentConfig.Contexts[name] = context
+	}
+	return nil
 }
 
 func determineTargetLocation(targetLocation string) string {
@@ -70,8 +92,8 @@ func renameKubeconfigEntries(rawConfig *api.Config, projectName, clusterName, al
 	}
 
 	clusterRenames := map[string]string{
-		"internalCluster": fmt.Sprintf("%s-intranet", alias),
-		"externalCluster": alias,
+		internalClusterName: fmt.Sprintf("%s-intranet", alias),
+		externalClusterName: alias,
 	}
 	userRenames := map[string]string{
 		"user": fmt.Sprintf("%s-%s-%s", projectName, clusterName, activeCloud.Username),

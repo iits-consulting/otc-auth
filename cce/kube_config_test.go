@@ -77,6 +77,37 @@ func Test_merge(t *testing.T) {
 			wantErr:        false,
 		},
 		{
+			// a user's existing entry may hold CA data from an older fetch or manual
+			// workaround; the fresh API entry (insecure, no CA) must replace it wholesale,
+			// otherwise the merged entry carries both fields and client-go rejects it
+			name: "Stale CA data does not survive a fresh insecure entry",
+			currentConfig: &api.Config{Clusters: map[string]*api.Cluster{
+				"alias": {Server: "server-a", CertificateAuthorityData: []byte("stale-ca")},
+			}},
+			kubeConfig: api.Config{Clusters: map[string]*api.Cluster{
+				"alias": {Server: "server-a", InsecureSkipTLSVerify: true},
+			}},
+			expectedConfig: api.Config{Clusters: map[string]*api.Cluster{
+				"alias": {Server: "server-a", InsecureSkipTLSVerify: true},
+			}},
+			wantErr: false,
+		},
+		{
+			// the inverse direction: a previously-set insecure flag (zero value in the
+			// fresh entry) must not stick around once the API returns proper CA data
+			name: "Sticky insecure flag is cleared by a fresh CA entry",
+			currentConfig: &api.Config{Clusters: map[string]*api.Cluster{
+				"alias": {Server: "server-a", InsecureSkipTLSVerify: true},
+			}},
+			kubeConfig: api.Config{Clusters: map[string]*api.Cluster{
+				"alias": {Server: "server-a", CertificateAuthorityData: []byte("new-ca")},
+			}},
+			expectedConfig: api.Config{Clusters: map[string]*api.Cluster{
+				"alias": {Server: "server-a", CertificateAuthorityData: []byte("new-ca")},
+			}},
+			wantErr: false,
+		},
+		{
 			name: "Nil currentConfig should error",
 			// Merge requires a non-nil currentConfig pointer because it merges data *into* the
 			// existing object it points to. A nil pointer references no object, making the Merge impossible.
