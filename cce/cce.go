@@ -274,6 +274,14 @@ func getKubeConfFromServiceProvider(kubeConfigParams KubeConfigParams,
 	return rawConfig, nil
 }
 
+func decodeB64(encoded, description, name string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode %s '%s': %w", description, name, err)
+	}
+	return decoded, nil
+}
+
 func certToKubeConfig(cert *clusters.Certificate) (*api.Config, error) {
 	rawConfig := api.Config{
 		Kind:           cert.Kind,
@@ -286,26 +294,29 @@ func certToKubeConfig(cert *clusters.Certificate) (*api.Config, error) {
 	}
 
 	for _, c := range cert.Clusters {
-		decodedCA, errDecode := base64.StdEncoding.DecodeString(c.Cluster.CertAuthorityData)
-		if errDecode != nil {
-			return nil, fmt.Errorf("failed to decode cluster cert auth data for cluster '%s': %w",
-				c.Name, errDecode)
+		decodedCA, err := decodeB64(c.Cluster.CertAuthorityData, "cluster cert auth data for cluster", c.Name)
+		if err != nil {
+			return nil, err
 		}
-		rawConfig.Clusters[c.Name] = &api.Cluster{
-			Server:                   c.Cluster.Server,
-			CertificateAuthorityData: decodedCA,
-			InsecureSkipTLSVerify:    c.Cluster.InsecureSkipTLSVerify,
+		cluster := &api.Cluster{Server: c.Cluster.Server}
+		// client-go rejects a cluster entry carrying both CA data and the
+		// insecure flag, so propagate the flag only when no CA is present
+		if len(decodedCA) > 0 {
+			cluster.CertificateAuthorityData = decodedCA
+		} else {
+			cluster.InsecureSkipTLSVerify = c.Cluster.InsecureSkipTLSVerify
 		}
+		rawConfig.Clusters[c.Name] = cluster
 	}
 
 	for _, u := range cert.Users {
-		decodedCert, errDecode := base64.StdEncoding.DecodeString(u.User.ClientCertData)
-		if errDecode != nil {
-			return nil, fmt.Errorf("failed to decode client certificate data for user '%s': %w", u.Name, errDecode)
+		decodedCert, err := decodeB64(u.User.ClientCertData, "client certificate data for user", u.Name)
+		if err != nil {
+			return nil, err
 		}
-		decodedKey, errDecode := base64.StdEncoding.DecodeString(u.User.ClientKeyData)
-		if errDecode != nil {
-			return nil, fmt.Errorf("failed to decode client key data for user '%s': %w", u.Name, errDecode)
+		decodedKey, err := decodeB64(u.User.ClientKeyData, "client key data for user", u.Name)
+		if err != nil {
+			return nil, err
 		}
 		rawConfig.AuthInfos[u.Name] = &api.AuthInfo{
 			ClientCertificateData: decodedCert,

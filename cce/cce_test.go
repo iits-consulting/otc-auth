@@ -28,10 +28,19 @@ func Test_certToKubeConfig(t *testing.T) {
 		CertificateAuthorityData: []byte(caData),
 	}
 	wantExternal := &api.Cluster{
-		Server: "https://80.158.0.1:5443",
-		// decoding the empty CA string yields an empty, non-nil slice
-		CertificateAuthorityData: []byte{},
-		InsecureSkipTLSVerify:    true,
+		Server:                "https://80.158.0.1:5443",
+		InsecureSkipTLSVerify: true,
+	}
+	// CA data and the insecure flag are mutually exclusive in the output:
+	// client-go rejects entries carrying both
+	bothSet := clusters.CertClusters{Name: externalClusterName, Cluster: clusters.CertCluster{
+		Server:                "https://80.158.0.1:5443",
+		CertAuthorityData:     caDataB64,
+		InsecureSkipTLSVerify: true,
+	}}
+	wantBothSet := &api.Cluster{
+		Server:                   "https://80.158.0.1:5443",
+		CertificateAuthorityData: []byte(caData),
 	}
 
 	tests := []struct {
@@ -51,6 +60,11 @@ func Test_certToKubeConfig(t *testing.T) {
 				internalClusterName: wantInternal,
 				externalClusterName: wantExternal,
 			},
+		},
+		{
+			name:     "CA data wins over insecure flag when the API sets both",
+			clusters: []clusters.CertClusters{bothSet},
+			want:     map[string]*api.Cluster{externalClusterName: wantBothSet},
 		},
 	}
 
@@ -72,5 +86,34 @@ func Test_certToKubeConfig(t *testing.T) {
 				t.Errorf("certToKubeConfig() clusters mismatch:\ngot = %+v\nwant = %+v", got.Clusters, tt.want)
 			}
 		})
+	}
+}
+
+// certToKubeConfig maps the SDK cert structs field-by-field; a field added to
+// the SDK would otherwise be dropped silently (how insecure-skip-tls-verify
+// went missing in the first place, see PR #182). This pins the field sets so
+// the mapping must be revisited when the SDK grows.
+func Test_certToKubeConfig_coversAllSDKFields(t *testing.T) {
+	t.Parallel()
+
+	handled := map[reflect.Type][]string{
+		reflect.TypeOf(clusters.CertCluster{}): {"Server", "CertAuthorityData", "InsecureSkipTLSVerify"},
+		reflect.TypeOf(clusters.CertUser{}):    {"ClientCertData", "ClientKeyData"},
+		reflect.TypeOf(clusters.CertContext{}): {"Cluster", "User"},
+	}
+
+	for typ, fields := range handled {
+		known := make(map[string]bool, len(fields))
+		for _, f := range fields {
+			known[f] = true
+		}
+		for i := range typ.NumField() {
+			if name := typ.Field(i).Name; !known[name] {
+				t.Errorf("%s.%s is not mapped by certToKubeConfig — update the mapping and this list", typ.Name(), name)
+			}
+		}
+		if typ.NumField() < len(fields) {
+			t.Errorf("%s lost fields; update the handled list", typ.Name())
+		}
 	}
 }
