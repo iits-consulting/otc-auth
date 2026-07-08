@@ -106,7 +106,7 @@ func (projects Projects) GetProjectByName(name string) (*Project, error) {
 	project := projects.FindProjectByName(name)
 	if project == nil {
 		return nil, fmt.Errorf(
-			"fatal: project with name %s not found.\n\nUse the cce list-projects command to "+
+			"fatal: project with name %s not found.\n\nUse the projects list command to "+
 				"get a list of projects", name)
 	}
 	return project, nil
