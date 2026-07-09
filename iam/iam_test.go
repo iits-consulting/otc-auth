@@ -3,6 +3,8 @@ package iam
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 	"time"
@@ -12,6 +14,67 @@ import (
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
+
+// TestExtractToken_ReadsSubjectTokenHeader is a canary for the one SDK
+// extraction iam depends on: tokens.Create(...).ExtractToken().ID reads the
+// X-Subject-Token response header. If it breaks, verify where the SDK now
+// reads the token ID.
+func TestExtractToken_ReadsSubjectTokenHeader(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Subject-Token", "the-token-id")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"token":{"expires_at":"2022-11-30T14:01:54.956000Z"}}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := &golangsdk.ServiceClient{
+		ProviderClient: &golangsdk.ProviderClient{},
+		Endpoint:       server.URL + "/",
+	}
+
+	authOpts := &golangsdk.AuthOptions{
+		DomainName: "domain",
+		Username:   "user",
+		Password:   "pass",
+	}
+	token, err := tokens.Create(client, authOpts).ExtractToken()
+	if err != nil {
+		t.Fatalf("ExtractToken: %v", err)
+	}
+	if token.ID != "the-token-id" {
+		t.Errorf("ID = %q, want %q — SDK may have changed where the token ID is read",
+			token.ID, "the-token-id")
+	}
+}
+
+func Test_buildUnscopedTokenResponse(t *testing.T) {
+	t.Parallel()
+
+	//nolint:lll // single-line JSON fixture
+	body := []byte(`{"token":{"expires_at":"2022-11-30T14:01:54.956000Z","issued_at":"2022-11-29T14:01:54.956000Z","user":{"domain":{"id":"domain-id","name":"domain-name"},"name":"user-name"}}}`)
+
+	got, err := buildUnscopedTokenResponse(body, "secret-token-id")
+	if err != nil {
+		t.Fatalf("buildUnscopedTokenResponse() error = %v", err)
+	}
+	// Secret has no JSON tag; it must come from the extracted token ID, not the body.
+	if got.Token.Secret != "secret-token-id" {
+		t.Errorf("Secret = %q, want %q", got.Token.Secret, "secret-token-id")
+	}
+	if got.Token.ExpiresAt != "2022-11-30T14:01:54.956000Z" {
+		t.Errorf("ExpiresAt = %q, want %q", got.Token.ExpiresAt, "2022-11-30T14:01:54.956000Z")
+	}
+	if got.Token.User.Name != "user-name" {
+		t.Errorf("User.Name = %q, want %q", got.Token.User.Name, "user-name")
+	}
+
+	if _, errInvalid := buildUnscopedTokenResponse([]byte("{not json"), "x"); errInvalid == nil {
+		t.Error("expected error for invalid JSON body, got nil")
+	}
+}
 
 type mockTokenCreator struct {
 	tokenToReturn *tokens.Token
@@ -28,9 +91,11 @@ type mockConfigStore struct {
 	saveError       error
 	SaveCalled      bool
 	SavedCloudState *config.Cloud
+	GetCallCount    int
 }
 
 func (m *mockConfigStore) GetActiveCloud() (*config.Cloud, error) {
+	m.GetCallCount++
 	return m.cloudToReturn, m.getError
 }
 
@@ -111,6 +176,23 @@ func TestGetScopedToken(t *testing.T) {
 			projectName: "p1",
 			setupMockStore: func() ConfigStore {
 				return &mockConfigStore{getError: fmt.Errorf("disk error")}
+			},
+			mockTokenCreator: &mockTokenCreator{},
+			wantErr:          true,
+			wantSaveCalled:   false,
+		},
+		{
+			name:        "Failure - Project not found in active cloud",
+			projectName: "missing",
+			setupMockStore: func() ConfigStore {
+				configWithOtherProject := &config.Cloud{Projects: config.Projects{{
+					NameAndIDResource: config.NameAndIDResource{
+						Name: "p1",
+						ID:   "id1",
+					},
+					ScopedToken: *validConfigToken,
+				}}, Region: "eu-de"}
+				return &mockConfigStore{cloudToReturn: configWithOtherProject}
 			},
 			mockTokenCreator: &mockTokenCreator{},
 			wantErr:          true,
@@ -248,9 +330,7 @@ func Test_configTokenToGopherToken(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			// Note: This test will panic with the current code. A better
-			// implementation would return an error.
-			name:        "Failure - Panics on nil input",
+			name:        "Failure - Returns error on nil input",
 			configToken: nil,
 			want:        nil,
 			wantErr:     true,
@@ -259,14 +339,6 @@ func Test_configTokenToGopherToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer func() {
-				// This test shows the nil input causes a panic. Ideally, you would
-				// refactor the function to return an error, and this defer would be removed.
-				if r := recover(); r != nil && tt.configToken == nil {
-					t.Log("Test passed: function panicked as expected on nil input.")
-				}
-			}()
-
 			got, err := configTokenToGopherToken(tt.configToken)
 
 			if (err != nil) != tt.wantErr {

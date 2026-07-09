@@ -2,7 +2,8 @@ package iam
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
+	"io"
 	"strings"
 
 	"otc-auth/common"
@@ -15,8 +16,19 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/projects"
 )
 
+// GetProjectsInActiveCloud fetches projects and persists them. Silent — the
+// caller decides whether to print. Login uses this to seed scoped tokens; the
+// `projects list` command pairs it with WriteProjectNames.
 func GetProjectsInActiveCloud() config.Projects {
-	projectsResponse := getProjectsFromServiceProvider()
+	return getProjectsInActiveCloud(getProjectsFromServiceProvider, config.UpdateProjects)
+}
+
+// getProjectsInActiveCloud is the testable seam: fetch + update only.
+func getProjectsInActiveCloud(
+	fetch func() common.ProjectsResponse,
+	update func(config.Projects),
+) config.Projects {
+	projectsResponse := fetch()
 	var cloudProjects config.Projects
 	for _, project := range projectsResponse.Projects {
 		cloudProjects = append(cloudProjects, config.Project{
@@ -24,20 +36,25 @@ func GetProjectsInActiveCloud() config.Projects {
 		})
 	}
 
-	config.UpdateProjects(cloudProjects)
-	glog.V(common.InfoLogLevel).Infof("info: projects for active cloud:\n%s \n",
-		strings.Join(cloudProjects.GetProjectNames(), ",\n"))
+	update(cloudProjects)
 	return cloudProjects
 }
 
+// WriteProjectNames writes one project name per line to w. Used by the
+// `projects list` command; deliberately not invoked from the login flow.
+func WriteProjectNames(w io.Writer, cloudProjects config.Projects) error {
+	_, err := fmt.Fprintln(w, strings.Join(cloudProjects.GetProjectNames(), "\n"))
+	return err
+}
+
 func CreateScopedTokenForEveryProject(projectNames []string) error {
-	var tokenError error
-	store := NewFileConfigStore()
-	tc := NewGopherTokenCreator()
+	return createScopedTokenForEveryProject(NewFileConfigStore(), NewGopherTokenCreator(), projectNames)
+}
+
+func createScopedTokenForEveryProject(store ConfigStore, tc TokenCreator, projectNames []string) error {
 	for _, projectName := range projectNames {
-		_, err := GetScopedToken(store, tc, projectName) // Getting tokens also caches them for later use
-		if err != nil {
-			return errors.Join(tokenError, err)
+		if _, err := GetScopedToken(store, tc, projectName); err != nil { // also caches the token for later use
+			return err
 		}
 	}
 	return nil

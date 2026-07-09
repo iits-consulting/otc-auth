@@ -4,8 +4,10 @@ package iam
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"otc-auth/common"
 	"otc-auth/config"
@@ -55,15 +57,69 @@ func TestWriteProjectNames(t *testing.T) {
 	}
 }
 
-// TestGetProjectsInActiveCloud_FetchUpdateOnly guards against two regressions
-// at once:
-//   - The original silent `projects list` (issue #177): output went to glog
-//     instead of stdout. The cmd handler now calls WriteProjectNames explicitly,
-//     so the writer-side regression is covered by TestWriteProjectNames above.
-//   - The reverse: login flow accidentally printing the project list. The
-//     seam takes no writer; this test is a structural witness that fetch+update
-//     happens with no I/O. A future refactor that re-adds a stdout write here
-//     would have to also break this test's signature.
+func TestCreateScopedTokenForEveryProject(t *testing.T) {
+	t.Parallel()
+
+	validToken := config.Token{
+		Secret:    "s",
+		ExpiresAt: time.Now().Add(time.Hour).Format(time.RFC3339),
+	}
+	cloudWith := func(names ...string) *config.Cloud {
+		var ps config.Projects
+		for i, n := range names {
+			ps = append(ps, config.Project{
+				NameAndIDResource: config.NameAndIDResource{Name: n, ID: fmt.Sprintf("id%d", i)},
+				ScopedToken:       validToken,
+			})
+		}
+		return &config.Cloud{Projects: ps, Region: "eu-de"}
+	}
+
+	tests := []struct {
+		name         string
+		projectNames []string
+		cloud        *config.Cloud
+		wantErr      bool
+		wantGetCalls int
+	}{
+		{
+			name:         "all projects succeed",
+			projectNames: []string{"p1", "p2"},
+			cloud:        cloudWith("p1", "p2"),
+			wantErr:      false,
+			wantGetCalls: 2,
+		},
+		{
+			name:         "empty project list is a no-op",
+			projectNames: nil,
+			cloud:        cloudWith(),
+			wantErr:      false,
+			wantGetCalls: 0,
+		},
+		{
+			name:         "stops at first failure (fail-fast)",
+			projectNames: []string{"missing", "p1"},
+			cloud:        cloudWith("p1"),
+			wantErr:      true,
+			wantGetCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store := &mockConfigStore{cloudToReturn: tt.cloud}
+			err := createScopedTokenForEveryProject(store, &mockTokenCreator{}, tt.projectNames)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("createScopedTokenForEveryProject() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if store.GetCallCount != tt.wantGetCalls {
+				t.Errorf("GetActiveCloud calls = %d, want %d", store.GetCallCount, tt.wantGetCalls)
+			}
+		})
+	}
+}
+
 func TestGetProjectsInActiveCloud_FetchUpdateOnly(t *testing.T) {
 	t.Parallel()
 

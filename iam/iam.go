@@ -34,18 +34,23 @@ func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (*common.TokenRes
 
 	tokenResult := tokens.Create(client, &authOpts)
 
-	var tokenMarshalledResult common.TokenResponse
-	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't unmarshal token: %w", err)
-	}
-
 	token, err := tokenResult.ExtractToken()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't extract token: %w", err)
 	}
-	tokenMarshalledResult.Token.Secret = token.ID
-	return &tokenMarshalledResult, nil
+
+	return buildUnscopedTokenResponse(tokenResult.Body, token.ID)
+}
+
+// buildUnscopedTokenResponse parses the raw token body and stamps the extracted
+// token ID onto Secret, which has no JSON tag and is absent from the body.
+func buildUnscopedTokenResponse(body []byte, tokenID string) (*common.TokenResponse, error) {
+	var result common.TokenResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("couldn't unmarshal token: %w", err)
+	}
+	result.Token.Secret = tokenID
+	return &result, nil
 }
 
 type TokenCreator interface {
