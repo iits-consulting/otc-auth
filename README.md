@@ -51,7 +51,7 @@ https://user-images.githubusercontent.com/19291722/208880256-b0da924e-254e-4bc4-
 
 We have repos set up
 for [Arch](https://aur.archlinux.org/packages/otc-auth), [Debian](https://github.com/iits-consulting/ppa), [Fedora](https://github.com/iits-consulting/rpm-repo)
-and [⚠️Alpine](https://github.com/iits-consulting/apk-repo).
+and [Alpine](https://github.com/iits-consulting/apk-repo).
 
 Alternatively, you can download and use the binaries from our [releases page](https://github.com/iits-consulting/otc-auth/releases). Remember to add it to your PATH! Replace {OTC_AUTH_VERSION} and {YOUR_PLATFORM} in the example below with the version you want to download and the platform you want to download it for.
 ```shell
@@ -61,10 +61,11 @@ sudo mv otc-auth /usr/local/bin/otc-auth                                        
 ```
 
 ### MacOS
-We recommend using our [brew](https://brew.sh) tap to install otc-auth. 
+We recommend using [our brew](https://github.com/iits-consulting/homebrew-tap) tap to install otc-auth. You can get brew from [brew.sh](https://brew.sh)
 
 ```shell
 brew tap iits-consulting/homebrew-tap
+brew trust --formula iits-consulting/tap/otc-auth
 brew install otc-auth
 ```
 
