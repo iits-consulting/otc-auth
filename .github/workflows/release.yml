@@ -33,12 +33,14 @@ jobs:
           KEYCHAIN=build.keychain
           security default-keychain -s $KEYCHAIN
           security unlock-keychain -p $MAC_CERT_PASS $KEYCHAIN
-          curl -o AppleWWDRCAG3.cer https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
-          security import AppleWWDRCAG3.cer -k $KEYCHAIN -T /usr/bin/codesign
-          curl -o AppleRootCA.cer https://www.apple.com/appleca/AppleIncRootCertificate.cer
-          security import AppleRootCA.cer -k $KEYCHAIN -T /usr/bin/codesign
-          curl -o AppleDevIntermediate.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
-          security import AppleDevIntermediate.cer -k $KEYCHAIN -T /usr/bin/codesign
+          import_cert() {
+            curl -sSfo "$1" "$2"
+            fp=$(openssl x509 -inform der -in "$1" -noout -fingerprint -sha1 | cut -d= -f2 | tr -d :)
+            security find-certificate -a -Z $KEYCHAIN | grep -q "$fp" || security import "$1" -k $KEYCHAIN -T /usr/bin/codesign
+          }
+          import_cert AppleWWDRCAG3.cer https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
+          import_cert AppleRootCA.cer https://www.apple.com/appleca/AppleIncRootCertificate.cer
+          import_cert AppleDevIntermediate.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
           security find-identity -v $KEYCHAIN
           rm *.cer
         env:
