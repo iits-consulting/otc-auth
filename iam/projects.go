@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"otc-auth/common"
-	"otc-auth/common/endpoints"
 	"otc-auth/config"
 
 	"github.com/golang/glog"
@@ -47,10 +46,17 @@ func WriteProjectNames(w io.Writer, cloudProjects config.Projects) error {
 	return err
 }
 
-func CreateScopedTokenForEveryProject(projectNames []string) {
+func CreateScopedTokenForEveryProject(projectNames []string) error {
+	return createScopedTokenForEveryProject(NewFileConfigStore(), NewGopherTokenCreator(), projectNames)
+}
+
+func createScopedTokenForEveryProject(store ConfigStore, tc TokenCreator, projectNames []string) error {
 	for _, projectName := range projectNames {
-		GetScopedToken(projectName)
+		if _, err := GetScopedToken(store, tc, projectName); err != nil { // also caches the token for later use
+			return err
+		}
 	}
+	return nil
 }
 
 func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse) {
@@ -61,7 +67,7 @@ func getProjectsFromServiceProvider() (projectsResponse common.ProjectsResponse)
 	glog.V(common.InfoLogLevel).Infof("info: fetching projects for cloud %s \n", activeCloud.Domain.Name)
 
 	provider, err := openstack.AuthenticatedClient(golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
+		IdentityEndpoint: iamBaseURL(activeCloud.Region),
 		DomainID:         activeCloud.Domain.ID,
 		TokenID:          activeCloud.UnscopedToken.Secret,
 	})
