@@ -1,0 +1,358 @@
+//nolint:testpackage // whitebox testing
+package iam
+
+import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"testing"
+	"time"
+
+	"otc-auth/config"
+
+	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
+)
+
+// TestExtractToken_ReadsSubjectTokenHeader is a canary for the one SDK
+// extraction iam depends on: tokens.Create(...).ExtractToken().ID reads the
+// X-Subject-Token response header. If it breaks, verify where the SDK now
+// reads the token ID.
+func TestExtractToken_ReadsSubjectTokenHeader(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-Subject-Token", "the-token-id")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"token":{"expires_at":"2022-11-30T14:01:54.956000Z"}}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := &golangsdk.ServiceClient{
+		ProviderClient: &golangsdk.ProviderClient{},
+		Endpoint:       server.URL + "/",
+	}
+
+	authOpts := &golangsdk.AuthOptions{
+		DomainName: "domain",
+		Username:   "user",
+		Password:   "pass",
+	}
+	token, err := tokens.Create(client, authOpts).ExtractToken()
+	if err != nil {
+		t.Fatalf("ExtractToken: %v", err)
+	}
+	if token.ID != "the-token-id" {
+		t.Errorf("ID = %q, want %q — SDK may have changed where the token ID is read",
+			token.ID, "the-token-id")
+	}
+}
+
+func Test_buildUnscopedTokenResponse(t *testing.T) {
+	t.Parallel()
+
+	//nolint:lll // single-line JSON fixture
+	body := []byte(`{"token":{"expires_at":"2022-11-30T14:01:54.956000Z","issued_at":"2022-11-29T14:01:54.956000Z","user":{"domain":{"id":"domain-id","name":"domain-name"},"name":"user-name"}}}`)
+
+	got, err := buildUnscopedTokenResponse(body, "secret-token-id")
+	if err != nil {
+		t.Fatalf("buildUnscopedTokenResponse() error = %v", err)
+	}
+	// Secret has no JSON tag; it must come from the extracted token ID, not the body.
+	if got.Token.Secret != "secret-token-id" {
+		t.Errorf("Secret = %q, want %q", got.Token.Secret, "secret-token-id")
+	}
+	if got.Token.ExpiresAt != "2022-11-30T14:01:54.956000Z" {
+		t.Errorf("ExpiresAt = %q, want %q", got.Token.ExpiresAt, "2022-11-30T14:01:54.956000Z")
+	}
+	if got.Token.User.Name != "user-name" {
+		t.Errorf("User.Name = %q, want %q", got.Token.User.Name, "user-name")
+	}
+
+	if _, errInvalid := buildUnscopedTokenResponse([]byte("{not json"), "x"); errInvalid == nil {
+		t.Error("expected error for invalid JSON body, got nil")
+	}
+}
+
+type mockTokenCreator struct {
+	tokenToReturn *tokens.Token
+	errorToReturn error
+}
+
+func (m *mockTokenCreator) CreateToken(opts golangsdk.AuthOptions) (*tokens.Token, error) {
+	return m.tokenToReturn, m.errorToReturn
+}
+
+type mockConfigStore struct {
+	cloudToReturn   *config.Cloud
+	getError        error
+	saveError       error
+	SaveCalled      bool
+	SaveCallCount   int
+	SavedCloudState *config.Cloud
+	GetCallCount    int
+}
+
+func (m *mockConfigStore) GetActiveCloud() (*config.Cloud, error) {
+	m.GetCallCount++
+	return m.cloudToReturn, m.getError
+}
+
+func (m *mockConfigStore) SaveActiveCloud(cloud config.Cloud) error {
+	m.SaveCallCount++
+	if m.saveError == nil {
+		m.SaveCalled = true
+		m.SavedCloudState = &cloud
+	}
+	return m.saveError
+}
+
+func Test_scopedTokenForProject(t *testing.T) {
+	t.Parallel()
+
+	validToken := config.Token{Secret: "cached", ExpiresAt: time.Now().Add(time.Hour).Format(time.RFC3339)}
+	expiredToken := config.Token{Secret: "stale", ExpiresAt: time.Now().Add(-time.Hour).Format(time.RFC3339)}
+	refreshedToken := config.Token{Secret: "fresh", ExpiresAt: time.Now().Add(time.Hour).Format(time.RFC3339)}
+	refreshedGopherToken, convErr := configTokenToGopherToken(&refreshedToken)
+	if convErr != nil {
+		t.Fatalf("couldn't convert config token to gopher token: %v", convErr)
+	}
+	cloudWithToken := func(token config.Token) *config.Cloud {
+		return &config.Cloud{Region: "eu-de", Projects: config.Projects{{
+			NameAndIDResource: config.NameAndIDResource{Name: "p1", ID: "id1"},
+			ScopedToken:       token,
+		}}}
+	}
+
+	tests := []struct {
+		name         string
+		projectName  string
+		cloud        *config.Cloud
+		tokenCreator TokenCreator
+		want         *config.Token
+		wantErr      bool
+	}{
+		{
+			name:         "returns cached token when valid",
+			projectName:  "p1",
+			cloud:        cloudWithToken(validToken),
+			tokenCreator: &mockTokenCreator{errorToReturn: errors.New("must not be called")},
+			want:         &validToken,
+		},
+		{
+			name:         "refreshes token when expired",
+			projectName:  "p1",
+			cloud:        cloudWithToken(expiredToken),
+			tokenCreator: &mockTokenCreator{tokenToReturn: refreshedGopherToken},
+			want:         &refreshedToken,
+		},
+		{
+			name:         "project not found",
+			projectName:  "missing",
+			cloud:        cloudWithToken(validToken),
+			tokenCreator: &mockTokenCreator{},
+			wantErr:      true,
+		},
+		{
+			name:         "token refresh fails",
+			projectName:  "p1",
+			cloud:        cloudWithToken(expiredToken),
+			tokenCreator: &mockTokenCreator{errorToReturn: errors.New("api error")},
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := scopedTokenForProject(tt.cloud, tt.tokenCreator, tt.projectName)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("scopedTokenForProject() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("scopedTokenForProject() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_gopherTokenToConfigToken(t *testing.T) {
+	testTime := time.Date(2023, 10, 27, 10, 0, 0, 0, time.UTC)
+	expectedTimeString := "2023-10-27T10:00:00Z"
+
+	tests := []struct {
+		name        string
+		gopherToken *tokens.Token
+		want        *config.Token
+		wantErr     bool
+	}{
+		{
+			name: "Success - Converts a valid token",
+			gopherToken: &tokens.Token{
+				ID:        "test-id",
+				ExpiresAt: testTime,
+			},
+			want: &config.Token{
+				Secret:    "test-id",
+				ExpiresAt: expectedTimeString,
+			},
+			wantErr: false,
+		},
+		{
+			name:        "Failure - Handles nil input gracefully",
+			gopherToken: nil,
+			want:        nil,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, errConv := gopherTokenToConfigToken(tt.gopherToken)
+			if (errConv != nil) != tt.wantErr {
+				t.Errorf("error converting token: %v", errConv)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("gopherTokenToConfigToken() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_configTokenToGopherToken(t *testing.T) {
+	testTime := time.Date(2023, 10, 27, 10, 0, 0, 0, time.UTC)
+	validTimeString := "2023-10-27T10:00:00Z"
+
+	tests := []struct {
+		name        string
+		configToken *config.Token
+		want        *tokens.Token
+		wantErr     bool
+	}{
+		{
+			name: "Success - Converts a valid token",
+			configToken: &config.Token{
+				Secret:    "test-id",
+				ExpiresAt: validTimeString,
+			},
+			want: &tokens.Token{
+				ID:        "test-id",
+				ExpiresAt: testTime,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Failure - Returns error on invalid time format",
+			configToken: &config.Token{
+				Secret:    "test-id",
+				ExpiresAt: "not-a-valid-time",
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:        "Failure - Returns error on nil input",
+			configToken: nil,
+			want:        nil,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := configTokenToGopherToken(tt.configToken)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("configTokenToGopherToken() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("configTokenToGopherToken() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAuthenticateAndGetUnscopedToken(t *testing.T) {
+	tests := []struct {
+		name        string
+		tokenStatus int
+		tokenBody   string
+		wantErr     bool
+	}{
+		{name: "success", tokenStatus: http.StatusCreated, tokenBody: fakeTokenBody},
+		{name: "IAM rejects credentials", tokenStatus: http.StatusUnauthorized, tokenBody: `{}`, wantErr: true},
+		{name: "IAM returns malformed body", tokenStatus: http.StatusCreated, tokenBody: `{not json`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			useFakeIAM(t, tt.tokenStatus, tt.tokenBody, fakeCloud())
+
+			got, err := AuthenticateAndGetUnscopedToken(fakeAuthInfo())
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("AuthenticateAndGetUnscopedToken() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if got.Token.Secret != fakeTokenID {
+				t.Errorf("Secret = %q, want %q", got.Token.Secret, fakeTokenID)
+			}
+			if got.Token.User.Domain.Name != fakeDomainName {
+				t.Errorf("User.Domain.Name = %q, want %q", got.Token.User.Domain.Name, fakeDomainName)
+			}
+		})
+	}
+}
+
+func TestGopherTokenCreator_CreateToken(t *testing.T) {
+	authOpts := golangsdk.AuthOptions{TokenID: "unscoped", TenantID: "p1", DomainName: fakeDomainName}
+
+	t.Run("success", func(t *testing.T) {
+		useFakeIAM(t, http.StatusCreated, fakeTokenBody, fakeCloud())
+		authOpts.IdentityEndpoint = iamBaseURL("eu-de")
+
+		token, err := NewGopherTokenCreator().CreateToken(authOpts)
+		if err != nil {
+			t.Fatalf("CreateToken() error = %v", err)
+		}
+		if token.ID != fakeTokenID {
+			t.Errorf("ID = %q, want %q", token.ID, fakeTokenID)
+		}
+	})
+
+	t.Run("IAM rejects token", func(t *testing.T) {
+		useFakeIAM(t, http.StatusUnauthorized, `{}`, fakeCloud())
+		authOpts.IdentityEndpoint = iamBaseURL("eu-de")
+
+		if _, err := NewGopherTokenCreator().CreateToken(authOpts); err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
+func TestFileConfigStore_RoundTrip(t *testing.T) {
+	useFakeIAM(t, http.StatusCreated, fakeTokenBody, fakeCloud("eu-de"))
+	store := NewFileConfigStore()
+
+	cloud, err := store.GetActiveCloud()
+	if err != nil {
+		t.Fatalf("GetActiveCloud() error = %v", err)
+	}
+	cloud.Username = "changed"
+	if err = store.SaveActiveCloud(*cloud); err != nil {
+		t.Fatalf("SaveActiveCloud() error = %v", err)
+	}
+
+	reloaded, err := store.GetActiveCloud()
+	if err != nil {
+		t.Fatalf("GetActiveCloud() after save error = %v", err)
+	}
+	if reloaded.Username != "changed" {
+		t.Errorf("Username = %q, want %q", reloaded.Username, "changed")
+	}
+}

@@ -174,7 +174,8 @@ var projectsListCmd = &cobra.Command{
 	Short:   projectsListCmdHelp,
 	Example: projectsListCmdExample,
 	Run: func(cmd *cobra.Command, args []string) {
-		projects := iam.GetProjectsInActiveCloud()
+		projects := iam.FetchProjects()
+		config.UpdateProjects(projects)
 		if err := iam.WriteProjectNames(cmd.OutOrStdout(), projects); err != nil {
 			common.ThrowError(err)
 		}

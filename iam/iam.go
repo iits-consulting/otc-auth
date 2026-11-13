@@ -2,6 +2,7 @@ package iam
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,121 +16,162 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/tokens"
 )
 
+var iamBaseURL = endpoints.BaseURLIam //nolint:gochecknoglobals // seam so tests can target a fake IAM
+
 func AuthenticateAndGetUnscopedToken(authInfo common.AuthInfo) (*common.TokenResponse, error) {
 	authOpts := golangsdk.AuthOptions{
 		DomainName:       authInfo.DomainName,
 		Username:         authInfo.Username,
 		Password:         authInfo.Password,
-		IdentityEndpoint: endpoints.BaseURLIam(authInfo.Region),
+		IdentityEndpoint: iamBaseURL(authInfo.Region),
 
 		Passcode: authInfo.Otp,
 		UserID:   authInfo.UserID,
 	}
-	provider, err := openstack.AuthenticatedClient(authOpts)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get openstack client: %w", err)
-	}
 
-	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
+	client, err := newIdentityV3Client(authOpts)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get identity client: %w", err)
 	}
 
 	tokenResult := tokens.Create(client, &authOpts)
 
-	var tokenMarshalledResult common.TokenResponse
-	err = json.Unmarshal(tokenResult.Body, &tokenMarshalledResult)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't unmarshal token: %w", err)
-	}
-
 	token, err := tokenResult.ExtractToken()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't extract token: %w", err)
 	}
-	tokenMarshalledResult.Token.Secret = token.ID
-	return &tokenMarshalledResult, nil
+
+	return buildUnscopedTokenResponse(tokenResult.Body, token.ID)
 }
 
-func GetScopedToken(projectName string) config.Token {
-	activeCloud, err := config.GetActiveCloudConfig()
-	if err != nil {
-		common.ThrowError(err)
+// buildUnscopedTokenResponse parses the raw token body and stamps the extracted
+// token ID onto Secret, which has no JSON tag and is absent from the body.
+func buildUnscopedTokenResponse(body []byte, tokenID string) (*common.TokenResponse, error) {
+	var result common.TokenResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("couldn't unmarshal token: %w", err)
 	}
-	project, err := activeCloud.Projects.GetProjectByName(projectName)
-	if err != nil {
-		common.ThrowError(err)
-	}
-	if project.ScopedToken.IsTokenValid() {
-		token := project.ScopedToken
-
-		tokenExpirationDate, parseErr := common.ParseTime(token.ExpiresAt)
-		if parseErr != nil {
-			common.ThrowError(parseErr)
-		}
-		if tokenExpirationDate.After(time.Now()) {
-			glog.V(common.InfoLogLevel).Infof("info: scoped token is valid until %s \n",
-				tokenExpirationDate.Format(common.PrintTimeFormat))
-			return token
-		}
-	}
-
-	glog.V(common.InfoLogLevel).Infof("info: attempting to request a scoped token for %s\n", projectName)
-	cloud, err := getCloudWithScopedTokenFromServiceProvider(projectName)
-	if err != nil {
-		common.ThrowError(err)
-	}
-	config.UpdateCloudConfig(*cloud)
-	glog.V(common.InfoLogLevel).Info("info: scoped token acquired successfully")
-	project, err = activeCloud.Projects.GetProjectByName(projectName)
-	if err != nil {
-		common.ThrowError(err)
-	}
-	return project.ScopedToken
+	result.Token.Secret = tokenID
+	return &result, nil
 }
 
-func getCloudWithScopedTokenFromServiceProvider(projectName string) (*config.Cloud, error) {
-	activeCloud, err := config.GetActiveCloudConfig()
+type TokenCreator interface {
+	CreateToken(opts golangsdk.AuthOptions) (*tokens.Token, error)
+}
+
+type gopherTokenCreator struct{}
+
+func NewGopherTokenCreator() TokenCreator {
+	return &gopherTokenCreator{}
+}
+
+type ConfigStore interface {
+	GetActiveCloud() (*config.Cloud, error)
+	SaveActiveCloud(config.Cloud) error
+}
+
+type fileConfigStore struct{}
+
+func NewFileConfigStore() ConfigStore {
+	return &fileConfigStore{}
+}
+
+func (s *fileConfigStore) GetActiveCloud() (*config.Cloud, error) {
+	return config.GetActiveCloudConfig()
+}
+
+func (s *fileConfigStore) SaveActiveCloud(cloud config.Cloud) error {
+	return config.UpdateCloudConfig(cloud)
+}
+
+func (g *gopherTokenCreator) CreateToken(authOpts golangsdk.AuthOptions) (*tokens.Token, error) {
+	client, err := newIdentityV3Client(authOpts)
 	if err != nil {
-		common.ThrowError(err)
-	}
-	project, err := activeCloud.Projects.GetProjectByName(projectName)
-	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get identity client: %w", err)
 	}
 
-	authOpts := golangsdk.AuthOptions{
-		IdentityEndpoint: endpoints.BaseURLIam(activeCloud.Region),
-		TokenID:          activeCloud.UnscopedToken.Secret,
-		TenantID:         project.ID,
-		DomainName:       activeCloud.Domain.Name,
+	token, err := tokens.Create(client, &authOpts).ExtractToken()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create and extract token: %w", err)
 	}
+	return token, nil
+}
 
+func newIdentityV3Client(authOpts golangsdk.AuthOptions) (*golangsdk.ServiceClient, error) {
 	provider, err := openstack.AuthenticatedClient(authOpts)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get authenticated client: %w", err)
 	}
+
 	client, err := openstack.NewIdentityV3(provider, golangsdk.EndpointOpts{})
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get identity client: %w", err)
 	}
+	return client, nil
+}
 
-	scopedToken, err := tokens.Create(client, &authOpts).ExtractToken()
+func scopedTokenForProject(cloud *config.Cloud, tokenCreator TokenCreator, projectName string) (*config.Token, error) {
+	project, err := cloud.Projects.GetProjectByName(projectName)
 	if err != nil {
-		common.ThrowError(err)
+		return nil, fmt.Errorf("couldn't get project named '%s': %w", projectName, err)
 	}
 
-	token := config.Token{
-		Secret:    scopedToken.ID,
-		ExpiresAt: scopedToken.ExpiresAt.Format(time.RFC3339),
+	if project.ScopedToken.IsValid() {
+		glog.V(common.InfoLogLevel).Infof("scoped token is valid until %s", project.ScopedToken.ExpiresAt)
+		return &project.ScopedToken, nil
 	}
-	index := activeCloud.Projects.FindProjectIndexByName(projectName)
-	if index != nil {
-		activeCloud.Projects[*index].ScopedToken = token
-		return activeCloud, nil
+
+	glog.V(common.InfoLogLevel).Infof("attempting to refresh scoped token for %s", projectName)
+
+	newToken, err := fetchNewScopedToken(
+		tokenCreator,
+		cloud.UnscopedToken.Secret,
+		project.ID,
+		cloud.Region,
+		cloud.Domain.Name,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get new scoped token from provider: %w", err)
 	}
-	return nil, fmt.Errorf(
-		"fatal: project with name %s not found.\n"+
-			"\nUse the projects list command to get a list of projects",
-		projectName)
+	return newToken, nil
+}
+
+func fetchNewScopedToken(tc TokenCreator, unscopedToken, projectID, region, domainName string) (*config.Token, error) {
+	authOpts := golangsdk.AuthOptions{
+		IdentityEndpoint: iamBaseURL(region),
+		TokenID:          unscopedToken,
+		TenantID:         projectID,
+		DomainName:       domainName,
+	}
+
+	gopherToken, err := tc.CreateToken(authOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return gopherTokenToConfigToken(gopherToken)
+}
+
+func gopherTokenToConfigToken(gopherToken *tokens.Token) (*config.Token, error) {
+	if gopherToken == nil {
+		return nil, errors.New("token to convert is nil")
+	}
+	return &config.Token{
+		Secret:    gopherToken.ID,
+		ExpiresAt: gopherToken.ExpiresAt.Format(time.RFC3339),
+	}, nil
+}
+
+func configTokenToGopherToken(configToken *config.Token) (*tokens.Token, error) {
+	if configToken == nil {
+		return nil, errors.New("token to convert is nil")
+	}
+	parse, err := time.Parse(time.RFC3339, configToken.ExpiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse expiry time: %w", err)
+	}
+	return &tokens.Token{
+		ID:        configToken.Secret,
+		ExpiresAt: parse,
+	}, nil
 }
