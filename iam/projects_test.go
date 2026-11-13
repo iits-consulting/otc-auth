@@ -4,10 +4,10 @@ package iam
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -62,106 +62,124 @@ func TestWriteProjectNames(t *testing.T) {
 func TestCreateScopedTokenForEveryProject(t *testing.T) {
 	t.Parallel()
 
-	validToken := config.Token{
-		Secret:    "s",
-		ExpiresAt: time.Now().Add(time.Hour).Format(time.RFC3339),
+	expiredToken := config.Token{Secret: "stale", ExpiresAt: time.Now().Add(-time.Hour).Format(time.RFC3339)}
+	freshToken := config.Token{Secret: "fresh", ExpiresAt: time.Now().Add(time.Hour).Format(time.RFC3339)}
+	freshGopherToken, convErr := configTokenToGopherToken(&freshToken)
+	if convErr != nil {
+		t.Fatalf("couldn't convert config token to gopher token: %v", convErr)
 	}
 	cloudWith := func(names ...string) *config.Cloud {
 		var ps config.Projects
 		for i, n := range names {
 			ps = append(ps, config.Project{
 				NameAndIDResource: config.NameAndIDResource{Name: n, ID: fmt.Sprintf("id%d", i)},
-				ScopedToken:       validToken,
+				ScopedToken:       expiredToken,
 			})
 		}
 		return &config.Cloud{Projects: ps, Region: "eu-de"}
 	}
 
 	tests := []struct {
-		name         string
-		projectNames []string
-		cloud        *config.Cloud
-		wantErr      bool
-		wantGetCalls int
+		name          string
+		projectNames  []string
+		store         *mockConfigStore
+		wantErr       bool
+		wantGetCalls  int
+		wantSaveCalls int
 	}{
 		{
-			name:         "all projects succeed",
-			projectNames: []string{"p1", "p2"},
-			cloud:        cloudWith("p1", "p2"),
-			wantErr:      false,
-			wantGetCalls: 2,
+			name:          "all projects refreshed and saved once",
+			projectNames:  []string{"p1", "p2"},
+			store:         &mockConfigStore{cloudToReturn: cloudWith("p1", "p2")},
+			wantGetCalls:  2,
+			wantSaveCalls: 1,
 		},
 		{
-			name:         "empty project list is a no-op",
+			name:         "empty project list does not save",
 			projectNames: nil,
-			cloud:        cloudWith(),
-			wantErr:      false,
-			wantGetCalls: 0,
+			store:        &mockConfigStore{cloudToReturn: cloudWith()},
+			wantGetCalls: 1,
 		},
 		{
-			name:         "stops at first failure (fail-fast)",
+			name:         "stops at first failure without saving",
 			projectNames: []string{"missing", "p1"},
-			cloud:        cloudWith("p1"),
+			store:        &mockConfigStore{cloudToReturn: cloudWith("p1")},
 			wantErr:      true,
 			wantGetCalls: 1,
+		},
+		{
+			name:         "config read fails",
+			projectNames: []string{"p1"},
+			store:        &mockConfigStore{getError: errors.New("disk error")},
+			wantErr:      true,
+			wantGetCalls: 1,
+		},
+		{
+			name:          "config save fails",
+			projectNames:  []string{"p1"},
+			store:         &mockConfigStore{cloudToReturn: cloudWith("p1"), saveError: errors.New("disk full")},
+			wantErr:       true,
+			wantGetCalls:  2,
+			wantSaveCalls: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			store := &mockConfigStore{cloudToReturn: tt.cloud}
-			err := createScopedTokenForEveryProject(store, &mockTokenCreator{}, tt.projectNames)
+			tc := &mockTokenCreator{tokenToReturn: freshGopherToken}
+			err := createScopedTokenForEveryProject(tt.store, tc, tt.projectNames)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("createScopedTokenForEveryProject() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("createScopedTokenForEveryProject() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if store.GetCallCount != tt.wantGetCalls {
-				t.Errorf("GetActiveCloud calls = %d, want %d", store.GetCallCount, tt.wantGetCalls)
+			if tt.store.GetCallCount != tt.wantGetCalls {
+				t.Errorf("GetActiveCloud calls = %d, want %d", tt.store.GetCallCount, tt.wantGetCalls)
+			}
+			if tt.store.SaveCallCount != tt.wantSaveCalls {
+				t.Errorf("SaveActiveCloud calls = %d, want %d", tt.store.SaveCallCount, tt.wantSaveCalls)
+			}
+			if tt.store.SavedCloudState != nil {
+				assertAllScopedTokens(t, tt.store.SavedCloudState, freshToken)
 			}
 		})
 	}
 }
 
-func TestGetProjectsInActiveCloud_FetchUpdateOnly(t *testing.T) {
-	t.Parallel()
-
-	fakeFetch := func() common.ProjectsResponse {
-		var resp common.ProjectsResponse
-		const payload = `{"projects":[{"name":"eu-de","id":"p1"},{"name":"eu-de_MyProject","id":"p2"}]}`
-		if err := json.Unmarshal([]byte(payload), &resp); err != nil {
-			t.Fatalf("seed payload unmarshal: %v", err)
-		}
-		return resp
-	}
-	var updated config.Projects
-	fakeUpdate := func(p config.Projects) { updated = p }
-
-	got := getProjectsInActiveCloud(fakeFetch, fakeUpdate)
-
-	if len(updated) != 2 {
-		t.Errorf("updater received %d projects, want 2", len(updated))
-	}
-	if len(got) != 2 {
-		t.Fatalf("returned %d projects, want 2", len(got))
-	}
-	for _, want := range []string{"eu-de", "eu-de_MyProject"} {
-		found := false
-		for _, p := range got {
-			if strings.Contains(p.Name, want) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("missing project %q", want)
+func assertAllScopedTokens(t *testing.T, cloud *config.Cloud, want config.Token) {
+	t.Helper()
+	for _, project := range cloud.Projects {
+		if project.ScopedToken != want {
+			t.Errorf("saved token for %s = %v, want %v", project.Name, project.ScopedToken, want)
 		}
 	}
 }
 
-func TestGetProjectsInActiveCloud_PersistsFetchedProjects(t *testing.T) {
+func Test_projectsFromResponse(t *testing.T) {
+	t.Parallel()
+
+	var resp common.ProjectsResponse
+	if err := json.Unmarshal([]byte(fakeProjectsBody), &resp); err != nil {
+		t.Fatalf("seed payload unmarshal: %v", err)
+	}
+
+	got := projectsFromResponse(resp)
+
+	want := config.Projects{
+		{NameAndIDResource: config.NameAndIDResource{Name: "eu-de", ID: "p1"}},
+		{NameAndIDResource: config.NameAndIDResource{Name: "eu-de_MyProject", ID: "p2"}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("projectsFromResponse() = %v, want %v", got, want)
+	}
+	if projectsFromResponse(common.ProjectsResponse{}) != nil {
+		t.Error("empty response should yield nil projects")
+	}
+}
+
+func TestFetchProjects_DoesNotPersist(t *testing.T) {
 	useFakeIAM(t, http.StatusCreated, fakeTokenBody, fakeCloud())
 
-	got := GetProjectsInActiveCloud()
+	got := FetchProjects()
 
 	want := []string{"eu-de", "eu-de_MyProject"}
 	if !reflect.DeepEqual(got.GetProjectNames(), want) {
@@ -171,8 +189,8 @@ func TestGetProjectsInActiveCloud_PersistsFetchedProjects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetActiveCloudConfig() error = %v", err)
 	}
-	if !reflect.DeepEqual(persisted.Projects.GetProjectNames(), want) {
-		t.Errorf("persisted projects = %v, want %v", persisted.Projects.GetProjectNames(), want)
+	if len(persisted.Projects) != 0 {
+		t.Errorf("FetchProjects persisted %d projects, want none", len(persisted.Projects))
 	}
 }
 

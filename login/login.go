@@ -14,6 +14,33 @@ import (
 	"github.com/golang/glog"
 )
 
+func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.AuthInfo) error {
+	if err := config.LoadCloudConfig(authInfo.DomainName); err != nil {
+		return fmt.Errorf("couldn't load config: %w", err)
+	}
+
+	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
+		glog.V(common.InfoLogLevel).Info(
+			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
+				"To overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
+		return nil
+	}
+
+	glog.V(common.InfoLogLevel).Info("info: retrieving unscoped token for active cloud...")
+
+	provider, err := getTokenProvider(authInfo)
+	if err != nil {
+		return err
+	}
+
+	tokenResponse, err := provider(loginCtx, authInfo)
+	if err != nil {
+		return fmt.Errorf("couldn't get unscoped token: %w", err)
+	}
+
+	return handleSuccessfulAuthentication(*tokenResponse, authInfo.Region)
+}
+
 type tokenProviderFunc func(context.Context, common.AuthInfo) (*common.TokenResponse, error)
 
 func getTokenProvider(authInfo common.AuthInfo) (tokenProviderFunc, error) {
@@ -50,40 +77,14 @@ func handleSuccessfulAuthentication(tokenResponse common.TokenResponse, region s
 		return fmt.Errorf("couldn't update otc info file: %w", err)
 	}
 
-	projectsInActiveCloud := iam.GetProjectsInActiveCloud()
-	if err := iam.CreateScopedTokenForEveryProject(projectsInActiveCloud.GetProjectNames()); err != nil {
+	projects := iam.FetchProjects()
+	config.UpdateProjects(projects)
+	if err := iam.CreateScopedTokenForEveryProject(projects.GetProjectNames()); err != nil {
 		return fmt.Errorf("couldn't create scoped token for projects: %w", err)
 	}
 
 	glog.V(common.InfoLogLevel).Info("info: successfully obtained unscoped token!")
 	return nil
-}
-
-func AuthenticateAndGetUnscopedToken(loginCtx context.Context, authInfo common.AuthInfo) error {
-	if err := config.LoadCloudConfig(authInfo.DomainName); err != nil {
-		return fmt.Errorf("couldn't load config: %w", err)
-	}
-
-	if config.IsAuthenticationValid() && !authInfo.OverwriteFile {
-		glog.V(common.InfoLogLevel).Info(
-			"info: will not retrieve unscoped token, because the current one is still valid.\n" +
-				"To overwrite the existing unscoped token, pass the \"--overwrite-token\" argument")
-		return nil
-	}
-
-	glog.V(common.InfoLogLevel).Info("info: retrieving unscoped token for active cloud...")
-
-	provider, err := getTokenProvider(authInfo)
-	if err != nil {
-		return err
-	}
-
-	tokenResponse, err := provider(loginCtx, authInfo)
-	if err != nil {
-		return fmt.Errorf("couldn't get unscoped token: %w", err)
-	}
-
-	return handleSuccessfulAuthentication(*tokenResponse, authInfo.Region)
 }
 
 func updateOTCInfoFile(tokenResponse common.TokenResponse, regionCode string) error {

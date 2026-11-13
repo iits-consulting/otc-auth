@@ -15,32 +15,20 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/identity/v3/projects"
 )
 
-// GetProjectsInActiveCloud fetches projects and persists them. Silent — the
-// caller decides whether to print. Login uses this to seed scoped tokens; the
-// `projects list` command pairs it with WriteProjectNames.
-func GetProjectsInActiveCloud() config.Projects {
-	return getProjectsInActiveCloud(getProjectsFromServiceProvider, config.UpdateProjects)
+func FetchProjects() config.Projects {
+	return projectsFromResponse(getProjectsFromServiceProvider())
 }
 
-// getProjectsInActiveCloud is the testable seam: fetch + update only.
-func getProjectsInActiveCloud(
-	fetch func() common.ProjectsResponse,
-	update func(config.Projects),
-) config.Projects {
-	projectsResponse := fetch()
+func projectsFromResponse(projectsResponse common.ProjectsResponse) config.Projects {
 	var cloudProjects config.Projects
 	for _, project := range projectsResponse.Projects {
 		cloudProjects = append(cloudProjects, config.Project{
 			NameAndIDResource: config.NameAndIDResource{Name: project.Name, ID: project.ID},
 		})
 	}
-
-	update(cloudProjects)
 	return cloudProjects
 }
 
-// WriteProjectNames writes one project name per line to w. Used by the
-// `projects list` command; deliberately not invoked from the login flow.
 func WriteProjectNames(w io.Writer, cloudProjects config.Projects) error {
 	_, err := fmt.Fprintln(w, strings.Join(cloudProjects.GetProjectNames(), "\n"))
 	return err
@@ -51,11 +39,52 @@ func CreateScopedTokenForEveryProject(projectNames []string) error {
 }
 
 func createScopedTokenForEveryProject(store ConfigStore, tc TokenCreator, projectNames []string) error {
-	for _, projectName := range projectNames {
-		if _, err := GetScopedToken(store, tc, projectName); err != nil { // also caches the token for later use
-			return err
-		}
+	tokens, err := fetchScopedTokens(store, tc, projectNames)
+	if err != nil {
+		return err
 	}
+	return saveScopedTokens(store, tokens)
+}
+
+func fetchScopedTokens(store ConfigStore, tc TokenCreator, projectNames []string) (map[string]config.Token, error) {
+	cloud, err := store.GetActiveCloud()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get active cloud config: %w", err)
+	}
+
+	tokens := make(map[string]config.Token, len(projectNames))
+	for _, projectName := range projectNames {
+		token, tokenErr := scopedTokenForProject(cloud, tc, projectName)
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		tokens[projectName] = *token
+	}
+	return tokens, nil
+}
+
+// saveScopedTokens writes all tokens to the active cloud in a single config update.
+func saveScopedTokens(store ConfigStore, tokens map[string]config.Token) error {
+	if len(tokens) == 0 {
+		return nil
+	}
+	cloud, err := store.GetActiveCloud()
+	if err != nil {
+		return fmt.Errorf("couldn't get active cloud config: %w", err)
+	}
+
+	for projectName, token := range tokens {
+		index := cloud.Projects.FindProjectIndexByName(projectName)
+		if index == nil {
+			return fmt.Errorf("could not find project index for %s", projectName)
+		}
+		cloud.Projects[*index].ScopedToken = token
+	}
+
+	if err = store.SaveActiveCloud(*cloud); err != nil {
+		return fmt.Errorf("couldn't save active cloud: %w", err)
+	}
+	glog.V(common.InfoLogLevel).Infof("saved scoped tokens for %d projects", len(tokens))
 	return nil
 }
 

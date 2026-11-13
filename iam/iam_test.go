@@ -2,7 +2,7 @@
 package iam
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -90,6 +90,7 @@ type mockConfigStore struct {
 	getError        error
 	saveError       error
 	SaveCalled      bool
+	SaveCallCount   int
 	SavedCloudState *config.Cloud
 	GetCallCount    int
 }
@@ -100,6 +101,7 @@ func (m *mockConfigStore) GetActiveCloud() (*config.Cloud, error) {
 }
 
 func (m *mockConfigStore) SaveActiveCloud(cloud config.Cloud) error {
+	m.SaveCallCount++
 	if m.saveError == nil {
 		m.SaveCalled = true
 		m.SavedCloudState = &cloud
@@ -107,151 +109,70 @@ func (m *mockConfigStore) SaveActiveCloud(cloud config.Cloud) error {
 	return m.saveError
 }
 
-func TestGetScopedToken(t *testing.T) {
-	validConfigToken := &config.Token{
-		Secret:    "new-secret",
-		ExpiresAt: time.Now().Add(1 * time.Hour).Format(time.RFC3339),
-	}
-	expiredConfigToken := &config.Token{
-		Secret:    "new-secret",
-		ExpiresAt: time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
-	}
-	refreshedConfigToken := &config.Token{
-		Secret:    "new-secret",
-		ExpiresAt: time.Now().Add(1 * time.Hour).Format(time.RFC3339),
-	}
+func Test_scopedTokenForProject(t *testing.T) {
+	t.Parallel()
 
-	refreshedGopherToken, err := configTokenToGopherToken(refreshedConfigToken)
-	if err != nil {
-		t.Errorf("couldn't convert config token to gopher token: %v", err)
+	validToken := config.Token{Secret: "cached", ExpiresAt: time.Now().Add(time.Hour).Format(time.RFC3339)}
+	expiredToken := config.Token{Secret: "stale", ExpiresAt: time.Now().Add(-time.Hour).Format(time.RFC3339)}
+	refreshedToken := config.Token{Secret: "fresh", ExpiresAt: time.Now().Add(time.Hour).Format(time.RFC3339)}
+	refreshedGopherToken, convErr := configTokenToGopherToken(&refreshedToken)
+	if convErr != nil {
+		t.Fatalf("couldn't convert config token to gopher token: %v", convErr)
+	}
+	cloudWithToken := func(token config.Token) *config.Cloud {
+		return &config.Cloud{Region: "eu-de", Projects: config.Projects{{
+			NameAndIDResource: config.NameAndIDResource{Name: "p1", ID: "id1"},
+			ScopedToken:       token,
+		}}}
 	}
 
 	tests := []struct {
-		name             string
-		projectName      string
-		setupMockStore   func() ConfigStore
-		mockTokenCreator TokenCreator
-		want             *config.Token
-		wantErr          bool
-		wantSaveCalled   bool
+		name         string
+		projectName  string
+		cloud        *config.Cloud
+		tokenCreator TokenCreator
+		want         *config.Token
+		wantErr      bool
 	}{
 		{
-			name:        "Success - Returns cached token when valid",
-			projectName: "p1",
-			setupMockStore: func() ConfigStore {
-				configWithValidToken := &config.Cloud{Projects: config.Projects{{
-					NameAndIDResource: config.NameAndIDResource{
-						Name: "p1",
-						ID:   "id1",
-					},
-					ScopedToken: *validConfigToken,
-				}}, Region: "eu-de"}
-				return &mockConfigStore{cloudToReturn: configWithValidToken}
-			},
-			mockTokenCreator: &mockTokenCreator{}, // Not used in this path
-			want:             validConfigToken,
-			wantErr:          false,
-			wantSaveCalled:   false,
+			name:         "returns cached token when valid",
+			projectName:  "p1",
+			cloud:        cloudWithToken(validToken),
+			tokenCreator: &mockTokenCreator{errorToReturn: errors.New("must not be called")},
+			want:         &validToken,
 		},
 		{
-			name:        "Success - Refreshes token when expired",
-			projectName: "p1",
-			setupMockStore: func() ConfigStore {
-				configWithExpiredToken := &config.Cloud{Projects: config.Projects{{
-					NameAndIDResource: config.NameAndIDResource{
-						Name: "p1",
-						ID:   "id1",
-					},
-					ScopedToken: *expiredConfigToken,
-				}}, Region: "eu-de"}
-				return &mockConfigStore{cloudToReturn: configWithExpiredToken}
-			},
-			mockTokenCreator: &mockTokenCreator{tokenToReturn: refreshedGopherToken},
-			want:             refreshedConfigToken,
-			wantErr:          false,
-			wantSaveCalled:   true,
+			name:         "refreshes token when expired",
+			projectName:  "p1",
+			cloud:        cloudWithToken(expiredToken),
+			tokenCreator: &mockTokenCreator{tokenToReturn: refreshedGopherToken},
+			want:         &refreshedToken,
 		},
 		{
-			name:        "Failure - GetActiveCloud fails",
-			projectName: "p1",
-			setupMockStore: func() ConfigStore {
-				return &mockConfigStore{getError: fmt.Errorf("disk error")}
-			},
-			mockTokenCreator: &mockTokenCreator{},
-			wantErr:          true,
-			wantSaveCalled:   false,
+			name:         "project not found",
+			projectName:  "missing",
+			cloud:        cloudWithToken(validToken),
+			tokenCreator: &mockTokenCreator{},
+			wantErr:      true,
 		},
 		{
-			name:        "Failure - Project not found in active cloud",
-			projectName: "missing",
-			setupMockStore: func() ConfigStore {
-				configWithOtherProject := &config.Cloud{Projects: config.Projects{{
-					NameAndIDResource: config.NameAndIDResource{
-						Name: "p1",
-						ID:   "id1",
-					},
-					ScopedToken: *validConfigToken,
-				}}, Region: "eu-de"}
-				return &mockConfigStore{cloudToReturn: configWithOtherProject}
-			},
-			mockTokenCreator: &mockTokenCreator{},
-			wantErr:          true,
-			wantSaveCalled:   false,
-		},
-		{
-			name:        "Failure - Token refresh fails",
-			projectName: "p1",
-			setupMockStore: func() ConfigStore {
-				configWithExpiredToken := &config.Cloud{Projects: config.Projects{{
-					NameAndIDResource: config.NameAndIDResource{
-						Name: "p1",
-						ID:   "id1",
-					},
-					ScopedToken: *expiredConfigToken,
-				}}, Region: "eu-de"}
-				return &mockConfigStore{cloudToReturn: configWithExpiredToken}
-			},
-			mockTokenCreator: &mockTokenCreator{errorToReturn: fmt.Errorf("api error")},
-			wantErr:          true,
-			wantSaveCalled:   false,
-		},
-		{
-			name:        "Failure - Config save fails",
-			projectName: "p1",
-			setupMockStore: func() ConfigStore {
-				configWithExpiredToken := &config.Cloud{Projects: config.Projects{{
-					NameAndIDResource: config.NameAndIDResource{
-						Name: "p1",
-						ID:   "id1",
-					},
-					ScopedToken: *expiredConfigToken,
-				}}, Region: "eu-de"}
-				return &mockConfigStore{cloudToReturn: configWithExpiredToken, saveError: fmt.Errorf("disk full")}
-			},
-			mockTokenCreator: &mockTokenCreator{tokenToReturn: refreshedGopherToken},
-			wantErr:          true,
-			wantSaveCalled:   false,
+			name:         "token refresh fails",
+			projectName:  "p1",
+			cloud:        cloudWithToken(expiredToken),
+			tokenCreator: &mockTokenCreator{errorToReturn: errors.New("api error")},
+			wantErr:      true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockStore := tt.setupMockStore()
-			got, errToken := GetScopedToken(mockStore, tt.mockTokenCreator, tt.projectName)
-			if (errToken != nil) != tt.wantErr {
-				t.Errorf("GetScopedToken() error = %v, wantErr %v", errToken, tt.wantErr)
-				return
+			t.Parallel()
+			got, err := scopedTokenForProject(tt.cloud, tt.tokenCreator, tt.projectName)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("scopedTokenForProject() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetScopedToken() got = %v, want %v", got, tt.want)
-			}
-			if store, ok := mockStore.(*mockConfigStore); ok {
-				if store.SaveCalled != tt.wantSaveCalled {
-					t.Errorf("Expected SaveCalled to be %v, but got %v", tt.wantSaveCalled, store.SaveCalled)
-				}
-				if store.SaveCalled && store.SavedCloudState.Projects[0].ScopedToken != *tt.want {
-					t.Errorf("saved scoped token = %v, want %v", store.SavedCloudState.Projects[0].ScopedToken, *tt.want)
-				}
+				t.Errorf("scopedTokenForProject() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

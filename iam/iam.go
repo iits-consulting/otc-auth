@@ -110,16 +110,8 @@ func newIdentityV3Client(authOpts golangsdk.AuthOptions) (*golangsdk.ServiceClie
 	return client, nil
 }
 
-func GetScopedToken(
-	store ConfigStore,
-	tokenCreator TokenCreator,
-	projectName string,
-) (*config.Token, error) {
-	activeCloud, err := store.GetActiveCloud()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get active cloud config: %w", err)
-	}
-	project, err := activeCloud.Projects.GetProjectByName(projectName)
+func scopedTokenForProject(cloud *config.Cloud, tokenCreator TokenCreator, projectName string) (*config.Token, error) {
+	project, err := cloud.Projects.GetProjectByName(projectName)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get project named '%s': %w", projectName, err)
 	}
@@ -133,27 +125,14 @@ func GetScopedToken(
 
 	newToken, err := fetchNewScopedToken(
 		tokenCreator,
-		activeCloud.UnscopedToken.Secret,
+		cloud.UnscopedToken.Secret,
 		project.ID,
-		activeCloud.Region,
-		activeCloud.Domain.Name,
+		cloud.Region,
+		cloud.Domain.Name,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get new scoped token from provider: %w", err)
 	}
-
-	index := activeCloud.Projects.FindProjectIndexByName(projectName)
-	if index == nil {
-		return nil, fmt.Errorf("could not find project index for %s", projectName)
-	}
-	activeCloud.Projects[*index].ScopedToken = *newToken
-
-	err = store.SaveActiveCloud(*activeCloud)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't save active cloud: %w", err)
-	}
-
-	glog.Info("scoped token acquired and saved successfully")
 	return newToken, nil
 }
 
