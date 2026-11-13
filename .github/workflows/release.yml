@@ -320,7 +320,8 @@ jobs:
           destination-github-username: 'iits-consulting'
           destination-repository-name: 'homebrew-tap'
           user-email: mweya.ruider@iits-consulting.de
-          target-branch: main
+          target-branch: release/${{ github.ref_name }}
+          create-target-branch-if-needed: true
 
   wikiupdate:
     runs-on: ubuntu-latest
